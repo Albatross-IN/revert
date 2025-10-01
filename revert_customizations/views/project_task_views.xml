@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_task_form_inherit" model="ir.ui.view">
+        <field name="name">project.task.form.inherit</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook/page[@name='description_page']" position="after">
+                <page name="mom_meetings_page" string="MOM Meetings">
+                    <field name="agenda" placeholder="Write opening agenda here..."/>
+                    <field name="person_ids">
+                        <list editable="bottom">
+                            <field name="seq" readonly="1"/>
+                            <field name="from_client"/>
+                            <field name="from_architect"/>
+                            <field name="from_agency"/>
+                        </list>
+                    </field>
+                    <field name="mom_meeting_ids">
+                        <list editable="bottom">
+                            <field name="seq" readonly="1"/>
+                            <field name="remarks"/>
+                            <field name="related_to"/>
+                            <field name="end_date"/>
+                            <field name="site_photo" widget="image" options="{'size': [64, 64]}"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

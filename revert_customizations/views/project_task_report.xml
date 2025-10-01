@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <template id="task_report">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <center>
+                            <h5>MOM</h5> 
+                            <!-- <span t-field="o.name" /> -->
+                        </center>
+                            <span t-field="o.agenda"/>
+
+                        <table class="table table-sm o_main_table">
+                            <thead>
+                                <tr>
+                                    <th style="background-color:#ededed !important;width:70px;padding-left: 20px;padding-top: 10px;padding-bottom: 10px;">Sr. No</th>
+                                    <th style="background-color:#ededed !important;width:70px;padding-left: 20px;padding-top: 10px;padding-bottom: 10px;">From client</th>
+                                    <th style="background-color:#ededed !important;width:200px;padding-top: 10px;padding-bottom: 10px;">From Architect</th>
+                                    <th style="background-color:#ededed !important;width:200px;padding-top: 10px;padding-bottom: 10px;">From Contractor / Agency</th>
+                                </tr>
+                            </thead>
+                            <tbody class="sale_tbody">
+                                <tr t-foreach="o.person_ids" t-as="line">
+                                    <td><span style="padding-left: 20px;" t-esc="line.seq"/></td>
+                                    <td><span t-esc="line.from_client"/></td>
+                                    <td><span t-esc="line.from_architect"/></td>
+                                    <td><span t-field="line.from_agency"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table class="table table-sm o_main_table">
+                            <thead>
+                                <tr>
+                                    <th style="background-color:#ededed !important;width:70px;padding-left: 20px;padding-top: 10px;padding-bottom: 10px;">Sr. No.</th>
+                                    <th style="background-color:#ededed !important;width:200px;padding-top: 10px;padding-bottom: 10px;">Remark / Observation / Suggestion / Opinion</th>
+                                    <th style="background-color:#ededed !important;width:200px;padding-top: 10px;padding-bottom: 10px;">Related to</th>
+                                    <th style="background-color:#ededed !important;width:100px;padding-top: 10px;padding-bottom: 10px;">End Date</th>
+                                    <th style="background-color:#ededed !important;width:200px;padding-top: 10px;padding-bottom: 10px;">Site photo</th>
+                                </tr>
+                            </thead>
+                            <tbody class="sale_tbody">
+                                <tr t-foreach="o.mom_meeting_ids" t-as="line">
+                                    <td><span style="padding-left: 20px;" t-esc="line.seq"/></td>
+                                    <td><span t-esc="line.remarks"/></td>
+                                    <td><span t-esc="line.related_to"/></td>
+                                    <td><span t-field="line.end_date" widget="date"/></td>
+                                    <td>
+                                        <t t-if="line.site_photo">
+                                            <img class="img img-fluid"
+                                                 t-attf-src="data:image/png;base64,#{line.site_photo}"
+                                                 style="max-width:100px; max-height:100px;"/>
+                                        </t>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <report
+        id="report_project_task_action"
+        model="project.task"
+        name="revert_customizations.task_report"
+        string="Extract in PDF"
+        report_type="qweb-pdf"
+        multi="False"
+        print_report_name="'MOM - %s' % (object.name)"
+    />
+
+    <record id="report_project_task_action_v18" model="ir.actions.report">
+        <field name="name">MOM PDF</field>
+        <field name="model">project.task</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">revert_customizations.task_report</field>
+        <field name="report_file">revert_customizations.task_report</field>
+        <field name="binding_model_id" ref="project.model_project_task"/>
+        <field name="binding_type">report</field>
+    </record>
+</odoo>

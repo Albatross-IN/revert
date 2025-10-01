@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mom_meeting_user,mom.meeting.user,model_mom_meeting,base.group_user,1,1,1,1
+access_person_person_user,person.person.user,model_person_person,base.group_user,1,1,1,1
