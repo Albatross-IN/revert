@@ -12,7 +12,7 @@
     """,
     'author': 'Your Company',
     'website': 'https://www.yourcompany.com',
-    'depends': ['project'],
+    'depends': ['project', 'project_enterprise'],
     'data': [
         'security/ir.model.access.csv',
         'views/project_task_views.xml',
