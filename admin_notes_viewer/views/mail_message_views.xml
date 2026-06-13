@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_admin_notes_tree" model="ir.ui.view">
+        <field name="name">admin.notes.viewer.tree</field>
+        <field name="model">mail.message</field>
+        <field name="arch" type="xml">
+            <list string="Logged Notes" create="false" edit="false" delete="false">
+                <field name="author_id"/>
+                <field name="date" widget="date"/>
+                <field name="model" string="Object"/>
+                <field name="record_name" string="Document Name"/>
+                <field name="body" string="Note Content" widget="html"/>
+                <button name="action_open_related_document" type="object" string="Open Document" class="oe_highlight" icon="fa-external-link"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_admin_notes_search" model="ir.ui.view">
+        <field name="name">admin.notes.viewer.search</field>
+        <field name="model">mail.message</field>
+        <field name="arch" type="xml">
+            <search string="Search Notes">
+                <field name="body" string="Keyword Content" filter_domain="[('body', 'ilike', self)]"/>
+                <field name="author_id"/>
+                <field name="record_name"/>
+                <field name="model"/>
+                
+                <separator/>
+                <filter string="Notes &amp; Comments" name="type_comment" domain="[('message_type', '=', 'comment')]"/>
+                
+                <group expand="0" string="Group By">
+                    <filter string="User (Author)" name="group_by_author" context="{'group_by': 'author_id'}"/>
+                    <filter string="Date" name="group_by_date" context="{'group_by': 'date:day'}"/>
+                    <filter string="Object Type" name="group_by_model" context="{'group_by': 'model'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_admin_notes_viewer" model="ir.actions.act_window">
+        <field name="name">All Logged Notes</field>
+        <field name="res_model">mail.message</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('message_type', 'in', ['comment', 'notification']), ('author_id', '!=', False), ('body', '!=', False), ('body', '!=', '')]</field>
+        <field name="context">{'search_default_group_by_author': 1, 'search_default_group_by_date': 1}</field>
+        <field name="search_view_id" ref="view_admin_notes_search"/>
+        <field name="view_id" ref="view_admin_notes_tree"/>
+    </record>
+
+    <!-- Top Level Menu, accessible only to System Admins -->
+    <menuitem id="menu_admin_notes_root" 
+              name="Activity Logs" 
+              web_icon="mail,static/description/icon.png"
+              groups="base.group_system" 
+              sequence="100"/>
+
+    <menuitem id="menu_admin_notes_all" 
+              name="All Logged Notes" 
+              parent="menu_admin_notes_root" 
+              action="action_admin_notes_viewer" 
+              sequence="10"/>
+</odoo>
