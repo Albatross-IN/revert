@@ -52,6 +52,26 @@ class ProjectTask(models.Model):
                 line for line in task.mom_meeting_ids if line.id not in synced_ids
             ])
 
+    def message_subscribe(self, partner_ids=None, subtype_ids=None):
+        """Let the MOM backfill opt out of follower subscription.
+
+        mail.activity.create() batch-subscribes the assignee as a follower of
+        every task it touched, and project.task.message_subscribe() mishandles
+        that batch: it raises "list.remove(x): x not in list" when tasks span
+        projects sharing a follower, and can emit a duplicate mail_followers
+        row for a single task. Neither is our bug, but the sync walks straight
+        into both.
+
+        Backfilled entries are archived history — nobody needs to be made a
+        follower of a task because a years-old minute was copied across — so
+        the sync sets this flag and skips the whole path. Interactive MOM
+        creation through the Schedule Activity dialog is untouched and still
+        subscribes normally.
+        """
+        if self.env.context.get('mom_skip_subscribe'):
+            return True
+        return super().message_subscribe(partner_ids=partner_ids, subtype_ids=subtype_ids)
+
     def action_create_mom(self):
         """Open the Schedule Activity dialog with MOM already selected.
 

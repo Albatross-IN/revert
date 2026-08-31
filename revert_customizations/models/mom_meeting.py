@@ -166,6 +166,7 @@ class MomMeeting(models.Model):
             Activity.with_context(
                 mail_activity_quick_update=True,
                 mail_notrack=True,
+                mom_skip_subscribe=True,
             ).create(project_vals)
             created += len(project_vals)
         return created, unmatched
