@@ -5,6 +5,9 @@
             <t t-foreach="docs" t-as="o">
                 <t t-call="web.external_layout">
                     <div class="page">
+                        <style>
+                            .o_mom_site_photo img { max-width: 100px; max-height: 100px; }
+                        </style>
                         <center>
                             <h5>MOM</h5> 
                             <!-- <span t-field="o.name" /> -->
@@ -40,18 +43,54 @@
                                     <th style="background-color:#ededed !important;width:200px;padding-top: 10px;padding-bottom: 10px;">Site photo</th>
                                 </tr>
                             </thead>
+                            <!-- Legacy MOM meeting lines, printed exactly as
+                                 before. The photo now goes through t-field so
+                                 JPEG uploads render, instead of being forced to
+                                 a PNG data URI. -->
                             <tbody class="sale_tbody">
                                 <tr t-foreach="o.mom_meeting_ids" t-as="line">
                                     <td><span style="padding-left: 20px;" t-esc="line.seq"/></td>
                                     <td><span t-esc="line.remarks"/></td>
                                     <td><span t-esc="line.related_to"/></td>
-                                    <td><span t-field="line.end_date" widget="date"/></td>
+                                    <td><span t-field="line.end_date"/></td>
                                     <td>
-                                        <t t-if="line.site_photo">
-                                            <img class="img img-fluid"
-                                                 t-attf-src="data:image/png;base64,#{line.site_photo}"
-                                                 style="max-width:100px; max-height:100px;"/>
-                                        </t>
+                                        <span t-if="line.site_photo"
+                                              t-field="line.site_photo"
+                                              t-options="{'widget': 'image'}"
+                                              class="o_mom_site_photo"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- Additive: MOM activities. Only printed when the task
+                             has any, so a task using only the legacy lines
+                             produces exactly the PDF it did before. -->
+                        <table class="table table-sm o_main_table" t-if="o.mom_activity_ids">
+                            <thead>
+                                <tr>
+                                    <th style="background-color:#ededed !important;width:70px;padding-left: 20px;padding-top: 10px;padding-bottom: 10px;">Sr. No.</th>
+                                    <th style="background-color:#ededed !important;width:200px;padding-top: 10px;padding-bottom: 10px;">Remark / Observation / Suggestion / Opinion</th>
+                                    <th style="background-color:#ededed !important;width:200px;padding-top: 10px;padding-bottom: 10px;">Related to</th>
+                                    <th style="background-color:#ededed !important;width:100px;padding-top: 10px;padding-bottom: 10px;">End Date</th>
+                                    <th style="background-color:#ededed !important;width:200px;padding-top: 10px;padding-bottom: 10px;">Site photo</th>
+                                </tr>
+                            </thead>
+                            <tbody class="sale_tbody">
+                                <tr t-foreach="o.mom_activity_ids.sorted('mom_sequence')" t-as="line">
+                                    <td><span style="padding-left: 20px;" t-esc="line.mom_sequence"/></td>
+                                    <td>
+                                        <span t-esc="line.summary"/>
+                                        <span t-if="not line.active"
+                                              class="badge text-bg-secondary">Closed</span>
+                                    </td>
+                                    <td><span t-esc="line.mom_partner_id.display_name"/></td>
+                                    <td><span t-field="line.date_deadline"/></td>
+                                    <td>
+                                        <span t-if="line.mom_site_photo"
+                                              t-field="line.mom_site_photo"
+                                              t-options="{'widget': 'image'}"
+                                              class="o_mom_site_photo"/>
                                     </td>
                                 </tr>
                             </tbody>
@@ -62,22 +101,16 @@
         </t>
     </template>
 
-    <report
-        id="report_project_task_action"
-        model="project.task"
-        name="revert_customizations.task_report"
-        string="Extract in PDF"
-        report_type="qweb-pdf"
-        multi="False"
-        print_report_name="'MOM - %s' % (object.name)"
-    />
-
-    <record id="report_project_task_action_v18" model="ir.actions.report">
+    <!-- Odoo 18 no longer accepts the <report> shortcut element (see
+         odoo/import_xml.rng): the report is declared as an ir.actions.report
+         record only. -->
+    <record id="report_project_task_action" model="ir.actions.report">
         <field name="name">MOM PDF</field>
         <field name="model">project.task</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">revert_customizations.task_report</field>
         <field name="report_file">revert_customizations.task_report</field>
+        <field name="print_report_name">'MOM - %s' % (object.name)</field>
         <field name="binding_model_id" ref="project.model_project_task"/>
         <field name="binding_type">report</field>
     </record>

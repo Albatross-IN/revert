@@ -1,0 +1,422 @@
+// Colours are derived from Odoo's own theme variables, never hardcoded.
+// Odoo compiles this file twice — once for the light bundle and once for the
+// dark one — so every surface, rule and text colour follows the user's theme
+// and stays readable in both.
+.o_mom_dashboard {
+    --mom-ink: #{$o-main-text-color};
+    --mom-muted: #{$o-gray-600};
+    --mom-rule: #{$o-gray-300};
+    --mom-surface: #{$o-view-background-color};
+    --mom-ground: #{$o-gray-100};
+    --mom-accent: #{$o-brand-primary};
+    --mom-alert: #e2504b;
+    --mom-open: #4b7be5;
+    --mom-done: #3fa37a;
+
+    height: 100%;
+    overflow: auto;
+    background: var(--mom-ground);
+    color: var(--mom-ink);
+    font-size: 13px;
+
+    h1, h2 {
+        margin: 0;
+        font-weight: 600;
+        color: var(--mom-ink);
+    }
+
+    // ---- header -------------------------------------------------------
+    .o_mom_header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem 0.75rem;
+        background: var(--mom-surface);
+        border-bottom: 1px solid var(--mom-rule);
+    }
+
+    .o_mom_header_actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-shrink: 0;
+    }
+
+    .o_mom_eyebrow {
+        display: block;
+        font-size: 0.68rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--mom-accent);
+        margin-bottom: 0.2rem;
+    }
+
+    .o_mom_header h1 {
+        font-size: 1.4rem;
+        line-height: 1.2;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    // The whole title block returns to wherever the dashboard was opened from.
+    .o_mom_header_title {
+        cursor: pointer;
+        border-radius: 4px;
+        padding: 0.15rem 0.4rem;
+        margin-left: -0.4rem;
+        transition: background-color 0.12s ease;
+
+        &:hover {
+            background: var(--mom-ground);
+
+            h1 {
+                color: var(--mom-accent);
+            }
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--mom-accent);
+            outline-offset: 2px;
+        }
+    }
+
+    .o_mom_back_arrow {
+        font-size: 1.1em;
+        color: var(--mom-muted);
+    }
+
+    // ---- filter bar ---------------------------------------------------
+    .o_mom_filters {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 0.75rem;
+        padding: 0.75rem 1.5rem;
+        background: var(--mom-surface);
+        border-bottom: 1px solid var(--mom-rule);
+        position: sticky;
+        top: 0;
+        z-index: 3;
+    }
+
+    .o_mom_dates {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+
+        input {
+            width: 9.5rem;
+            background: var(--mom-surface);
+            color: var(--mom-ink);
+            border-color: var(--mom-rule);
+        }
+    }
+
+    .o_mom_dash {
+        color: var(--mom-muted);
+    }
+
+    .o_mom_check {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin: 0;
+        cursor: pointer;
+        color: var(--mom-ink);
+    }
+
+    // ---- multi-select pickers ----------------------------------------
+    .o_mom_picker {
+        position: relative;
+    }
+
+    .o_mom_picker_panel {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        z-index: 10;
+        width: 17rem;
+        background: var(--mom-surface);
+        color: var(--mom-ink);
+        border: 1px solid var(--mom-rule);
+        border-radius: 4px;
+        box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.45);
+    }
+
+    .o_mom_picker_head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid var(--mom-rule);
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--mom-muted);
+    }
+
+    .o_mom_picker_body {
+        max-height: 15rem;
+        overflow-y: auto;
+        padding: 0.25rem 0;
+    }
+
+    .o_mom_option {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0;
+        padding: 0.3rem 0.75rem;
+        cursor: pointer;
+        color: var(--mom-ink);
+
+        &:hover {
+            background: var(--mom-ground);
+        }
+    }
+
+    .o_mom_option_name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .o_mom_option_count {
+        color: var(--mom-muted);
+        font-variant-numeric: tabular-nums;
+    }
+
+    // ---- body ---------------------------------------------------------
+    .o_mom_body {
+        padding: 1.25rem 1.5rem 3rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .o_mom_placeholder {
+        padding: 3rem 1rem;
+        text-align: center;
+        color: var(--mom-muted);
+    }
+
+    .o_mom_muted {
+        color: var(--mom-muted);
+        padding: 0.5rem 0;
+    }
+
+    // ---- kpi tiles ----------------------------------------------------
+    .o_mom_kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+        gap: 0.75rem;
+        transition: opacity 0.15s ease;
+
+        &.o_mom_busy {
+            opacity: 0.55;
+        }
+    }
+
+    .o_mom_kpi {
+        background: var(--mom-surface);
+        border: 1px solid var(--mom-rule);
+        border-radius: 5px;
+        padding: 0.85rem 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+
+    .o_mom_kpi_value {
+        font-size: 1.65rem;
+        font-weight: 600;
+        line-height: 1;
+        color: var(--mom-ink);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .o_mom_kpi_label {
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--mom-muted);
+    }
+
+    // Overdue is the reason anyone opens this screen: it carries the only
+    // semantic colour on the row.
+    .o_mom_kpi_alert.is-hot {
+        border-color: var(--mom-alert);
+
+        .o_mom_kpi_value {
+            color: var(--mom-alert);
+        }
+    }
+
+    // ---- cards and charts ---------------------------------------------
+    .o_mom_charts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+        gap: 1.25rem;
+    }
+
+    .o_mom_card {
+        background: var(--mom-surface);
+        border: 1px solid var(--mom-rule);
+        border-radius: 5px;
+        padding: 1rem 1.15rem 1.15rem;
+
+        h2 {
+            font-size: 0.72rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--mom-muted);
+            margin-bottom: 0.75rem;
+        }
+    }
+
+    .o_mom_chart_canvas {
+        position: relative;
+    }
+
+    // ---- entries table -------------------------------------------------
+    .o_mom_table_card {
+        padding-bottom: 0.5rem;
+    }
+
+    .o_mom_table_head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .o_mom_pager {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-variant-numeric: tabular-nums;
+        color: var(--mom-ink);
+    }
+
+    .o_mom_table_scroll {
+        overflow-x: auto;
+    }
+
+    .o_mom_table {
+        margin: 0;
+        color: var(--mom-ink);
+
+        th {
+            font-size: 0.68rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--mom-muted);
+            font-weight: 600;
+            white-space: nowrap;
+            background: transparent;
+            border-bottom: 1px solid var(--mom-rule);
+        }
+
+        td {
+            vertical-align: middle;
+            color: var(--mom-ink);
+            background: transparent;
+            border-bottom-color: var(--mom-rule);
+        }
+    }
+
+    .o_mom_num {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+
+    .o_mom_remark {
+        max-width: 22rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .o_mom_row {
+        cursor: pointer;
+
+        &:hover td {
+            background: var(--mom-ground);
+        }
+    }
+
+    .o_mom_thumb {
+        width: 32px;
+        height: 32px;
+        object-fit: cover;
+        border-radius: 3px;
+        border: 1px solid var(--mom-rule);
+        cursor: zoom-in;
+        transition: border-color 0.12s ease;
+
+        &:hover {
+            border-color: var(--mom-accent);
+        }
+    }
+
+    // Fixed to the viewport so the entries table's horizontal scroll cannot
+    // clip it. No transformed ancestor, so fixed positioning resolves against
+    // the viewport as intended.
+    .o_mom_preview {
+        position: fixed;
+        z-index: 1080;
+        padding: 4px;
+        background: var(--mom-surface);
+        border: 1px solid var(--mom-rule);
+        border-radius: 6px;
+        box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.55);
+        pointer-events: none;
+        max-height: 90vh;
+
+        // The box is capped by max-width, so a portrait photo shrinks to fit
+        // the height instead of running off the screen.
+        img {
+            display: block;
+            width: auto;
+            height: auto;
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 3px;
+        }
+    }
+
+    .o_mom_preview_caption {
+        margin-top: 0.35rem;
+        padding: 0 0.15rem 0.1rem;
+        font-size: 0.75rem;
+        line-height: 1.35;
+        color: var(--mom-muted);
+        max-height: 3.2em;
+        overflow: hidden;
+    }
+
+    .o_mom_badge {
+        display: inline-block;
+        padding: 0.1rem 0.5rem;
+        border-radius: 10px;
+        font-size: 0.68rem;
+        text-transform: capitalize;
+        border: 1px solid currentColor;
+        color: var(--mom-muted);
+
+        &.is-overdue {
+            color: var(--mom-alert);
+        }
+
+        &.is-open {
+            color: var(--mom-open);
+        }
+
+        &.is-done {
+            color: var(--mom-done);
+        }
+    }
+}

@@ -5,6 +5,18 @@
         <field name="model">project.task</field>
         <field name="inherit_id" ref="project.view_task_form2"/>
         <field name="arch" type="xml">
+            <!-- Requirement B: backfill MOM activities from the legacy MOM
+                 meeting lines. Hidden once every line on the task is synced. -->
+            <xpath expr="//header" position="inside">
+                <field name="mom_unsynced_count" invisible="1"/>
+                <button name="action_sync_mom_activities"
+                        type="object"
+                        string="Sync Activities"
+                        class="btn-secondary"
+                        groups="project.group_project_manager"
+                        invisible="not mom_unsynced_count"
+                        help="Create MOM activities from the legacy MOM meeting lines recorded on this task."/>
+            </xpath>
             <xpath expr="//notebook/page[@name='description_page']" position="after">
                 <page name="mom_meetings_page" string="MOM Meetings">
                     <field name="agenda" placeholder="Write opening agenda here..."/>
@@ -16,6 +28,8 @@
                             <field name="from_agency"/>
                         </list>
                     </field>
+                    <!-- Legacy MOM meeting lines: kept exactly as they were.
+                         The MOM activity work below is additive. -->
                     <field name="mom_meeting_ids">
                         <list editable="bottom">
                             <field name="seq" readonly="1"/>
@@ -23,6 +37,26 @@
                             <field name="related_to"/>
                             <field name="end_date"/>
                             <field name="site_photo" widget="image" options="{'size': [64, 64]}"/>
+                        </list>
+                    </field>
+                    <!-- FR-07: every MOM entry on this task, open and closed,
+                         in serial order. Entries are created and closed through
+                         the Activities widget in the chatter. -->
+                    <separator string="MOM Entries"/>
+                    <field name="mom_activity_ids" readonly="1">
+                        <list default_order="mom_sequence" create="false" delete="false"
+                              decoration-muted="not active">
+                            <field name="active" column_invisible="1"/>
+                            <field name="mom_sequence" string="Sr. No."/>
+                            <field name="summary" string="Remark / Observation / Suggestion"/>
+                            <field name="mom_partner_id" string="Related To"/>
+                            <field name="user_id" widget="many2one_avatar_user" string="Assigned to"/>
+                            <field name="mom_end_date" string="End Date"/>
+                            <field name="mom_site_photo" widget="image" options="{'size': [64, 64]}"
+                                   string="Site Photo"/>
+                            <field name="state" string="Status" widget="badge"
+                                   decoration-danger="state == 'overdue'"
+                                   decoration-success="state == 'done'"/>
                         </list>
                     </field>
                 </page>

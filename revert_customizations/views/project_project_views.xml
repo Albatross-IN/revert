@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Requirement C: reach the MOM dashboard from the project's kanban card,
+         alongside the standard Reporting entries. -->
+    <record id="view_project_kanban_inherit_mom" model="ir.ui.view">
+        <field name="name">project.project.kanban.mom</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_kanban"/>
+        <field name="arch" type="xml">
+            <!-- Visible button on the card itself, beside the Tasks count.
+                 The card's kebab menu only appears on hover, so a dropdown
+                 entry alone is too easy to miss. -->
+            <xpath expr="//footer//div[hasclass('o_project_kanban_boxes')]" position="inside">
+                <a class="d-inline-block btn-link text-dark small me-1"
+                   role="button"
+                   name="action_open_mom_dashboard"
+                   type="object"
+                   groups="project.group_project_user"
+                   title="Open the MOM dashboard for this project">
+                    <span class="fa fa-clipboard me-1"/>
+                    <field name="mom_activity_count"/>
+                    <span class="ms-1">MOM</span>
+                </a>
+            </xpath>
+            <xpath expr="//div[@name='project_burndown_menu']" position="after">
+                <div role="menuitem" name="mom_dashboard_menu" groups="project.group_project_user">
+                    <a name="action_open_mom_dashboard" type="object">MOM Dashboard</a>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="edit_project_inherit_mom" model="ir.ui.view">
+        <field name="name">project.project.form.mom</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button"
+                        type="object"
+                        name="action_open_mom_dashboard"
+                        icon="fa-clipboard"
+                        groups="project.group_project_user"
+                        invisible="not mom_activity_count">
+                    <field name="mom_activity_count" widget="statinfo" string="MOM Entries"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

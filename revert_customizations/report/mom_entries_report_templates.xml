@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <template id="mom_entries_report">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <style>
+                            .o_mom_report_photo img { max-width: 70px; max-height: 70px; }
+                            .o_mom_report_table th { background-color: #ededed !important; }
+                        </style>
+
+                        <h4 class="mb-0">MOM Entries</h4>
+                        <div class="text-muted mb-3">
+                            <span t-field="o.display_name"/>
+                        </div>
+
+                        <t t-set="rows" t-value="rows_by_project.get(o.id) or []"/>
+
+                        <p t-if="not rows" class="text-muted">
+                            No MOM entries match the selected filters.
+                        </p>
+
+                        <table t-if="rows" class="table table-sm o_main_table o_mom_report_table">
+                            <thead>
+                                <tr>
+                                    <th style="width:50px;">Sr.</th>
+                                    <th style="width:130px;">Task</th>
+                                    <th>Remark / Observation / Suggestion</th>
+                                    <th style="width:110px;">Related To</th>
+                                    <th style="width:110px;">Assigned to</th>
+                                    <th style="width:90px;">Created</th>
+                                    <th style="width:90px;">End Date</th>
+                                    <th style="width:80px;">Site Photo</th>
+                                    <th style="width:70px;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="rows" t-as="row">
+                                    <td><span t-esc="row['sequence']"/></td>
+                                    <td><span t-esc="row['task']"/></td>
+                                    <td><span t-esc="row['summary']"/></td>
+                                    <td><span t-esc="row['partner']"/></td>
+                                    <td><span t-esc="row['user']"/></td>
+                                    <td><span t-esc="row['created']"/></td>
+                                    <td><span t-esc="row['end_date']"/></td>
+                                    <td>
+                                        <span t-if="row['entry'].mom_site_photo"
+                                              t-field="row['entry'].mom_site_photo"
+                                              t-options="{'widget': 'image'}"
+                                              class="o_mom_report_photo"/>
+                                    </td>
+                                    <td><span t-esc="row['status']"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <record id="action_report_mom_entries" model="ir.actions.report">
+        <field name="name">MOM Entries</field>
+        <field name="model">project.project</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">revert_customizations.mom_entries_report</field>
+        <field name="report_file">revert_customizations.mom_entries_report</field>
+        <field name="print_report_name">'MOM Entries - %s' % (object.display_name)</field>
+    </record>
+</odoo>

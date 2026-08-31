@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- FR-01 / FR-02 / FR-06:
+             res_model restricts the type to project tasks, and keep_done makes
+             Odoo archive a completed entry instead of deleting it, so its
+             Related To, Site Photo and Sequence survive being marked done. -->
+        <record id="mail_activity_type_mom" model="mail.activity.type">
+            <field name="name">MOM</field>
+            <field name="summary">Minutes of Meeting</field>
+            <field name="res_model">project.task</field>
+            <field name="is_mom" eval="True"/>
+            <field name="keep_done" eval="True"/>
+            <field name="icon">fa-clipboard</field>
+            <field name="decoration_type">warning</field>
+            <field name="delay_count">7</field>
+            <field name="delay_unit">days</field>
+            <field name="delay_from">current_date</field>
+            <field name="sequence">5</field>
+        </record>
+    </data>
+</odoo>
