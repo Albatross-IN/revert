@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="revert_customizations.MomChart">
+        <div class="o_mom_chart_canvas" t-attf-style="height: {{ props.height or 260 }}px;">
+            <canvas t-ref="canvas"/>
+        </div>
+    </t>
+
+    <t t-name="revert_customizations.MomDashboard">
+        <div class="o_mom_dashboard">
+
+            <div class="o_mom_header">
+                <div class="o_mom_header_title" role="button" tabindex="0"
+                     title="Back to Projects"
+                     t-on-click="() => this.goBack()"
+                     t-on-keydown="(ev) => this.onBackKeydown(ev)">
+                    <span class="o_mom_eyebrow">MOM Dashboard</span>
+                    <h1>
+                        <i class="fa fa-angle-left o_mom_back_arrow"/>
+                        <span t-esc="state.data ? state.data.project_name : ''"/>
+                    </h1>
+                </div>
+                <div class="o_mom_header_actions">
+                    <button class="btn btn-link o_mom_reset"
+                            t-if="activeFilterCount"
+                            t-on-click="() => this.resetFilters()">
+                        Reset filters (<t t-esc="activeFilterCount"/>)
+                    </button>
+                    <button class="btn btn-secondary btn-sm"
+                            t-att-disabled="!state.data or !state.data.entries_total"
+                            t-on-click="() => this.printEntries()">
+                        <i class="fa fa-file-pdf-o me-1"/>Print entries
+                    </button>
+                </div>
+            </div>
+
+            <div class="o_mom_filters">
+                <div class="btn-group btn-group-sm" role="group">
+                    <t t-foreach="[['all','All'],['open','Open'],['overdue','Overdue'],['done','Closed']]"
+                       t-as="choice" t-key="choice[0]">
+                        <button type="button"
+                                class="btn"
+                                t-att-class="state.filters.status === choice[0] ? 'btn-primary' : 'btn-outline-secondary'"
+                                t-on-click="() => this.setStatus(choice[0])">
+                            <t t-esc="choice[1]"/>
+                        </button>
+                    </t>
+                </div>
+
+                <div class="o_mom_dates">
+                    <input type="date" class="form-control form-control-sm"
+                           t-att-value="state.filters.date_from"
+                           t-on-change="(ev) => this.setDate('date_from', ev)"
+                           aria-label="From date"/>
+                    <span class="o_mom_dash">–</span>
+                    <input type="date" class="form-control form-control-sm"
+                           t-att-value="state.filters.date_to"
+                           t-on-change="(ev) => this.setDate('date_to', ev)"
+                           aria-label="To date"/>
+                </div>
+
+                <t t-foreach="[['partner_ids','partners','Related To'],['user_ids','users','Assignee'],['task_ids','tasks','Task']]"
+                   t-as="picker" t-key="picker[0]">
+                    <div class="o_mom_picker">
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                t-att-class="state.filters[picker[0]].length ? 'active' : ''"
+                                t-on-click="() => this.togglePanel(picker[0])">
+                            <t t-esc="selectionLabel(picker[0], filterOptions[picker[1]], picker[2])"/>
+                            <i class="fa fa-caret-down ms-1"/>
+                        </button>
+                        <div class="o_mom_picker_panel" t-if="state.openPanel === picker[0]">
+                            <div class="o_mom_picker_head">
+                                <span t-esc="picker[2]"/>
+                                <button class="btn btn-link btn-sm p-0"
+                                        t-if="state.filters[picker[0]].length"
+                                        t-on-click="() => this.clearSelection(picker[0])">Clear</button>
+                            </div>
+                            <div class="o_mom_picker_body">
+                                <t t-if="!filterOptions[picker[1]].length">
+                                    <div class="o_mom_muted">Nothing recorded yet.</div>
+                                </t>
+                                <label t-foreach="filterOptions[picker[1]]" t-as="option" t-key="option.id"
+                                       class="o_mom_option">
+                                    <input type="checkbox"
+                                           t-att-checked="isSelected(picker[0], option.id)"
+                                           t-on-change="() => this.toggleSelection(picker[0], option.id)"/>
+                                    <span class="o_mom_option_name" t-esc="option.name"/>
+                                    <span class="o_mom_option_count" t-esc="option.count"/>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </t>
+
+                <label class="o_mom_check">
+                    <input type="checkbox"
+                           t-att-checked="state.filters.with_photo"
+                           t-on-change="() => this.toggleWithPhoto()"/>
+                    <span>With photo</span>
+                </label>
+            </div>
+
+            <div class="o_mom_body">
+                <t t-if="state.error">
+                    <div class="alert alert-danger" t-esc="state.error"/>
+                </t>
+
+                <t t-elif="state.loading and !state.data">
+                    <div class="o_mom_placeholder">Loading MOM entries…</div>
+                </t>
+
+                <t t-elif="state.data">
+                    <div class="o_mom_kpis" t-att-class="state.loading ? 'o_mom_busy' : ''">
+                        <div class="o_mom_kpi">
+                            <span class="o_mom_kpi_value" t-esc="state.data.kpis.total"/>
+                            <span class="o_mom_kpi_label">Entries</span>
+                        </div>
+                        <div class="o_mom_kpi">
+                            <span class="o_mom_kpi_value" t-esc="state.data.kpis.open"/>
+                            <span class="o_mom_kpi_label">Open</span>
+                        </div>
+                        <div class="o_mom_kpi o_mom_kpi_alert" t-att-class="state.data.kpis.overdue ? 'is-hot' : ''">
+                            <span class="o_mom_kpi_value" t-esc="state.data.kpis.overdue"/>
+                            <span class="o_mom_kpi_label">Overdue</span>
+                        </div>
+                        <div class="o_mom_kpi">
+                            <span class="o_mom_kpi_value" t-esc="state.data.kpis.done"/>
+                            <span class="o_mom_kpi_label">Closed</span>
+                        </div>
+                        <div class="o_mom_kpi">
+                            <span class="o_mom_kpi_value" t-esc="state.data.kpis.contacts"/>
+                            <span class="o_mom_kpi_label">Contacts</span>
+                        </div>
+                        <div class="o_mom_kpi">
+                            <span class="o_mom_kpi_value" t-esc="state.data.kpis.photos"/>
+                            <span class="o_mom_kpi_label">With photo</span>
+                        </div>
+                    </div>
+
+                    <t t-if="!state.data.kpis.total">
+                        <div class="o_mom_placeholder">
+                            No MOM entries match these filters.
+                        </div>
+                    </t>
+
+                    <t t-else="">
+                        <div class="o_mom_charts">
+                            <section class="o_mom_card">
+                                <h2>Status split</h2>
+                                <MomChart type="'doughnut'"
+                                          chartData="statusChartData"
+                                          options="statusChartOptions"
+                                          height="240"/>
+                            </section>
+                            <section class="o_mom_card">
+                                <h2>Top Related To</h2>
+                                <t t-if="state.data.by_partner.length">
+                                    <MomChart type="'bar'"
+                                              chartData="partnerChartData"
+                                              options="partnerChartOptions"
+                                              height="240"/>
+                                </t>
+                                <t t-else="">
+                                    <div class="o_mom_muted">No contact recorded on these entries.</div>
+                                </t>
+                            </section>
+                        </div>
+
+                        <section class="o_mom_card" t-if="state.data.by_period.length">
+                            <h2>Entries by month</h2>
+                            <MomChart type="'bar'"
+                                      chartData="periodChartData"
+                                      options="periodChartOptions"
+                                      height="240"/>
+                        </section>
+
+                        <section class="o_mom_card o_mom_table_card">
+                            <div class="o_mom_table_head">
+                                <h2>Entries</h2>
+                                <div class="o_mom_pager">
+                                    <span t-esc="pageStart"/>–<span t-esc="pageEnd"/>
+                                    <span class="o_mom_muted"> of </span>
+                                    <span t-esc="state.data.entries_total"/>
+                                    <button class="btn btn-sm btn-light" t-att-disabled="!hasPrevious"
+                                            t-on-click="() => this.goToPage(-1)">
+                                        <i class="fa fa-chevron-left"/>
+                                    </button>
+                                    <button class="btn btn-sm btn-light" t-att-disabled="!hasNext"
+                                            t-on-click="() => this.goToPage(1)">
+                                        <i class="fa fa-chevron-right"/>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="o_mom_table_scroll">
+                                <table class="table table-sm o_mom_table">
+                                    <thead>
+                                        <tr>
+                                            <th class="o_mom_num">Sr.</th>
+                                            <th>Task</th>
+                                            <th>Remark</th>
+                                            <th>Related To</th>
+                                            <th>Assigned to</th>
+                                            <th>Created</th>
+                                            <th>End Date</th>
+                                            <th>Photo</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr t-foreach="state.data.entries" t-as="entry" t-key="entry.id"
+                                            class="o_mom_row"
+                                            t-on-click="() => this.openTask(entry.task_id)">
+                                            <td class="o_mom_num" t-esc="entry.sequence"/>
+                                            <td t-esc="entry.task_name"/>
+                                            <td class="o_mom_remark" t-esc="entry.summary"/>
+                                            <td t-esc="entry.partner_name"/>
+                                            <td t-esc="entry.user_name"/>
+                                            <td class="o_mom_num" t-att-title="entry.created_full"
+                                                t-esc="entry.created"/>
+                                            <td class="o_mom_num" t-esc="entry.date_deadline"/>
+                                            <td>
+                                                <img t-if="entry.has_photo" class="o_mom_thumb"
+                                                     t-att-src="photoUrl(entry.id)" alt="Site photo"
+                                                     t-on-mouseenter="(ev) => this.showPreview(entry, ev)"
+                                                     t-on-mouseleave="() => this.hidePreview()"/>
+                                            </td>
+                                            <td>
+                                                <span class="o_mom_badge" t-att-class="'is-' + entry.status"
+                                                      t-esc="entry.status"/>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </t>
+                </t>
+            </div>
+
+            <div class="o_mom_preview" t-if="state.preview"
+                 t-attf-style="top: {{ state.preview.top }}px; left: {{ state.preview.left }}px; max-width: {{ state.preview.size }}px;">
+                <img t-att-src="state.preview.url" alt="Site photo"/>
+                <div class="o_mom_preview_caption" t-if="state.preview.summary"
+                     t-esc="state.preview.summary"/>
+            </div>
+        </div>
+    </t>
+
+</templates>

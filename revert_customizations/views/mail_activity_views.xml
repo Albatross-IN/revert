@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- FR-04: the MOM fields show only when the selected activity type is
+         flagged as a MOM type. The rule reads the type's own flag, so another
+         MOM-like type can be added later without touching this view.
+         mail.mail_activity_view_form is a primary view built on this popup,
+         so extending the popup covers the full activity form as well. -->
+    <record id="mail_activity_view_form_popup_mom" model="ir.ui.view">
+        <field name="name">mail.activity.view.form.popup.mom</field>
+        <field name="model">mail.activity</field>
+        <field name="inherit_id" ref="mail.mail_activity_view_form_popup"/>
+        <field name="arch" type="xml">
+            <field name="summary" position="after">
+                <field name="is_mom" invisible="1"/>
+                <field name="mom_partner_id"
+                       invisible="not is_mom"
+                       required="is_mom"
+                       options="{'no_create_edit': True}"/>
+                <field name="mom_sequence"
+                       invisible="not is_mom or not mom_sequence"
+                       readonly="1"/>
+            </field>
+            <field name="note" position="before">
+                <field name="mom_site_photo"
+                       widget="image"
+                       class="oe_avatar"
+                       options="{'size': [0, 200]}"
+                       invisible="not is_mom"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="mail_activity_type_view_form_mom" model="ir.ui.view">
+        <field name="name">mail.activity.type.view.form.mom</field>
+        <field name="model">mail.activity.type</field>
+        <field name="inherit_id" ref="mail.mail_activity_type_view_form"/>
+        <field name="arch" type="xml">
+            <field name="keep_done" position="after">
+                <field name="is_mom"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- FR-04: the chatter's "Schedule Activity" dialog is the
+         mail.activity.schedule wizard, so the MOM fields have to be added
+         here as well as on the activity form itself. -->
+    <record id="mail_activity_schedule_view_form_mom" model="ir.ui.view">
+        <field name="name">mail.activity.schedule.view.form.mom</field>
+        <field name="model">mail.activity.schedule</field>
+        <field name="inherit_id" ref="mail.mail_activity_schedule_view_form"/>
+        <field name="arch" type="xml">
+            <field name="summary" position="after">
+                <field name="is_mom" invisible="1"/>
+                <field name="mom_partner_id"
+                       invisible="not is_mom"
+                       required="is_mom and not plan_id"
+                       options="{'no_create_edit': True}"/>
+            </field>
+            <field name="activity_user_id" position="after">
+                <field name="mom_sequence"
+                       invisible="not is_mom or not mom_sequence"
+                       readonly="1"/>
+            </field>
+            <field name="note" position="before">
+                <field name="mom_site_photo"
+                       widget="image"
+                       class="oe_avatar"
+                       options="{'size': [0, 200]}"
+                       invisible="not is_mom"/>
+            </field>
+        </field>
+    </record>
+</odoo>
