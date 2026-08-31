@@ -8,6 +8,12 @@
             <!-- Requirement B: backfill MOM activities from the legacy MOM
                  meeting lines. Hidden once every line on the task is synced. -->
             <xpath expr="//header" position="inside">
+                <button name="action_create_mom"
+                        type="object"
+                        string="Create MOM"
+                        class="btn-primary"
+                        groups="project.group_project_user"
+                        help="Record a new MOM entry on this task."/>
                 <field name="mom_unsynced_count" invisible="1"/>
                 <button name="action_sync_mom_activities"
                         type="object"

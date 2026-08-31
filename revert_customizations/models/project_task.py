@@ -52,6 +52,33 @@ class ProjectTask(models.Model):
                 line for line in task.mom_meeting_ids if line.id not in synced_ids
             ])
 
+    def action_create_mom(self):
+        """Open the Schedule Activity dialog with MOM already selected.
+
+        The wizard's _compute_activity_type_id only fills a type in when none
+        is set, so a context default survives it and the dialog opens ready to
+        record a MOM entry.
+        """
+        self.ensure_one()
+        mom_type = self.env.ref(
+            'revert_customizations.mail_activity_type_mom', raise_if_not_found=False)
+        context = {
+            'active_model': 'project.task',
+            'active_id': self.id,
+            'active_ids': self.ids,
+        }
+        if mom_type:
+            context['default_activity_type_id'] = mom_type.id
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Create MOM'),
+            'res_model': 'mail.activity.schedule',
+            'view_mode': 'form',
+            'views': [(self.env.ref('mail.mail_activity_schedule_view_form').id, 'form')],
+            'target': 'new',
+            'context': context,
+        }
+
     def action_sync_mom_activities(self):
         """Backfill MOM activities from this task's legacy MOM meeting lines."""
         if not self.env.user.has_group('project.group_project_manager'):
