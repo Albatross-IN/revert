@@ -1,6 +1,6 @@
 {
     'name': 'Revert Customizations',
-    'version': '18.0.1.4.0',
+    'version': '18.0.1.6.0',
     'category': 'Project',
     'summary': 'Custom project task enhancements with MOM meetings',
     'description': """
@@ -12,6 +12,7 @@
         - MOM PDF report driven by MOM activities
         - "Sync Activities" button to backfill MOM activities from legacy MOM lines
         - Per-project MOM dashboard with filters and charts
+        - Visit No# on MOM entries, one visit per day on site per project
     """,
     'author': 'Your Company',
     'website': 'https://www.yourcompany.com',

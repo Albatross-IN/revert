@@ -60,7 +60,7 @@
                            aria-label="To date"/>
                 </div>
 
-                <t t-foreach="[['partner_ids','partners','Related To'],['user_ids','users','Assignee'],['task_ids','tasks','Task']]"
+                <t t-foreach="[['partner_ids','partners','Related To'],['user_ids','users','Assignee'],['task_ids','tasks','Task'],['visit_nos','visits','Visit No#']]"
                    t-as="picker" t-key="picker[0]">
                     <div class="o_mom_picker">
                         <button type="button" class="btn btn-sm btn-outline-secondary"
@@ -197,6 +197,7 @@
                                     <thead>
                                         <tr>
                                             <th class="o_mom_num">Sr.</th>
+                                            <th class="o_mom_num">Visit</th>
                                             <th>Task</th>
                                             <th>Remark</th>
                                             <th>Related To</th>
@@ -212,6 +213,7 @@
                                             class="o_mom_row"
                                             t-on-click="() => this.openTask(entry.task_id)">
                                             <td class="o_mom_num" t-esc="entry.sequence"/>
+                                            <td class="o_mom_num" t-esc="entry.visit_no"/>
                                             <td t-esc="entry.task_name"/>
                                             <td class="o_mom_remark" t-esc="entry.summary"/>
                                             <td t-esc="entry.partner_name"/>

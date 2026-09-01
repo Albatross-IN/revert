@@ -40,6 +40,7 @@ function emptyFilters() {
         partner_ids: [],
         user_ids: [],
         task_ids: [],
+        visit_nos: [],
         with_photo: false,
         offset: 0,
     };
@@ -215,7 +216,9 @@ export class MomDashboard extends Component {
     // ------------------------------------------------------------------
 
     get filterOptions() {
-        return this.state.data ? this.state.data.filter_options : { partners: [], users: [], tasks: [] };
+        return this.state.data
+            ? this.state.data.filter_options
+            : { partners: [], users: [], tasks: [], visits: [] };
     }
 
     get activeFilterCount() {
@@ -226,6 +229,7 @@ export class MomDashboard extends Component {
         count += f.partner_ids.length ? 1 : 0;
         count += f.user_ids.length ? 1 : 0;
         count += f.task_ids.length ? 1 : 0;
+        count += f.visit_nos.length ? 1 : 0;
         if (f.with_photo) count++;
         return count;
     }

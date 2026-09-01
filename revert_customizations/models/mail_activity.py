@@ -1,3 +1,7 @@
+from datetime import datetime, time
+
+import pytz
+
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
 
@@ -23,6 +27,14 @@ class MailActivity(models.Model):
         max_width=1920,
         max_height=1920,
         help='Photo of the site condition being minuted.'
+    )
+    mom_visit_no = fields.Integer(
+        string='Visit No#',
+        default=1,
+        copy=False,
+        help='Which site visit this MOM entry belongs to. Defaults to the '
+             'number last used on the project, so a run of entries recorded '
+             'for the same visit share it without being retyped.'
     )
     mom_sequence = fields.Integer(
         string='Sequence',
@@ -126,6 +138,49 @@ class MailActivity(models.Model):
     # ------------------------------------------------------------------
     # Sequence
     # ------------------------------------------------------------------
+
+    @api.model
+    def _mom_local_date(self, timestamp):
+        """The user-timezone calendar date of a stored UTC timestamp."""
+        if not timestamp:
+            return False
+        return fields.Datetime.context_timestamp(self, timestamp).date()
+
+    @api.model
+    def _mom_day_bounds_utc(self, day):
+        """UTC range covering one calendar day in the user's timezone."""
+        user_tz = pytz.timezone(self.env.user.tz or 'UTC')
+        start = user_tz.localize(datetime.combine(day, time.min))
+        end = user_tz.localize(datetime.combine(day, time.max))
+        return (start.astimezone(pytz.UTC).replace(tzinfo=None),
+                end.astimezone(pytz.UTC).replace(tzinfo=None))
+
+    @api.model
+    def _mom_visit_no_for_date(self, project_id, visit_date=None):
+        """The visit number for a MOM recorded on `visit_date` in this project.
+
+        A visit is a day on site: every MOM entry recorded on the same date in
+        the same project belongs to the same visit and shares its number. A
+        date with no entries yet opens the next visit.
+        """
+        if not project_id:
+            return 1
+        visit_date = visit_date or fields.Date.context_today(self)
+        Activity = self.sudo().with_context(active_test=False)
+        base = [
+            ('activity_type_id.is_mom', '=', True),
+            ('mom_project_id', '=', project_id),
+        ]
+
+        start, end = self._mom_day_bounds_utc(visit_date)
+        same_day = Activity.search(
+            base + [('create_date', '>=', start), ('create_date', '<=', end)],
+            order='id desc', limit=1)
+        if same_day:
+            return same_day.mom_visit_no or 1
+
+        highest = Activity.search(base, order='mom_visit_no desc', limit=1)
+        return (highest.mom_visit_no or 0) + 1
 
     @api.model
     def _mom_next_sequence(self, res_id, exclude_id=False):

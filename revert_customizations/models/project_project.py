@@ -85,6 +85,8 @@ class ProjectProject(models.Model):
             domain += [('user_id', 'in', filters['user_ids'])]
         if filters.get('task_ids'):
             domain += [('mom_task_id', 'in', filters['task_ids'])]
+        if filters.get('visit_nos'):
+            domain += [('mom_visit_no', 'in', filters['visit_nos'])]
         if filters.get('with_photo'):
             domain += [('mom_site_photo', '!=', False)]
         return domain
@@ -158,15 +160,46 @@ class ProjectProject(models.Model):
             rows.append({
                 'entry': entry,
                 'sequence': entry.mom_sequence,
+                'visit_no': entry.mom_visit_no,
                 'task': entry.mom_task_id.display_name or entry.res_name or '',
                 'summary': entry.summary or '',
                 'partner': entry.mom_partner_id.display_name or '',
                 'user': entry.user_id.display_name or '',
                 'created': self._format_mom_date(created),
+                'created_date': created.date() if created else False,
                 'end_date': self._format_mom_date(entry.mom_end_date),
                 'status': self._get_mom_entry_status(entry, today).capitalize(),
             })
         return rows
+
+    def _get_mom_report_groups(self, filters=None):
+        """Report rows grouped by visit, each with the date that visit ran.
+
+        The visit date is taken from when its entries were recorded. Entries
+        of one visit normally share a day; when they do not, the span is shown
+        rather than picking one date and implying the rest.
+        """
+        self.ensure_one()
+        groups = {}
+        for row in self._get_mom_report_rows(filters):
+            visit_no = row['visit_no'] or 0
+            group = groups.setdefault(visit_no, {'visit_no': visit_no, 'rows': [], 'dates': []})
+            group['rows'].append(row)
+            if row['created_date']:
+                group['dates'].append(row['created_date'])
+
+        result = []
+        for visit_no in sorted(groups):
+            group = groups[visit_no]
+            dates = sorted(group.pop('dates'))
+            if dates:
+                first = self._format_mom_date(dates[0])
+                last = self._format_mom_date(dates[-1])
+                group['visit_date'] = first if first == last else '%s – %s' % (first, last)
+            else:
+                group['visit_date'] = ''
+            result.append(group)
+        return result
 
     def action_print_mom_entries(self, filters=None):
         """PDF of the entries currently filtered on the dashboard."""
@@ -200,6 +233,7 @@ class ProjectProject(models.Model):
             rows.append({
                 'id': entry.id,
                 'sequence': entry.mom_sequence,
+                'visit_no': entry.mom_visit_no,
                 'summary': entry.summary or '',
                 'task_id': entry.mom_task_id.id,
                 'task_name': entry.mom_task_id.display_name or entry.res_name or '',
@@ -230,6 +264,8 @@ class ProjectProject(models.Model):
         tasks = Activity._read_group(
             base + [('mom_task_id', '!=', False)],
             groupby=['mom_task_id'], aggregates=['__count'])
+        visits = Activity._read_group(
+            base, groupby=['mom_visit_no'], aggregates=['__count'])
         as_options = lambda grouped: sorted(
             [{'id': record.id, 'name': record.display_name, 'count': count}
              for record, count in grouped],
@@ -238,6 +274,12 @@ class ProjectProject(models.Model):
             'partners': as_options(partners),
             'users': as_options(users),
             'tasks': as_options(tasks),
+            # Same {id, name, count} shape as the record-based options, so the
+            # dashboard's picker component handles it unchanged.
+            'visits': [
+                {'id': visit_no, 'name': 'Visit %s' % visit_no, 'count': count}
+                for visit_no, count in sorted(visits, key=lambda group: group[0] or 0)
+            ],
         }
 
     def get_mom_dashboard_data(self, filters=None):

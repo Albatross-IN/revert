@@ -28,6 +28,15 @@ class MailActivitySchedule(models.TransientModel):
         max_height=1920,
         help='Photo of the site condition being minuted.'
     )
+    mom_visit_no = fields.Integer(
+        string='Visit No#',
+        compute='_compute_mom_visit_no',
+        store=True,
+        readonly=False,
+        default=1,
+        help='Defaults to the number last used on this project. Change it and '
+             'the next MOM on the project starts from the new number.'
+    )
     mom_sequence = fields.Integer(
         string='Sr. No.',
         compute='_compute_mom_sequence',
@@ -53,6 +62,19 @@ class MailActivitySchedule(models.TransientModel):
                 wizard.mom_partner_id = task.partner_id.id or False
 
     @api.depends('activity_type_id', 'res_ids')
+    def _compute_mom_visit_no(self):
+        """Carry the project's last visit number into the dialog."""
+        for wizard in self:
+            if not wizard.activity_type_id.is_mom:
+                wizard.mom_visit_no = 1
+                continue
+            task = wizard._mom_single_task()
+            # Today's visit for this project: the number already in use if a
+            # MOM was recorded today, otherwise the next one.
+            wizard.mom_visit_no = self.env['mail.activity']._mom_visit_no_for_date(
+                task.project_id.id)
+
+    @api.depends('activity_type_id', 'res_ids')
     def _compute_mom_sequence(self):
         """Show the number this entry will be given, before it is created."""
         for wizard in self:
@@ -69,5 +91,6 @@ class MailActivitySchedule(models.TransientModel):
             self = self.with_context(
                 default_mom_partner_id=self.mom_partner_id.id,
                 default_mom_site_photo=self.mom_site_photo,
+                default_mom_visit_no=self.mom_visit_no or 1,
             )
         return super(MailActivitySchedule, self)._action_schedule_activities()

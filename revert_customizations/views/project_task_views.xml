@@ -54,6 +54,7 @@
                               decoration-muted="not active">
                             <field name="active" column_invisible="1"/>
                             <field name="mom_sequence" string="Sr. No."/>
+                            <field name="mom_visit_no" string="Visit No#"/>
                             <field name="summary" string="Remark / Observation / Suggestion"/>
                             <field name="mom_partner_id" string="Related To"/>
                             <field name="user_id" widget="many2one_avatar_user" string="Assigned to"/>
