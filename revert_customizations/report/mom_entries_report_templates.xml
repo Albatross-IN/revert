@@ -8,52 +8,93 @@
                         <style>
                             .o_mom_report_photo img { max-width: 70px; max-height: 70px; }
                             .o_mom_report_table th { background-color: #ededed !important; }
+                            .o_mom_visit_head {
+                                border-bottom: 2px solid #333;
+                                padding-bottom: 4px;
+                                margin-bottom: 6px;
+                            }
+                            .o_mom_visit_no { font-size: 14px; font-weight: bold; }
+                            .o_mom_visit_date { margin-left: 12px; font-size: 12px; }
+                            .o_mom_visit_count { float: right; font-size: 11px; color: #777; }
+                            .o_mom_visit_banner_no { font-size: 18px; font-weight: bold; line-height: 1.2; }
+                            .o_mom_visit_banner_date { font-size: 15px; }
                         </style>
 
-                        <h4 class="mb-0">MOM Entries</h4>
-                        <div class="text-muted mb-3">
-                            <span t-field="o.display_name"/>
+                        <t t-set="visits" t-value="visits_by_project.get(o.id) or []"/>
+                        <t t-set="summary" t-value="summary_by_project.get(o.id) or {}"/>
+
+                        <div class="row mb-3">
+                            <div class="col-7">
+                                <h4 class="mb-0">MOM Entries</h4>
+                                <div class="text-muted">
+                                    <span t-field="o.display_name"/>
+                                </div>
+                            </div>
+                            <!-- Visit number and date sit opposite the company
+                                 address, sized to read at a glance. -->
+                            <div class="col-5 text-end o_mom_visit_banner" t-if="summary.get('label')">
+                                <div class="o_mom_visit_banner_no">
+                                    <t t-esc="summary['label']"/>
+                                </div>
+                                <div class="o_mom_visit_banner_date" t-if="summary.get('date')">
+                                    <t t-esc="summary['date']"/>
+                                </div>
+                            </div>
                         </div>
 
-                        <t t-set="rows" t-value="rows_by_project.get(o.id) or []"/>
-
-                        <p t-if="not rows" class="text-muted">
+                        <p t-if="not visits" class="text-muted">
                             No MOM entries match the selected filters.
                         </p>
 
-                        <table t-if="rows" class="table table-sm o_main_table o_mom_report_table">
-                            <thead>
-                                <tr>
-                                    <th style="width:50px;">Sr.</th>
-                                    <th style="width:130px;">Task</th>
-                                    <th>Remark / Observation / Suggestion</th>
-                                    <th style="width:110px;">Related To</th>
-                                    <th style="width:110px;">Assigned to</th>
-                                    <th style="width:90px;">Created</th>
-                                    <th style="width:90px;">End Date</th>
-                                    <th style="width:80px;">Site Photo</th>
-                                    <th style="width:70px;">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr t-foreach="rows" t-as="row">
-                                    <td><span t-esc="row['sequence']"/></td>
-                                    <td><span t-esc="row['task']"/></td>
-                                    <td><span t-esc="row['summary']"/></td>
-                                    <td><span t-esc="row['partner']"/></td>
-                                    <td><span t-esc="row['user']"/></td>
-                                    <td><span t-esc="row['created']"/></td>
-                                    <td><span t-esc="row['end_date']"/></td>
-                                    <td>
-                                        <span t-if="row['entry'].mom_site_photo"
-                                              t-field="row['entry'].mom_site_photo"
-                                              t-options="{'widget': 'image'}"
-                                              class="o_mom_report_photo"/>
-                                    </td>
-                                    <td><span t-esc="row['status']"/></td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <!-- One block per visit: the visit number and the date
+                             it ran head the group, so they are stated once
+                             instead of repeated down a column. -->
+                        <div t-foreach="visits" t-as="visit" class="mb-4">
+                            <div class="o_mom_visit_head" t-if="len(visits) > 1">
+                                <span class="o_mom_visit_no">Visit <t t-esc="visit['visit_no']"/></span>
+                                <span t-if="visit['visit_date']" class="o_mom_visit_date">
+                                    <t t-esc="visit['visit_date']"/>
+                                </span>
+                                <span class="o_mom_visit_count">
+                                    <t t-esc="len(visit['rows'])"/> entr<t t-esc="len(visit['rows']) == 1 and 'y' or 'ies'"/>
+                                </span>
+                            </div>
+
+                            <table class="table table-sm o_main_table o_mom_report_table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:50px;">Sr.</th>
+                                        <th style="width:130px;">Task</th>
+                                        <th>Remark / Observation / Suggestion</th>
+                                        <th style="width:110px;">Related To</th>
+                                        <th style="width:110px;">Assigned to</th>
+                                        <th style="width:90px;">Created</th>
+                                        <th style="width:90px;">End Date</th>
+                                        <th style="width:80px;">Site Photo</th>
+                                        <th style="width:70px;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr t-foreach="visit['rows']" t-as="row">
+                                        <td><span t-esc="row['sequence']"/></td>
+                                        <td><span t-esc="row['task']"/></td>
+                                        <td><span t-esc="row['summary']"/></td>
+                                        <td><span t-esc="row['partner']"/></td>
+                                        <td><span t-esc="row['user']"/></td>
+                                        <td><span t-esc="row['created']"/></td>
+                                        <td><span t-esc="row['end_date']"/></td>
+                                        <td>
+                                            <span t-if="row['entry'].mom_site_photo"
+                                                  t-field="row['entry'].mom_site_photo"
+                                                  t-options="{'widget': 'image'}"
+                                                  class="o_mom_report_photo"/>
+                                        </td>
+                                        <td><span t-esc="row['status']"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
                     </div>
                 </t>
             </t>

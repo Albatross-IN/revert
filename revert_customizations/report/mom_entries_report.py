@@ -19,12 +19,37 @@ class MomEntriesReport(models.AbstractModel):
         if not project_ids and data.get('project_id'):
             project_ids = [data['project_id']]
         projects = self.env['project.project'].browse(project_ids)
+        visits_by_project = {
+            project.id: project._get_mom_report_groups(filters)
+            for project in projects
+        }
         return {
+            'summary_by_project': {
+                project_id: self._mom_visit_summary(visits)
+                for project_id, visits in visits_by_project.items()
+            },
             'doc_ids': projects.ids,
             'doc_model': 'project.project',
             'docs': projects,
-            'rows_by_project': {
-                project.id: project._get_mom_report_rows(filters)
-                for project in projects
-            },
+            'visits_by_project': visits_by_project,
+        }
+
+    @api.model
+    def _mom_visit_summary(self, visits):
+        """Headline shown top-right of the page.
+
+        A single visit gets its number and date; several get the span, and the
+        individual dates stay on the per-visit headings in the body.
+        """
+        if not visits:
+            return {'label': '', 'date': ''}
+        if len(visits) == 1:
+            return {
+                'label': 'Visit %s' % visits[0]['visit_no'],
+                'date': visits[0]['visit_date'],
+            }
+        numbers = [visit['visit_no'] for visit in visits]
+        return {
+            'label': 'Visits %s \u2013 %s' % (min(numbers), max(numbers)),
+            'date': '',
         }
