@@ -28,6 +28,40 @@ function previewSize() {
     );
 }
 
+// Chart colours follow the filter they set: whatever is filtered in stays
+// solid and everything else fades to this, so the chart reads back the
+// selection the user just made on it.
+const FADED_ALPHA = 0.22;
+
+function withAlpha(hex, alpha) {
+    const value = parseInt(hex.slice(1), 16);
+    const red = (value >> 16) & 255;
+    const green = (value >> 8) & 255;
+    const blue = value & 255;
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function paint(hex, isActive) {
+    return isActive ? hex : withAlpha(hex, FADED_ALPHA);
+}
+
+// First and last day of a "YYYY-MM" bucket, as the date inputs hold them.
+function monthRange(key) {
+    const [year, month] = key.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    const prefix = `${year}-${String(month).padStart(2, "0")}`;
+    return { from: `${prefix}-01`, to: `${prefix}-${String(lastDay).padStart(2, "0")}` };
+}
+
+const KPI_TILES = [
+    { key: "total", label: "Entries", hint: "Show every status" },
+    { key: "open", label: "Open", hint: "Only open entries" },
+    { key: "overdue", label: "Overdue", hint: "Only overdue entries" },
+    { key: "done", label: "Closed", hint: "Only closed entries" },
+    { key: "contacts", label: "Contacts", hint: "Filter by Related To" },
+    { key: "photos", label: "With photo", hint: "Only entries with a site photo" },
+];
+
 function emptyFilters() {
     return {
         status: "all",
@@ -54,6 +88,9 @@ export class MomChart extends Component {
         chartData: Object,
         options: { type: Object, optional: true },
         height: { type: Number, optional: true },
+        // Called with the clicked element's { index, datasetIndex }. Its
+        // presence is what makes the chart clickable.
+        onSelect: { type: Function, optional: true },
     };
 
     setup() {
@@ -99,16 +136,28 @@ export class MomChart extends Component {
             return;
         }
         this.applyThemeDefaults();
+        const options = Object.assign(
+            {
+                responsive: true,
+                maintainAspectRatio: false,
+            },
+            this.props.options || {}
+        );
+        if (this.props.onSelect) {
+            options.onClick = (event, elements) => {
+                if (elements.length) {
+                    const { index, datasetIndex } = elements[0];
+                    this.props.onSelect({ index, datasetIndex });
+                }
+            };
+            options.onHover = (event, elements) => {
+                event.native.target.style.cursor = elements.length ? "pointer" : "default";
+            };
+        }
         this.chart = new window.Chart(this.canvasRef.el, {
             type: this.props.type,
             data: this.props.chartData,
-            options: Object.assign(
-                {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                },
-                this.props.options || {}
-            ),
+            options,
         });
     }
 }
@@ -276,6 +325,55 @@ export class MomDashboard extends Component {
         await this.reload();
     }
 
+    /** A second click on the status that is already filtering clears it. */
+    async toggleStatus(status) {
+        await this.setStatus(this.state.filters.status === status ? "all" : status);
+    }
+
+    // ------------------------------------------------------------------
+    // KPI tiles
+    // ------------------------------------------------------------------
+
+    get kpiTiles() {
+        return KPI_TILES;
+    }
+
+    /**
+     * A tile is "pressed" while the filter it stands for is on. Entries
+     * never presses: it is the way back to every status, not a filter.
+     */
+    kpiActive(key) {
+        const f = this.state.filters;
+        switch (key) {
+            case "open":
+            case "overdue":
+            case "done":
+                return f.status === key;
+            case "contacts":
+                return f.partner_ids.length > 0;
+            case "photos":
+                return f.with_photo;
+            default:
+                return false;
+        }
+    }
+
+    async onKpiClick(key) {
+        switch (key) {
+            case "total":
+                return this.setStatus("all");
+            case "open":
+            case "overdue":
+            case "done":
+                return this.toggleStatus(key);
+            case "contacts":
+                // No single contact to filter on, so open the picker instead.
+                return this.togglePanel("partner_ids");
+            case "photos":
+                return this.toggleWithPhoto();
+        }
+    }
+
     async setDate(which, ev) {
         this.state.filters[which] = ev.target.value || "";
         await this.reload();
@@ -328,6 +426,25 @@ export class MomDashboard extends Component {
     // Charts
     // ------------------------------------------------------------------
 
+    /**
+     * Whether a doughnut segment is inside the current status filter. The
+     * segments are due-later / overdue / closed, while the Open filter spans
+     * the first two, so this is not a plain equality.
+     */
+    statusSegmentActive(key) {
+        const status = this.state.filters.status;
+        if (status === "all") {
+            return true;
+        }
+        if (status === "open") {
+            return key !== "done";
+        }
+        if (status === "due_later") {
+            return key === "open";
+        }
+        return key === status;
+    }
+
     get statusChartData() {
         const rows = this.state.data.by_status;
         return {
@@ -335,11 +452,20 @@ export class MomDashboard extends Component {
             datasets: [
                 {
                     data: rows.map((row) => row.value),
-                    backgroundColor: rows.map((row) => STATUS_COLORS[row.key]),
+                    backgroundColor: rows.map((row) =>
+                        paint(STATUS_COLORS[row.key], this.statusSegmentActive(row.key))
+                    ),
                     borderWidth: 0,
                 },
             ],
         };
+    }
+
+    async onStatusSelect({ index }) {
+        const key = this.state.data.by_status[index].key;
+        // The "Due later" segment is keyed open for its colour, but as a
+        // filter it means open-and-not-overdue.
+        await this.toggleStatus(key === "open" ? "due_later" : key);
     }
 
     get statusChartOptions() {
@@ -351,6 +477,7 @@ export class MomDashboard extends Component {
 
     get partnerChartData() {
         const rows = this.state.data.by_partner;
+        const selected = this.state.filters.partner_ids;
         return {
             labels: rows.map((row) => row.label),
             datasets: [
@@ -359,11 +486,17 @@ export class MomDashboard extends Component {
                     data: rows.map((row) => row.value),
                     // Colours come from the server so the PDF can highlight
                     // Related To with the same one the bar is drawn in.
-                    backgroundColor: rows.map((row) => row.color),
+                    backgroundColor: rows.map((row) =>
+                        paint(row.color, !selected.length || selected.includes(row.id))
+                    ),
                     borderWidth: 0,
                 },
             ],
         };
+    }
+
+    async onPartnerSelect({ index }) {
+        await this.toggleSelection("partner_ids", this.state.data.by_partner[index].id);
     }
 
     get partnerChartOptions() {
@@ -374,23 +507,70 @@ export class MomDashboard extends Component {
         };
     }
 
+    /** The month bucket the date range currently sits on exactly, if any. */
+    get selectedPeriodKey() {
+        const { date_from, date_to } = this.state.filters;
+        if (!date_from || !date_to) {
+            return null;
+        }
+        const match = this.state.data.by_period.find((row) => {
+            const range = monthRange(row.key);
+            return range.from === date_from && range.to === date_to;
+        });
+        return match ? match.key : null;
+    }
+
     get periodChartData() {
         const rows = this.state.data.by_period;
+        const status = this.state.filters.status;
+        const selectedKey = this.selectedPeriodKey;
+        const monthActive = (row) => !selectedKey || row.key === selectedKey;
+        // A bar segment is lit when both its month and its status are in.
+        const openIn = status !== "done";
+        const doneIn = status === "all" || status === "done";
         return {
             labels: rows.map((row) => row.label),
             datasets: [
                 {
                     label: "Open",
                     data: rows.map((row) => row.open),
-                    backgroundColor: STATUS_COLORS.open,
+                    backgroundColor: rows.map((row) =>
+                        paint(STATUS_COLORS.open, openIn && monthActive(row))
+                    ),
                 },
                 {
                     label: "Closed",
                     data: rows.map((row) => row.done),
-                    backgroundColor: STATUS_COLORS.done,
+                    backgroundColor: rows.map((row) =>
+                        paint(STATUS_COLORS.done, doneIn && monthActive(row))
+                    ),
                 },
             ],
         };
+    }
+
+    /**
+     * A segment is one month of one status, so clicking it sets both the
+     * date range and the status. Clicking the segment that is already the
+     * filter clears both again.
+     */
+    async onPeriodSelect({ index, datasetIndex }) {
+        const row = this.state.data.by_period[index];
+        const range = monthRange(row.key);
+        const status = datasetIndex === 0 ? "open" : "done";
+        const f = this.state.filters;
+        const alreadySet =
+            f.date_from === range.from && f.date_to === range.to && f.status === status;
+        if (alreadySet) {
+            f.date_from = "";
+            f.date_to = "";
+            f.status = "all";
+        } else {
+            f.date_from = range.from;
+            f.date_to = range.to;
+            f.status = status;
+        }
+        await this.reload();
     }
 
     get periodChartOptions() {

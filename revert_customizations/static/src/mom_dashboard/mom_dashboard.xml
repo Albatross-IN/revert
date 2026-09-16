@@ -27,7 +27,7 @@
                             t-on-click="() => this.resetFilters()">
                         Reset filters (<t t-esc="activeFilterCount"/>)
                     </button>
-                    <button class="btn btn-secondary btn-sm"
+                    <button class="btn btn-sm o_mom_chip"
                             t-att-disabled="!state.data or !state.data.entries_total"
                             t-on-click="() => this.printEntries()">
                         <i class="fa fa-file-pdf-o me-1"/>Print entries
@@ -36,12 +36,13 @@
             </div>
 
             <div class="o_mom_filters">
-                <div class="btn-group btn-group-sm" role="group">
-                    <t t-foreach="[['all','All'],['open','Open'],['overdue','Overdue'],['done','Closed']]"
+                <div class="o_mom_chips" role="group" aria-label="Status">
+                    <t t-foreach="[['all','All'],['open','Open'],['due_later','Due later'],['overdue','Overdue'],['done','Closed']]"
                        t-as="choice" t-key="choice[0]">
                         <button type="button"
-                                class="btn"
-                                t-att-class="state.filters.status === choice[0] ? 'btn-primary' : 'btn-outline-secondary'"
+                                class="btn btn-sm o_mom_chip"
+                                t-att-class="state.filters.status === choice[0] ? 'is-active' : ''"
+                                t-att-aria-pressed="state.filters.status === choice[0] ? 'true' : 'false'"
                                 t-on-click="() => this.setStatus(choice[0])">
                             <t t-esc="choice[1]"/>
                         </button>
@@ -63,8 +64,8 @@
                 <t t-foreach="[['partner_ids','partners','Related To'],['user_ids','users','Assignee'],['task_ids','tasks','Task'],['visit_nos','visits','Visit No#']]"
                    t-as="picker" t-key="picker[0]">
                     <div class="o_mom_picker">
-                        <button type="button" class="btn btn-sm btn-outline-secondary"
-                                t-att-class="state.filters[picker[0]].length ? 'active' : ''"
+                        <button type="button" class="btn btn-sm o_mom_chip"
+                                t-att-class="{'is-active': state.filters[picker[0]].length, 'is-open': state.openPanel === picker[0]}"
                                 t-on-click="() => this.togglePanel(picker[0])">
                             <t t-esc="selectionLabel(picker[0], filterOptions[picker[1]], picker[2])"/>
                             <i class="fa fa-caret-down ms-1"/>
@@ -111,31 +112,23 @@
                 </t>
 
                 <t t-elif="state.data">
+                    <!-- Each tile is the filter it counts: pressed while
+                         that filter is on, and a click toggles it. -->
                     <div class="o_mom_kpis" t-att-class="state.loading ? 'o_mom_busy' : ''">
-                        <div class="o_mom_kpi">
-                            <span class="o_mom_kpi_value" t-esc="state.data.kpis.total"/>
-                            <span class="o_mom_kpi_label">Entries</span>
-                        </div>
-                        <div class="o_mom_kpi">
-                            <span class="o_mom_kpi_value" t-esc="state.data.kpis.open"/>
-                            <span class="o_mom_kpi_label">Open</span>
-                        </div>
-                        <div class="o_mom_kpi o_mom_kpi_alert" t-att-class="state.data.kpis.overdue ? 'is-hot' : ''">
-                            <span class="o_mom_kpi_value" t-esc="state.data.kpis.overdue"/>
-                            <span class="o_mom_kpi_label">Overdue</span>
-                        </div>
-                        <div class="o_mom_kpi">
-                            <span class="o_mom_kpi_value" t-esc="state.data.kpis.done"/>
-                            <span class="o_mom_kpi_label">Closed</span>
-                        </div>
-                        <div class="o_mom_kpi">
-                            <span class="o_mom_kpi_value" t-esc="state.data.kpis.contacts"/>
-                            <span class="o_mom_kpi_label">Contacts</span>
-                        </div>
-                        <div class="o_mom_kpi">
-                            <span class="o_mom_kpi_value" t-esc="state.data.kpis.photos"/>
-                            <span class="o_mom_kpi_label">With photo</span>
-                        </div>
+                        <button type="button"
+                                t-foreach="kpiTiles" t-as="tile" t-key="tile.key"
+                                class="o_mom_kpi"
+                                t-att-class="{
+                                    'is-active': kpiActive(tile.key),
+                                    'o_mom_kpi_alert': tile.key === 'overdue',
+                                    'is-hot': tile.key === 'overdue' and state.data.kpis.overdue,
+                                }"
+                                t-att-aria-pressed="kpiActive(tile.key) ? 'true' : 'false'"
+                                t-att-title="tile.hint"
+                                t-on-click="() => this.onKpiClick(tile.key)">
+                            <span class="o_mom_kpi_value" t-esc="state.data.kpis[tile.key]"/>
+                            <span class="o_mom_kpi_label" t-esc="tile.label"/>
+                        </button>
                     </div>
 
                     <t t-if="!state.data.kpis.total">
@@ -147,18 +140,20 @@
                     <t t-else="">
                         <div class="o_mom_charts">
                             <section class="o_mom_card">
-                                <h2>Status split</h2>
+                                <h2>Status split <small class="o_mom_hint">click a segment to filter</small></h2>
                                 <MomChart type="'doughnut'"
                                           chartData="statusChartData"
                                           options="statusChartOptions"
+                                          onSelect.bind="onStatusSelect"
                                           height="240"/>
                             </section>
                             <section class="o_mom_card">
-                                <h2>Top Related To</h2>
+                                <h2>Top Related To <small class="o_mom_hint">click a bar to filter</small></h2>
                                 <t t-if="state.data.by_partner.length">
                                     <MomChart type="'bar'"
                                               chartData="partnerChartData"
                                               options="partnerChartOptions"
+                                              onSelect.bind="onPartnerSelect"
                                               height="240"/>
                                 </t>
                                 <t t-else="">
@@ -168,10 +163,11 @@
                         </div>
 
                         <section class="o_mom_card" t-if="state.data.by_period.length">
-                            <h2>Entries by month</h2>
+                            <h2>Entries by month <small class="o_mom_hint">click a bar to filter</small></h2>
                             <MomChart type="'bar'"
                                       chartData="periodChartData"
                                       options="periodChartOptions"
+                                      onSelect.bind="onPeriodSelect"
                                       height="240"/>
                         </section>
 
@@ -182,11 +178,13 @@
                                     <span t-esc="pageStart"/>–<span t-esc="pageEnd"/>
                                     <span class="o_mom_muted"> of </span>
                                     <span t-esc="state.data.entries_total"/>
-                                    <button class="btn btn-sm btn-light" t-att-disabled="!hasPrevious"
+                                    <button class="btn btn-sm o_mom_icon_btn" t-att-disabled="!hasPrevious"
+                                            aria-label="Previous page"
                                             t-on-click="() => this.goToPage(-1)">
                                         <i class="fa fa-chevron-left"/>
                                     </button>
-                                    <button class="btn btn-sm btn-light" t-att-disabled="!hasNext"
+                                    <button class="btn btn-sm o_mom_icon_btn" t-att-disabled="!hasNext"
+                                            aria-label="Next page"
                                             t-on-click="() => this.goToPage(1)">
                                         <i class="fa fa-chevron-right"/>
                                     </button>

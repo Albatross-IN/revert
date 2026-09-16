@@ -81,6 +81,13 @@ class ProjectProject(models.Model):
             domain += [('active', '=', True)]
         elif status == 'overdue':
             domain += [('active', '=', True), ('date_deadline', '<', today)]
+        elif status == 'due_later':
+            # The complement of overdue within open, so the two always add up
+            # to the Open KPI the way the doughnut draws them.
+            domain += [
+                ('active', '=', True),
+                '|', ('date_deadline', '>=', today), ('date_deadline', '=', False),
+            ]
         elif status == 'done':
             domain += [('active', '=', False)]
 

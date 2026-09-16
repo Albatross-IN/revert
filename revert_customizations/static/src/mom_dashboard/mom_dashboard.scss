@@ -1,17 +1,42 @@
-// Colours are derived from Odoo's own theme variables, never hardcoded.
-// Odoo compiles this file twice — once for the light bundle and once for the
-// dark one — so every surface, rule and text colour follows the user's theme
-// and stays readable in both.
+// Neumorphic surface system for the MOM dashboard.
+//
+// Neumorphism draws every surface in the colour of the ground it sits on and
+// separates them with light alone: a pale shadow from the top-left and a dark
+// one from the bottom-right make a surface look raised; the same pair inset
+// makes it look pressed into the ground. That pressed state is doing real
+// work here — a KPI tile, chip or picker is pressed while the filter it
+// stands for is on.
+//
+// Odoo compiles this file twice, once per theme, so the ground is taken from
+// the theme's own grey scale and the two shadow colours are derived from its
+// lightness. Nothing is hardcoded to one theme.
+$mom-ground: $o-gray-200;
+$mom-light-theme: lightness($mom-ground) > 50%;
+$mom-shadow-dark: if($mom-light-theme, rgba(#8d94a6, 0.5), rgba(#000, 0.6));
+$mom-shadow-light: if($mom-light-theme, rgba(#fff, 0.95), rgba(#fff, 0.05));
+
 .o_mom_dashboard {
     --mom-ink: #{$o-main-text-color};
     --mom-muted: #{$o-gray-600};
     --mom-rule: #{$o-gray-300};
-    --mom-surface: #{$o-view-background-color};
-    --mom-ground: #{$o-gray-100};
+    --mom-ground: #{$mom-ground};
     --mom-accent: #{$o-brand-primary};
     --mom-alert: #e2504b;
     --mom-open: #4b7be5;
     --mom-done: #3fa37a;
+    --mom-shadow-dark: #{$mom-shadow-dark};
+    --mom-shadow-light: #{$mom-shadow-light};
+    // Chart.js reads --mom-rule for gridlines; a faint tint is also used for
+    // row hovers, where a shadow would be too heavy.
+    --mom-tint: #{if($mom-light-theme, rgba(#000, 0.035), rgba(#fff, 0.04))};
+
+    // The three depths in use: card, control, and pressed.
+    --mom-raise: 7px 7px 16px var(--mom-shadow-dark), -7px -7px 16px var(--mom-shadow-light);
+    --mom-raise-sm: 3px 3px 7px var(--mom-shadow-dark), -3px -3px 7px var(--mom-shadow-light);
+    --mom-press: inset 4px 4px 9px var(--mom-shadow-dark), inset -4px -4px 9px var(--mom-shadow-light);
+    --mom-press-sm: inset 2px 2px 5px var(--mom-shadow-dark), inset -2px -2px 5px var(--mom-shadow-light);
+    --mom-radius: 16px;
+    --mom-radius-sm: 10px;
 
     height: 100%;
     overflow: auto;
@@ -25,6 +50,38 @@
         color: var(--mom-ink);
     }
 
+    // Every interactive surface shares the same press: shadows swap to inset
+    // and the element eases back a hair, so activation reads as physical.
+    %mom-control {
+        background: var(--mom-ground);
+        color: var(--mom-ink);
+        border: 0;
+        border-radius: var(--mom-radius-sm);
+        box-shadow: var(--mom-raise-sm);
+        transition: box-shadow 0.15s ease, color 0.15s ease, transform 0.15s ease;
+
+        &:hover {
+            color: var(--mom-accent);
+        }
+
+        &:active,
+        &.is-active {
+            box-shadow: var(--mom-press-sm);
+            transform: translateY(1px);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--mom-accent);
+            outline-offset: 3px;
+        }
+
+        &:disabled {
+            opacity: 0.45;
+            box-shadow: none;
+            cursor: default;
+        }
+    }
+
     // ---- header -------------------------------------------------------
     .o_mom_header {
         display: flex;
@@ -32,14 +89,12 @@
         justify-content: space-between;
         gap: 1rem;
         padding: 1.25rem 1.5rem 0.75rem;
-        background: var(--mom-surface);
-        border-bottom: 1px solid var(--mom-rule);
     }
 
     .o_mom_header_actions {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.65rem;
         flex-shrink: 0;
     }
 
@@ -63,13 +118,13 @@
     // The whole title block returns to wherever the dashboard was opened from.
     .o_mom_header_title {
         cursor: pointer;
-        border-radius: 4px;
-        padding: 0.15rem 0.4rem;
-        margin-left: -0.4rem;
-        transition: background-color 0.12s ease;
+        border-radius: var(--mom-radius-sm);
+        padding: 0.35rem 0.6rem;
+        margin-left: -0.6rem;
+        transition: box-shadow 0.15s ease;
 
         &:hover {
-            background: var(--mom-ground);
+            box-shadow: var(--mom-raise-sm);
 
             h1 {
                 color: var(--mom-accent);
@@ -87,20 +142,50 @@
         color: var(--mom-muted);
     }
 
+    .o_mom_reset {
+        color: var(--mom-muted);
+        text-decoration: none;
+
+        &:hover {
+            color: var(--mom-accent);
+        }
+    }
+
     // ---- filter bar ---------------------------------------------------
     .o_mom_filters {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 0.5rem 0.75rem;
-        padding: 0.75rem 1.5rem;
-        background: var(--mom-surface);
-        border-bottom: 1px solid var(--mom-rule);
+        gap: 0.65rem 0.85rem;
+        padding: 0.75rem 1.5rem 0.9rem;
+        background: var(--mom-ground);
         position: sticky;
         top: 0;
         z-index: 3;
     }
 
+    .o_mom_chips {
+        display: flex;
+        gap: 0.4rem;
+    }
+
+    .o_mom_chip {
+        @extend %mom-control;
+        padding: 0.3rem 0.8rem;
+        font-weight: 500;
+        white-space: nowrap;
+
+        &.is-active {
+            color: var(--mom-accent);
+        }
+
+        // A picker whose panel is open but has nothing chosen yet.
+        &.is-open:not(.is-active) {
+            color: var(--mom-accent);
+        }
+    }
+
+    // Inputs are pressed into the ground: the classic neumorphic field.
     .o_mom_dates {
         display: flex;
         align-items: center;
@@ -108,9 +193,15 @@
 
         input {
             width: 9.5rem;
-            background: var(--mom-surface);
+            background: var(--mom-ground);
             color: var(--mom-ink);
-            border-color: var(--mom-rule);
+            border: 0;
+            border-radius: var(--mom-radius-sm);
+            box-shadow: var(--mom-press-sm);
+
+            &:focus {
+                box-shadow: var(--mom-press-sm), 0 0 0 2px var(--mom-accent);
+            }
         }
     }
 
@@ -121,10 +212,19 @@
     .o_mom_check {
         display: flex;
         align-items: center;
-        gap: 0.35rem;
+        gap: 0.4rem;
         margin: 0;
+        padding: 0.3rem 0.8rem;
         cursor: pointer;
         color: var(--mom-ink);
+        border-radius: var(--mom-radius-sm);
+        box-shadow: var(--mom-raise-sm);
+        transition: box-shadow 0.15s ease;
+
+        &:has(input:checked) {
+            box-shadow: var(--mom-press-sm);
+            color: var(--mom-accent);
+        }
     }
 
     // ---- multi-select pickers ----------------------------------------
@@ -134,23 +234,22 @@
 
     .o_mom_picker_panel {
         position: absolute;
-        top: calc(100% + 4px);
+        top: calc(100% + 8px);
         left: 0;
         z-index: 10;
         width: 17rem;
-        background: var(--mom-surface);
+        background: var(--mom-ground);
         color: var(--mom-ink);
-        border: 1px solid var(--mom-rule);
-        border-radius: 4px;
-        box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.45);
+        border-radius: var(--mom-radius);
+        box-shadow: var(--mom-raise);
+        overflow: hidden;
     }
 
     .o_mom_picker_head {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 0.5rem 0.75rem;
-        border-bottom: 1px solid var(--mom-rule);
+        padding: 0.6rem 0.85rem;
         font-size: 0.7rem;
         letter-spacing: 0.1em;
         text-transform: uppercase;
@@ -160,7 +259,7 @@
     .o_mom_picker_body {
         max-height: 15rem;
         overflow-y: auto;
-        padding: 0.25rem 0;
+        padding: 0.25rem 0.5rem 0.5rem;
     }
 
     .o_mom_option {
@@ -168,12 +267,18 @@
         align-items: center;
         gap: 0.5rem;
         margin: 0;
-        padding: 0.3rem 0.75rem;
+        padding: 0.35rem 0.6rem;
+        border-radius: var(--mom-radius-sm);
         cursor: pointer;
         color: var(--mom-ink);
+        transition: box-shadow 0.12s ease;
 
         &:hover {
-            background: var(--mom-ground);
+            background: var(--mom-tint);
+        }
+
+        &:has(input:checked) {
+            box-shadow: var(--mom-press-sm);
         }
     }
 
@@ -194,7 +299,7 @@
         padding: 1.25rem 1.5rem 3rem;
         display: flex;
         flex-direction: column;
-        gap: 1.25rem;
+        gap: 1.5rem;
     }
 
     .o_mom_placeholder {
@@ -208,11 +313,21 @@
         padding: 0.5rem 0;
     }
 
+    .o_mom_hint {
+        margin-left: 0.5rem;
+        font-size: 0.85em;
+        font-weight: 400;
+        letter-spacing: 0;
+        text-transform: none;
+        color: var(--mom-muted);
+        opacity: 0.8;
+    }
+
     // ---- kpi tiles ----------------------------------------------------
     .o_mom_kpis {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-        gap: 0.75rem;
+        gap: 1.1rem;
         transition: opacity 0.15s ease;
 
         &.o_mom_busy {
@@ -220,14 +335,32 @@
         }
     }
 
+    // A tile is a button: raised at rest, pressed while its filter is on.
     .o_mom_kpi {
-        background: var(--mom-surface);
-        border: 1px solid var(--mom-rule);
-        border-radius: 5px;
-        padding: 0.85rem 1rem;
+        @extend %mom-control;
+        border-radius: var(--mom-radius);
+        box-shadow: var(--mom-raise);
+        padding: 0.95rem 1.1rem;
         display: flex;
         flex-direction: column;
-        gap: 0.15rem;
+        align-items: flex-start;
+        gap: 0.2rem;
+        text-align: left;
+        font: inherit;
+        cursor: pointer;
+
+        &:hover .o_mom_kpi_value {
+            color: var(--mom-accent);
+        }
+
+        &:active,
+        &.is-active {
+            box-shadow: var(--mom-press);
+
+            .o_mom_kpi_value {
+                color: var(--mom-accent);
+            }
+        }
     }
 
     .o_mom_kpi_value {
@@ -236,6 +369,7 @@
         line-height: 1;
         color: var(--mom-ink);
         font-variant-numeric: tabular-nums;
+        transition: color 0.15s ease;
     }
 
     .o_mom_kpi_label {
@@ -246,11 +380,11 @@
     }
 
     // Overdue is the reason anyone opens this screen: it carries the only
-    // semantic colour on the row.
+    // semantic colour on the row, whether hovered, pressed or at rest.
     .o_mom_kpi_alert.is-hot {
-        border-color: var(--mom-alert);
-
-        .o_mom_kpi_value {
+        .o_mom_kpi_value,
+        &:hover .o_mom_kpi_value,
+        &.is-active .o_mom_kpi_value {
             color: var(--mom-alert);
         }
     }
@@ -259,21 +393,21 @@
     .o_mom_charts {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
-        gap: 1.25rem;
+        gap: 1.5rem;
     }
 
     .o_mom_card {
-        background: var(--mom-surface);
-        border: 1px solid var(--mom-rule);
-        border-radius: 5px;
-        padding: 1rem 1.15rem 1.15rem;
+        background: var(--mom-ground);
+        border-radius: var(--mom-radius);
+        box-shadow: var(--mom-raise);
+        padding: 1.1rem 1.25rem 1.25rem;
 
         h2 {
             font-size: 0.72rem;
             letter-spacing: 0.1em;
             text-transform: uppercase;
             color: var(--mom-muted);
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.85rem;
         }
     }
 
@@ -283,7 +417,7 @@
 
     // ---- entries table -------------------------------------------------
     .o_mom_table_card {
-        padding-bottom: 0.5rem;
+        padding-bottom: 0.6rem;
     }
 
     .o_mom_table_head {
@@ -296,13 +430,26 @@
     .o_mom_pager {
         display: flex;
         align-items: center;
-        gap: 0.35rem;
+        gap: 0.45rem;
         font-variant-numeric: tabular-nums;
         color: var(--mom-ink);
     }
 
+    .o_mom_icon_btn {
+        @extend %mom-control;
+        width: 1.9rem;
+        height: 1.9rem;
+        padding: 0;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
     .o_mom_table_scroll {
         overflow-x: auto;
+        // Room for the table's own raised chrome to breathe inside the card.
+        padding: 0.25rem 0.1rem;
     }
 
     .o_mom_table {
@@ -344,13 +491,13 @@
         cursor: pointer;
 
         &:hover td {
-            background: var(--mom-ground);
+            background: var(--mom-tint);
         }
     }
 
     // ---- row actions --------------------------------------------------
-    // Held at low contrast so a column of them does not compete with the
-    // entries themselves, and brought up on hover of the row.
+    // Small raised discs, quiet until the row is hovered so a column of them
+    // does not compete with the entries themselves.
     .o_mom_actions_head,
     .o_mom_actions {
         white-space: nowrap;
@@ -359,17 +506,22 @@
     }
 
     .o_mom_action {
-        padding: 0.1rem 0.4rem;
-        line-height: 1.2;
-        border: 1px solid transparent;
+        @extend %mom-control;
+        width: 1.8rem;
+        height: 1.8rem;
+        padding: 0;
+        margin-left: 0.35rem;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         color: var(--mom-muted);
-        opacity: 0.55;
-        transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+        opacity: 0.6;
+        transition: opacity 0.12s ease, color 0.12s ease, box-shadow 0.15s ease;
 
         &:hover,
         &:focus-visible {
             color: var(--mom-accent);
-            border-color: var(--mom-rule);
             opacity: 1;
         }
     }
@@ -387,13 +539,13 @@
         width: 32px;
         height: 32px;
         object-fit: cover;
-        border-radius: 3px;
-        border: 1px solid var(--mom-rule);
+        border-radius: 8px;
+        box-shadow: var(--mom-raise-sm);
         cursor: zoom-in;
-        transition: border-color 0.12s ease;
+        transition: box-shadow 0.12s ease;
 
         &:hover {
-            border-color: var(--mom-accent);
+            box-shadow: var(--mom-raise-sm), 0 0 0 2px var(--mom-accent);
         }
     }
 
@@ -403,11 +555,10 @@
     .o_mom_preview {
         position: fixed;
         z-index: 1080;
-        padding: 4px;
-        background: var(--mom-surface);
-        border: 1px solid var(--mom-rule);
-        border-radius: 6px;
-        box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.55);
+        padding: 6px;
+        background: var(--mom-ground);
+        border-radius: var(--mom-radius);
+        box-shadow: var(--mom-raise), 0 18px 40px -12px rgba(0, 0, 0, 0.5);
         pointer-events: none;
         max-height: 90vh;
 
@@ -419,13 +570,13 @@
             height: auto;
             max-width: 100%;
             max-height: 80vh;
-            border-radius: 3px;
+            border-radius: 12px;
         }
     }
 
     .o_mom_preview_caption {
-        margin-top: 0.35rem;
-        padding: 0 0.15rem 0.1rem;
+        margin-top: 0.4rem;
+        padding: 0 0.3rem 0.15rem;
         font-size: 0.75rem;
         line-height: 1.35;
         color: var(--mom-muted);
@@ -433,13 +584,16 @@
         overflow: hidden;
     }
 
+    // Status pills are pressed in rather than outlined: the colour is the
+    // only thing that should stand up off the row.
     .o_mom_badge {
         display: inline-block;
-        padding: 0.1rem 0.5rem;
+        padding: 0.15rem 0.6rem;
         border-radius: 10px;
         font-size: 0.68rem;
+        font-weight: 600;
         text-transform: capitalize;
-        border: 1px solid currentColor;
+        box-shadow: var(--mom-press-sm);
         color: var(--mom-muted);
 
         &.is-overdue {
