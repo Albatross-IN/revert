@@ -49,7 +49,12 @@
                          in serial order. Entries are created and closed through
                          the Activities widget in the chatter. -->
                     <separator string="MOM Entries"/>
-                    <field name="mom_activity_ids" readonly="1">
+                    <!-- The dialog behind each row is the MOM entry form, where only
+                         the remark is editable. The field itself has to stay writable
+                         for that: a readonly one2many opens its record dialog in
+                         readonly mode, so nothing in it can be typed into. -->
+                    <field name="mom_activity_ids"
+                           context="{'form_view_ref': 'revert_customizations.mail_activity_view_form_mom_entry'}">
                         <list default_order="mom_sequence" create="false" delete="false"
                               decoration-muted="not active">
                             <field name="active" column_invisible="1"/>

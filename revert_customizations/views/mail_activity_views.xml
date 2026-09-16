@@ -31,6 +31,51 @@
         </field>
     </record>
 
+    <!-- FR-07: the form behind a row of the MOM Entries list on the task.
+         Only the remark is editable there; the rest of an entry stays owned by
+         the Activities widget in the chatter, which is where entries are
+         created and closed. Primary, so it applies only where project.task
+         asks for it by form_view_ref and never replaces the generic activity
+         popup. The core footer goes: inside a one2many the edit is held on the
+         task until the task itself is saved, so the activity's own Schedule /
+         Save / Mark as Done buttons would act on the database record behind
+         the edit. Dropping them leaves the dialog's Save & Close and Discard,
+         which write through the task. -->
+    <record id="mail_activity_view_form_mom_entry" model="ir.ui.view">
+        <field name="name">mail.activity.view.form.mom.entry</field>
+        <field name="model">mail.activity</field>
+        <field name="mode">primary</field>
+        <field name="priority">99</field>
+        <field name="inherit_id" ref="mail.mail_activity_view_form_popup"/>
+        <field name="arch" type="xml">
+            <field name="recommended_activity_type_id" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="activity_type_id" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="date_deadline" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="user_id" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="note" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="mom_partner_id" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="mom_visit_no" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <field name="mom_site_photo" position="attributes">
+                <attribute name="readonly">1</attribute>
+            </field>
+            <footer position="replace"/>
+        </field>
+    </record>
+
     <record id="mail_activity_type_view_form_mom" model="ir.ui.view">
         <field name="name">mail.activity.type.view.form.mom</field>
         <field name="model">mail.activity.type</field>
