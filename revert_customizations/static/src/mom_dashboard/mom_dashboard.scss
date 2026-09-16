@@ -348,6 +348,41 @@
         }
     }
 
+    // ---- row actions --------------------------------------------------
+    // Held at low contrast so a column of them does not compete with the
+    // entries themselves, and brought up on hover of the row.
+    .o_mom_actions_head,
+    .o_mom_actions {
+        white-space: nowrap;
+        text-align: right;
+        width: 1%;
+    }
+
+    .o_mom_action {
+        padding: 0.1rem 0.4rem;
+        line-height: 1.2;
+        border: 1px solid transparent;
+        color: var(--mom-muted);
+        opacity: 0.55;
+        transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+
+        &:hover,
+        &:focus-visible {
+            color: var(--mom-accent);
+            border-color: var(--mom-rule);
+            opacity: 1;
+        }
+    }
+
+    .o_mom_action_done:hover,
+    .o_mom_action_done:focus-visible {
+        color: var(--mom-done);
+    }
+
+    .o_mom_row:hover .o_mom_action {
+        opacity: 1;
+    }
+
     .o_mom_thumb {
         width: 32px;
         height: 32px;
@@ -418,5 +453,20 @@
         &.is-done {
             color: var(--mom-done);
         }
+    }
+}
+
+// The mark-done dialog renders in Odoo's overlay at the document root, so it
+// sits outside .o_mom_dashboard and cannot use that block's variables.
+.o_mom_done_dialog {
+    .o_mom_done_summary {
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+    }
+
+    .o_mom_done_hint {
+        margin: 0.5rem 0 0;
+        font-size: 0.75rem;
+        color: $o-gray-600;
     }
 }

@@ -1,6 +1,6 @@
 {
     'name': 'Revert Customizations',
-    'version': '18.0.1.6.0',
+    'version': '18.0.1.7.0',
     'category': 'Project',
     'summary': 'Custom project task enhancements with MOM meetings',
     'description': """

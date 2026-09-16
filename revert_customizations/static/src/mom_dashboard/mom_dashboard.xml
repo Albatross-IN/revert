@@ -206,6 +206,7 @@
                                             <th>End Date</th>
                                             <th>Photo</th>
                                             <th>Status</th>
+                                            <th class="o_mom_actions_head">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -231,6 +232,23 @@
                                                 <span class="o_mom_badge" t-att-class="'is-' + entry.status"
                                                       t-esc="entry.status"/>
                                             </td>
+                                            <!-- Both buttons stop the click reaching
+                                                 the row, which opens the task. -->
+                                            <td class="o_mom_actions">
+                                                <button class="btn btn-sm o_mom_action"
+                                                        title="Edit this entry"
+                                                        aria-label="Edit this entry"
+                                                        t-on-click="(ev) => this.editEntry(entry, ev)">
+                                                    <i class="fa fa-pencil"/>
+                                                </button>
+                                                <button class="btn btn-sm o_mom_action o_mom_action_done"
+                                                        t-if="entry.status !== 'done'"
+                                                        title="Mark done with a closing note"
+                                                        aria-label="Mark done"
+                                                        t-on-click="(ev) => this.markDone(entry, ev)">
+                                                    <i class="fa fa-check"/>
+                                                </button>
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -247,6 +265,33 @@
                      t-esc="state.preview.summary"/>
             </div>
         </div>
+    </t>
+
+    <t t-name="revert_customizations.MomDoneDialog">
+        <Dialog title="'Mark MOM entry done'" size="'md'">
+            <div class="o_mom_done_dialog">
+                <p class="o_mom_done_summary" t-esc="props.entry.summary"/>
+                <label class="form-label" for="mom_done_feedback">Closing note</label>
+                <textarea id="mom_done_feedback" class="form-control" rows="4"
+                          t-ref="feedback"
+                          t-model="state.feedback"
+                          placeholder="What was done to close this point?"/>
+                <p class="o_mom_done_hint">
+                    The note is posted to the task's chatter. The entry stays in
+                    the MOM report, marked Closed.
+                </p>
+            </div>
+            <t t-set-slot="footer">
+                <button class="btn btn-primary" t-att-disabled="state.busy"
+                        t-on-click="() => this.confirm()">
+                    Mark done
+                </button>
+                <button class="btn btn-secondary" t-att-disabled="state.busy"
+                        t-on-click="() => this.props.close()">
+                    Discard
+                </button>
+            </t>
+        </Dialog>
     </t>
 
 </templates>

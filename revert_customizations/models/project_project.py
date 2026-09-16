@@ -4,6 +4,15 @@ ENTRIES_PAGE_SIZE = 100
 MOM_DATE_FORMAT = '%d-%b-%Y'
 TOP_N = 10
 
+# Colours for the "Top Related To" chart, applied by rank. The dashboard reads
+# them off the payload rather than keeping its own copy, and the PDF paints the
+# Related To cell from the same list, so a contact carries one colour from the
+# chart through to the printout.
+MOM_PARTNER_PALETTE = [
+    '#0E6C7A', '#4B7BE5', '#C97A2B', '#5B8C5A', '#8B5CA8',
+    '#B4544E', '#3F7F93', '#A9862F', '#6E7B8B', '#7C5CBF',
+]
+
 
 class ProjectProject(models.Model):
     _inherit = 'project.project'
@@ -130,6 +139,54 @@ class ProjectProject(models.Model):
             bucket['open' if is_open else 'done'] += count
         return [buckets[key] for key in sorted(buckets)]
 
+    def _get_mom_partner_ranking(self, Activity, domain):
+        """Contacts of the filtered entries, busiest first, each with a colour.
+
+        Ordered and capped in Python rather than by SQL. The dashboard and the
+        PDF build this list in separate requests and have to agree on which
+        contact got which colour; `order='__count DESC'` leaves ties to the
+        database, which is free to return them either way round.
+        """
+        self.ensure_one()
+        grouped = Activity._read_group(
+            domain + [('mom_partner_id', '!=', False)],
+            groupby=['mom_partner_id'], aggregates=['__count'])
+        ranked = sorted(
+            grouped,
+            key=lambda group: (-group[1], group[0].display_name, group[0].id),
+        )[:TOP_N]
+        return [
+            {
+                'id': partner.id,
+                'label': partner.display_name,
+                'value': count,
+                'color': MOM_PARTNER_PALETTE[index % len(MOM_PARTNER_PALETTE)],
+            }
+            for index, (partner, count) in enumerate(ranked)
+        ]
+
+    def _mom_contrast_ink(self, color):
+        """Black or white text, whichever stays readable on `color`."""
+        red, green, blue = (int(color[index:index + 2], 16) for index in (1, 3, 5))
+        luma = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255
+        return '#111111' if luma > 0.6 else '#FFFFFF'
+
+    def _get_mom_partner_styles(self, filters=None):
+        """Contact id -> the cell style matching that contact's bar on screen.
+
+        Contacts outside the chart's top ten are absent, so they print
+        unhighlighted rather than being given a colour the chart never showed.
+        """
+        self.ensure_one()
+        Activity = self.env['mail.activity'].with_context(active_test=False)
+        ranking = self._get_mom_partner_ranking(
+            Activity, self._get_mom_domain(filters))
+        return {
+            row['id']: 'background-color: %s; color: %s;' % (
+                row['color'], self._mom_contrast_ink(row['color']))
+            for row in ranking
+        }
+
     def _format_mom_date(self, value):
         """Dates are shown as 07-Sep-2026 throughout the MOM screens."""
         return value.strftime(MOM_DATE_FORMAT) if value else ''
@@ -152,6 +209,7 @@ class ProjectProject(models.Model):
         """Every matching entry, unpaginated, for the PDF."""
         self.ensure_one()
         today = fields.Date.context_today(self)
+        partner_styles = self._get_mom_partner_styles(filters)
         rows = []
         for entry in self._get_mom_entry_records(filters):
             created = (
@@ -164,6 +222,7 @@ class ProjectProject(models.Model):
                 'task': entry.mom_task_id.display_name or entry.res_name or '',
                 'summary': entry.summary or '',
                 'partner': entry.mom_partner_id.display_name or '',
+                'partner_style': partner_styles.get(entry.mom_partner_id.id, ''),
                 'user': entry.user_id.display_name or '',
                 'created': self._format_mom_date(created),
                 'created_date': created.date() if created else False,
@@ -297,10 +356,6 @@ class ProjectProject(models.Model):
 
         kpis = self._get_mom_kpis(Activity, domain, today)
 
-        by_partner = Activity._read_group(
-            domain + [('mom_partner_id', '!=', False)],
-            groupby=['mom_partner_id'], aggregates=['__count'],
-            order='__count DESC', limit=TOP_N)
         by_task = Activity._read_group(
             domain + [('mom_task_id', '!=', False)],
             groupby=['mom_task_id'], aggregates=['__count'],
@@ -316,10 +371,7 @@ class ProjectProject(models.Model):
                 {'label': _('Overdue'), 'value': kpis['overdue'], 'key': 'overdue'},
                 {'label': _('Closed'), 'value': kpis['done'], 'key': 'done'},
             ],
-            'by_partner': [
-                {'id': partner.id, 'label': partner.display_name, 'value': count}
-                for partner, count in by_partner
-            ],
+            'by_partner': self._get_mom_partner_ranking(Activity, domain),
             'by_task': [
                 {'id': task.id, 'label': task.display_name, 'value': count}
                 for task, count in by_task

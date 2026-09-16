@@ -79,7 +79,15 @@
                                         <td><span t-esc="row['sequence']"/></td>
                                         <td><span t-esc="row['task']"/></td>
                                         <td><span t-esc="row['summary']"/></td>
-                                        <td><span t-esc="row['partner']"/></td>
+                                        <!-- Highlighted with the colour this
+                                             contact is drawn in on the
+                                             dashboard's Top Related To chart.
+                                             Contacts outside that chart's top
+                                             ten carry no style and print
+                                             plain. -->
+                                        <td t-att-style="row['partner_style'] or None">
+                                            <span t-esc="row['partner']"/>
+                                        </td>
                                         <td><span t-esc="row['user']"/></td>
                                         <td><span t-esc="row['created']"/></td>
                                         <td><span t-esc="row['end_date']"/></td>

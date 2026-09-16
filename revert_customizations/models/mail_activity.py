@@ -3,7 +3,7 @@ from datetime import datetime, time
 import pytz
 
 from odoo import _, api, fields, models
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 MOM_RES_MODEL = 'project.task'
 
@@ -215,6 +215,48 @@ class MailActivity(models.Model):
             task = self.env[MOM_RES_MODEL].browse(self.res_id).exists()
             if task.partner_id:
                 self.mom_partner_id = task.partner_id
+
+    # ------------------------------------------------------------------
+    # Dashboard actions
+    # ------------------------------------------------------------------
+
+    def action_mom_open_form(self):
+        """Open this entry in Odoo's own activity dialog.
+
+        The MOM dashboard is a client action with no record behind it, so
+        editing an entry goes through the standard activity popup rather than
+        a bespoke form. That popup already carries the MOM fields, and its
+        footer buttons work here because the record is a real one rather than
+        a one2many line being staged on a parent form.
+        """
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('MOM Entry'),
+            'res_model': 'mail.activity',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'views': [(self.env.ref('mail.mail_activity_view_form_popup').id, 'form')],
+            'target': 'new',
+        }
+
+    def action_mom_mark_done(self, feedback=None):
+        """Close MOM entries from the dashboard, recording the closing note.
+
+        A guard over the standard action_feedback rather than a reimplementation
+        of it: the note still reaches the task's chatter the usual way, and
+        keep_done on the MOM type archives the entry instead of deleting it, so
+        it stays in the report as Closed. The guard is what stops the dashboard
+        being a route to completing any activity in the database by id.
+        """
+        if any(not activity.is_mom for activity in self):
+            raise UserError(
+                _('Only MOM entries can be closed from the MOM dashboard.'))
+        open_entries = self.filtered('active')
+        if not open_entries:
+            raise UserError(_('This MOM entry is already closed.'))
+        open_entries.action_feedback(feedback=feedback or False)
+        return True
 
     # ------------------------------------------------------------------
     # CRUD

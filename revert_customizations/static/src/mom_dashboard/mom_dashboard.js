@@ -1,7 +1,8 @@
 /** @odoo-module **/
 
-import { Component, onWillStart, onWillUnmount, useEffect, useRef, useState } from "@odoo/owl";
+import { Component, onMounted, onWillStart, onWillUnmount, useEffect, useRef, useState } from "@odoo/owl";
 import { loadBundle } from "@web/core/assets";
+import { Dialog } from "@web/core/dialog/dialog";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 
@@ -26,11 +27,6 @@ function previewSize() {
         )
     );
 }
-
-const PALETTE = [
-    "#0E6C7A", "#4B7BE5", "#C97A2B", "#5B8C5A", "#8B5CA8",
-    "#B4544E", "#3F7F93", "#A9862F", "#6E7B8B", "#7C5CBF",
-];
 
 function emptyFilters() {
     return {
@@ -117,6 +113,42 @@ export class MomChart extends Component {
     }
 }
 
+/**
+ * Closing note for an entry being marked done. The note is not decoration:
+ * action_feedback posts it to the task's chatter, so it is the record of why
+ * the point was closed.
+ */
+export class MomDoneDialog extends Component {
+    static template = "revert_customizations.MomDoneDialog";
+    static components = { Dialog };
+    static props = {
+        entry: Object,
+        onConfirm: Function,
+        close: Function,
+    };
+
+    setup() {
+        this.state = useState({ feedback: "", busy: false });
+        this.textareaRef = useRef("feedback");
+        onMounted(() => this.textareaRef.el && this.textareaRef.el.focus());
+    }
+
+    async confirm() {
+        // The dialog stays open until the server has actually closed the
+        // entry, so a failure surfaces here rather than looking like success.
+        if (this.state.busy) {
+            return;
+        }
+        this.state.busy = true;
+        try {
+            await this.props.onConfirm(this.state.feedback.trim());
+            this.props.close();
+        } finally {
+            this.state.busy = false;
+        }
+    }
+}
+
 export class MomDashboard extends Component {
     static template = "revert_customizations.MomDashboard";
     static components = { MomChart };
@@ -125,6 +157,7 @@ export class MomDashboard extends Component {
     setup() {
         this.orm = useService("orm");
         this.action = useService("action");
+        this.dialog = useService("dialog");
 
         const params = this.props.action.params || {};
         const context = this.props.action.context || {};
@@ -324,7 +357,9 @@ export class MomDashboard extends Component {
                 {
                     label: "Entries",
                     data: rows.map((row) => row.value),
-                    backgroundColor: rows.map((row, index) => PALETTE[index % PALETTE.length]),
+                    // Colours come from the server so the PDF can highlight
+                    // Related To with the same one the bar is drawn in.
+                    backgroundColor: rows.map((row) => row.color),
                     borderWidth: 0,
                 },
             ],
@@ -435,6 +470,49 @@ export class MomDashboard extends Component {
         const next = this.state.filters.offset + direction * this.state.data.page_size;
         this.state.filters.offset = Math.max(next, 0);
         await this.reload({ keepOffset: true });
+    }
+
+    /**
+     * Reloads the current page after an entry changed, and steps back a page
+     * when closing the last entry on it would otherwise leave the table empty.
+     */
+    async reloadAfterChange() {
+        await this.reload({ keepOffset: true });
+        if (!this.state.data.entries.length && this.state.filters.offset > 0) {
+            this.state.filters.offset = Math.max(
+                this.state.filters.offset - this.state.data.page_size,
+                0
+            );
+            await this.load();
+        }
+    }
+
+    /**
+     * Opens Odoo's own activity dialog for the entry. stopPropagation keeps
+     * the click off the row, which navigates to the task.
+     */
+    async editEntry(entry, ev) {
+        ev.stopPropagation();
+        const action = await this.orm.call("mail.activity", "action_mom_open_form", [
+            [entry.id],
+        ]);
+        await this.action.doAction(action, {
+            onClose: () => this.reloadAfterChange(),
+        });
+    }
+
+    markDone(entry, ev) {
+        ev.stopPropagation();
+        this.dialog.add(MomDoneDialog, {
+            entry,
+            onConfirm: async (feedback) => {
+                await this.orm.call("mail.activity", "action_mom_mark_done", [
+                    [entry.id],
+                    feedback,
+                ]);
+                await this.reloadAfterChange();
+            },
+        });
     }
 
     openTask(taskId) {
