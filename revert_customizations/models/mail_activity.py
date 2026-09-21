@@ -1,6 +1,4 @@
-from datetime import datetime, time
-
-import pytz
+from collections import defaultdict
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -28,13 +26,20 @@ class MailActivity(models.Model):
         max_height=1920,
         help='Photo of the site condition being minuted.'
     )
+    mom_visit_date = fields.Date(
+        string='Visit Date',
+        default=fields.Date.context_today,
+        help='The day the site visit this entry was minuted on took place. '
+             'The Visit No# is the rank of this date among the dates minuted '
+             'in the project.'
+    )
     mom_visit_no = fields.Integer(
         string='Visit No#',
-        default=1,
+        readonly=True,
         copy=False,
-        help='Which site visit this MOM entry belongs to. Defaults to the '
-             'number last used on the project, so a run of entries recorded '
-             'for the same visit share it without being retyped.'
+        help='Which site visit this MOM entry belongs to: the first date '
+             'minuted in the project is visit 1, the next visit 2, and so on. '
+             'Derived from the Visit Date and never set by hand.'
     )
     mom_sequence = fields.Integer(
         string='Sequence',
@@ -146,41 +151,48 @@ class MailActivity(models.Model):
             return False
         return fields.Datetime.context_timestamp(self, timestamp).date()
 
-    @api.model
-    def _mom_day_bounds_utc(self, day):
-        """UTC range covering one calendar day in the user's timezone."""
-        user_tz = pytz.timezone(self.env.user.tz or 'UTC')
-        start = user_tz.localize(datetime.combine(day, time.min))
-        end = user_tz.localize(datetime.combine(day, time.max))
-        return (start.astimezone(pytz.UTC).replace(tzinfo=None),
-                end.astimezone(pytz.UTC).replace(tzinfo=None))
+    # Writes to these can change which visit an entry is in, or which
+    # project's visits it counts towards.
+    _MOM_VISIT_TRIGGERS = frozenset(
+        ['mom_visit_date', 'activity_type_id', 'res_model', 'res_id'])
 
     @api.model
-    def _mom_visit_no_for_date(self, project_id, visit_date=None):
-        """The visit number for a MOM recorded on `visit_date` in this project.
+    def _mom_renumber_visits(self, project_ids):
+        """Give every MOM entry in these projects its visit number.
 
-        A visit is a day on site: every MOM entry recorded on the same date in
-        the same project belongs to the same visit and shares its number. A
-        date with no entries yet opens the next visit.
+        A visit is a day on site and its number is chronological: the earliest
+        date minuted in the project is visit 1, the next date visit 2, and so
+        on. The number is therefore a function of the project's dates, not
+        anything stored per entry, and any change to a date re-ranks the
+        whole project — a back-dated entry moves every later visit up by one.
+        Closed entries count: a visit does not disappear when its points are
+        settled.
+
+        Returns how many entries changed number.
         """
-        if not project_id:
-            return 1
-        visit_date = visit_date or fields.Date.context_today(self)
-        Activity = self.sudo().with_context(active_test=False)
-        base = [
+        project_ids = [project_id for project_id in project_ids if project_id]
+        if not project_ids:
+            return 0
+        entries = self.sudo().with_context(active_test=False).search([
             ('activity_type_id.is_mom', '=', True),
-            ('mom_project_id', '=', project_id),
-        ]
+            ('mom_project_id', 'in', project_ids),
+        ])
+        by_project = defaultdict(list)
+        for entry in entries:
+            by_project[entry.mom_project_id.id].append(entry)
 
-        start, end = self._mom_day_bounds_utc(visit_date)
-        same_day = Activity.search(
-            base + [('create_date', '>=', start), ('create_date', '<=', end)],
-            order='id desc', limit=1)
-        if same_day:
-            return same_day.mom_visit_no or 1
-
-        highest = Activity.search(base, order='mom_visit_no desc', limit=1)
-        return (highest.mom_visit_no or 0) + 1
+        changed = 0
+        for project_entries in by_project.values():
+            dates = sorted({e.mom_visit_date for e in project_entries if e.mom_visit_date})
+            rank = {day: number for number, day in enumerate(dates, start=1)}
+            for entry in project_entries:
+                number = rank.get(entry.mom_visit_date, 0)
+                if entry.mom_visit_no != number:
+                    # Only the number moves, which is not a trigger, so this
+                    # does not re-enter write()'s renumbering.
+                    entry.write({'mom_visit_no': number})
+                    changed += 1
+        return changed
 
     @api.model
     def _mom_next_sequence(self, res_id, exclude_id=False):
@@ -270,6 +282,8 @@ class MailActivity(models.Model):
                     and activity.res_model == MOM_RES_MODEL):
                 activity.mom_sequence = self._mom_next_sequence(
                     activity.res_id, exclude_id=activity.id)
+        self._mom_renumber_visits(
+            set(activities.filtered('is_mom').mapped('mom_project_id').ids))
         return activities
 
     def write(self, vals):
@@ -281,7 +295,17 @@ class MailActivity(models.Model):
             else:
                 leaving_mom = self.filtered('is_mom')
 
+        # Projects whose visits may re-rank: the ones the entries are in now,
+        # and the ones they end up in after the write.
+        renumber = set()
+        if vals.keys() & self._MOM_VISIT_TRIGGERS:
+            renumber |= set(self.filtered('is_mom').mapped('mom_project_id').ids)
+
         res = super().write(vals)
+
+        if vals.keys() & self._MOM_VISIT_TRIGGERS:
+            renumber |= set(self.filtered('is_mom').mapped('mom_project_id').ids)
+            self._mom_renumber_visits(renumber)
 
         if leaving_mom:
             # The fields no longer apply: drop the values so nothing orphaned
@@ -290,6 +314,7 @@ class MailActivity(models.Model):
                 'mom_partner_id': False,
                 'mom_site_photo': False,
                 'mom_sequence': 0,
+                'mom_visit_no': 0,
             })
         for activity in becoming_mom:
             if not activity.mom_sequence and activity.res_model == MOM_RES_MODEL:
@@ -297,4 +322,12 @@ class MailActivity(models.Model):
                     'mom_sequence': self._mom_next_sequence(
                         activity.res_id, exclude_id=activity.id),
                 })
+        return res
+
+    def unlink(self):
+        # Deleting the last entry of a date removes that visit, so the ones
+        # after it close up.
+        project_ids = set(self.filtered('is_mom').mapped('mom_project_id').ids)
+        res = super().unlink()
+        self._mom_renumber_visits(project_ids)
         return res
