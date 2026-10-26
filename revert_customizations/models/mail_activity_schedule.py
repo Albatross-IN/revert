@@ -28,12 +28,14 @@ class MailActivitySchedule(models.TransientModel):
         max_height=1920,
         help='Photo of the site condition being minuted.'
     )
+    # No field default: a default wins over the compute when the dialog opens
+    # (the activity type and records arrive as defaults themselves), so every
+    # entry was offered visit 1 instead of the project's current visit.
     mom_visit_no = fields.Integer(
         string='Visit No#',
         compute='_compute_mom_visit_no',
         store=True,
         readonly=False,
-        default=1,
         help='Defaults to the number last used on this project. Change it and '
              'the next MOM on the project starts from the new number.'
     )
