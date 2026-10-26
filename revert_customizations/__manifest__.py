@@ -1,6 +1,6 @@
 {
     'name': 'Revert Customizations',
-    'version': '18.0.1.7.0',
+    'version': '20.0.1.7.0',
     'category': 'Project',
     'summary': 'Custom project task enhancements with MOM meetings',
     'description': """
@@ -19,7 +19,7 @@
     'license': 'LGPL-3',
     'depends': ['project', 'project_enterprise'],
     'data': [
-        'security/ir.model.access.csv',
+        'security/ir.access.csv',
         'data/mail_activity_type_data.xml',
         'data/mom_sync_action.xml',
         'views/mail_activity_views.xml',

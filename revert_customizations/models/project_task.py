@@ -8,8 +8,9 @@ class ProjectTask(models.Model):
     # Hung off res_id exactly like core's own activity_ids, narrowed to MOM
     # entries by domain. Deliberately NOT keyed on mom_task_id: that is a
     # stored computed field, so the list would silently miss any activity
-    # whose backfill had not run. One2many.read() forces active_test=False,
-    # so closed entries are included without extra handling here or in the view.
+    # whose backfill had not run. Closed entries are archived, and since 20
+    # a One2many drops archived lines on access unless its own context says
+    # active_test=False, so that is set here rather than in each caller.
     mom_activity_ids = fields.One2many(
         'mail.activity',
         'res_id',
@@ -17,6 +18,7 @@ class ProjectTask(models.Model):
             ('res_model', '=', 'project.task'),
             ('activity_type_id.is_mom', '=', True),
         ],
+        context={'active_test': False},
         string='MOM Entries',
         groups='base.group_user',
         help='Minutes of Meeting entries recorded on this task, open and closed.'

@@ -264,6 +264,16 @@ class MailActivity(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        # Values handed over by the Schedule Activity dialog (see
+        # mail.activity.schedule._action_schedule_activities); explicit values
+        # in vals win.
+        schedule_values = self.env.context.get('mom_schedule_values')
+        if schedule_values:
+            Type = self.env['mail.activity.type']
+            for vals in vals_list:
+                if vals.get('activity_type_id') and Type.browse(vals['activity_type_id']).is_mom:
+                    for name, value in schedule_values.items():
+                        vals.setdefault(name, value)
         activities = super().create(vals_list)
         for activity in activities:
             if (activity.is_mom and not activity.mom_sequence

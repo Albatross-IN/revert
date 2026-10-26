@@ -25,9 +25,9 @@
                             </thead>
                             <tbody class="sale_tbody">
                                 <tr t-foreach="o.person_ids" t-as="line">
-                                    <td><span style="padding-left: 20px;" t-esc="line.seq"/></td>
-                                    <td><span t-esc="line.from_client"/></td>
-                                    <td><span t-esc="line.from_architect"/></td>
+                                    <td><span style="padding-left: 20px;" t-out="line.seq"/></td>
+                                    <td><span t-out="line.from_client"/></td>
+                                    <td><span t-out="line.from_architect"/></td>
                                     <td><span t-field="line.from_agency"/></td>
                                 </tr>
                             </tbody>
@@ -49,9 +49,9 @@
                                  a PNG data URI. -->
                             <tbody class="sale_tbody">
                                 <tr t-foreach="o.mom_meeting_ids" t-as="line">
-                                    <td><span style="padding-left: 20px;" t-esc="line.seq"/></td>
-                                    <td><span t-esc="line.remarks"/></td>
-                                    <td><span t-esc="line.related_to"/></td>
+                                    <td><span style="padding-left: 20px;" t-out="line.seq"/></td>
+                                    <td><span t-out="line.remarks"/></td>
+                                    <td><span t-out="line.related_to"/></td>
                                     <td><span t-field="line.end_date"/></td>
                                     <td>
                                         <span t-if="line.site_photo"
@@ -78,13 +78,13 @@
                             </thead>
                             <tbody class="sale_tbody">
                                 <tr t-foreach="o.mom_activity_ids.sorted('mom_sequence')" t-as="line">
-                                    <td><span style="padding-left: 20px;" t-esc="line.mom_sequence"/></td>
+                                    <td><span style="padding-left: 20px;" t-out="line.mom_sequence"/></td>
                                     <td>
-                                        <span t-esc="line.summary"/>
+                                        <span t-out="line.summary"/>
                                         <span t-if="not line.active"
                                               class="badge text-bg-secondary">Closed</span>
                                     </td>
-                                    <td><span t-esc="line.mom_partner_id.display_name"/></td>
+                                    <td><span t-out="line.mom_partner_id.display_name"/></td>
                                     <td><span t-field="line.date_deadline"/></td>
                                     <td>
                                         <span t-if="line.mom_site_photo"
@@ -109,7 +109,6 @@
         <field name="model">project.task</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">revert_customizations.task_report</field>
-        <field name="report_file">revert_customizations.task_report</field>
         <field name="print_report_name">'MOM - %s' % (object.name)</field>
         <field name="binding_model_id" ref="project.model_project_task"/>
         <field name="binding_type">report</field>

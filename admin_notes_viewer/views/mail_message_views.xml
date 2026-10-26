@@ -10,7 +10,7 @@
                 <field name="model" string="Object"/>
                 <field name="record_name" string="Document Name"/>
                 <field name="body" string="Note Content" widget="html"/>
-                <button name="action_open_related_document" type="object" string="Open Document" class="oe_highlight" icon="fa-external-link"/>
+                <button name="action_open_related_document" type="object" string="Open Document" class="oe_highlight" icon="open_in_new"/>
             </list>
         </field>
     </record>
@@ -28,7 +28,7 @@
                 <separator/>
                 <filter string="Notes &amp; Comments" name="type_comment" domain="[('message_type', '=', 'comment')]"/>
                 
-                <group expand="0" string="Group By">
+                <group>
                     <filter string="User (Author)" name="group_by_author" context="{'group_by': 'author_id'}"/>
                     <filter string="Date" name="group_by_date" context="{'group_by': 'date:day'}"/>
                     <filter string="Object Type" name="group_by_model" context="{'group_by': 'model'}"/>

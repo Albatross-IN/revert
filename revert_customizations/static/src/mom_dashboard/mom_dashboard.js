@@ -1,10 +1,9 @@
-/** @odoo-module **/
-
-import { Component, onMounted, onWillStart, onWillUnmount, useEffect, useRef, useState } from "@odoo/owl";
-import { loadBundle } from "@web/core/assets";
+import { Component, onMounted, onWillStart, proxy, signal, t, useProps } from "@odoo/owl";
 import { Dialog } from "@web/core/dialog/dialog";
 import { registry } from "@web/core/registry";
+import { useChart } from "@web/core/utils/chart_hook";
 import { useService } from "@web/core/utils/hooks";
+import { standardActionServiceProps } from "@web/webclient/actions/action_plugin";
 
 // Semantic, not decorative: blue is still to do, red is late, green is settled.
 // No greys — a grey segment is unreadable against the dark theme's ground.
@@ -77,39 +76,23 @@ function emptyFilters() {
 }
 
 /**
- * One canvas, one Chart instance. The instance is destroyed on every data
- * change and on unmount, otherwise Chart.js keeps the old canvas alive and
- * tooltips from the previous render bleed into the new one.
+ * One canvas, one Chart instance. useChart (core) loads the Chart.js bundle,
+ * then destroys and rebuilds the instance after every render and on unmount,
+ * otherwise Chart.js keeps the old canvas alive and tooltips from the
+ * previous render bleed into the new one.
  */
 export class MomChart extends Component {
     static template = "revert_customizations.MomChart";
-    static props = {
-        type: String,
-        chartData: Object,
-        options: { type: Object, optional: true },
-        height: { type: Number, optional: true },
+    props = useProps({
+        type: t.string(),
+        chartData: t.object(),
+        options: t.object().optional(),
+        height: t.number().optional(),
         // Called with the clicked element's { index, datasetIndex }. Its
         // presence is what makes the chart clickable.
-        onSelect: { type: Function, optional: true },
-    };
-
-    setup() {
-        this.canvasRef = useRef("canvas");
-        useEffect(
-            () => {
-                this.renderChart();
-            },
-            () => [this.props.chartData]
-        );
-        onWillUnmount(() => this.destroyChart());
-    }
-
-    destroyChart() {
-        if (this.chart) {
-            this.chart.destroy();
-            this.chart = null;
-        }
-    }
+        onSelect: t.function().optional(),
+    });
+    chart = useChart(() => this.getChartConfig());
 
     /**
      * Chart.js defaults to a fixed dark grey for labels, gridlines and
@@ -117,8 +100,8 @@ export class MomChart extends Component {
      * own colours off the dashboard element and hand them to Chart.js so the
      * chrome follows the bundle Odoo compiled.
      */
-    applyThemeDefaults() {
-        const styles = getComputedStyle(this.canvasRef.el);
+    applyThemeDefaults(canvas) {
+        const styles = getComputedStyle(canvas);
         const ink = styles.getPropertyValue("--mom-ink").trim();
         const rule = styles.getPropertyValue("--mom-rule").trim();
         if (ink) {
@@ -130,12 +113,8 @@ export class MomChart extends Component {
         window.Chart.defaults.font.family = styles.fontFamily;
     }
 
-    renderChart() {
-        this.destroyChart();
-        if (!this.canvasRef.el) {
-            return;
-        }
-        this.applyThemeDefaults();
+    getChartConfig() {
+        this.applyThemeDefaults(this.chart.ref());
         const options = Object.assign(
             {
                 responsive: true,
@@ -154,11 +133,11 @@ export class MomChart extends Component {
                 event.native.target.style.cursor = elements.length ? "pointer" : "default";
             };
         }
-        this.chart = new window.Chart(this.canvasRef.el, {
+        return {
             type: this.props.type,
             data: this.props.chartData,
             options,
-        });
+        };
     }
 }
 
@@ -170,16 +149,16 @@ export class MomChart extends Component {
 export class MomDoneDialog extends Component {
     static template = "revert_customizations.MomDoneDialog";
     static components = { Dialog };
-    static props = {
-        entry: Object,
-        onConfirm: Function,
-        close: Function,
-    };
+    props = useProps({
+        entry: t.object(),
+        onConfirm: t.function(),
+        close: t.function(),
+    });
+    textareaRef = signal.ref();
 
     setup() {
-        this.state = useState({ feedback: "", busy: false });
-        this.textareaRef = useRef("feedback");
-        onMounted(() => this.textareaRef.el && this.textareaRef.el.focus());
+        this.state = proxy({ feedback: "", busy: false });
+        onMounted(() => this.textareaRef() && this.textareaRef().focus());
     }
 
     async confirm() {
@@ -201,7 +180,7 @@ export class MomDoneDialog extends Component {
 export class MomDashboard extends Component {
     static template = "revert_customizations.MomDashboard";
     static components = { MomChart };
-    static props = ["*"];
+    props = useProps({ ...standardActionServiceProps });
 
     setup() {
         this.orm = useService("orm");
@@ -212,7 +191,7 @@ export class MomDashboard extends Component {
         const context = this.props.action.context || {};
         this.projectId = params.project_id || context.active_id;
 
-        this.state = useState({
+        this.state = proxy({
             loading: true,
             error: null,
             data: null,
@@ -221,12 +200,9 @@ export class MomDashboard extends Component {
             preview: null,
         });
 
-        onWillStart(async () => {
-            // Chart.js ships as a lazy bundle in Odoo 18 — without this the
-            // dashboard renders and then dies on the first chart.
-            await loadBundle("web.chartjs_lib");
-            await this.load();
-        });
+        // Chart.js ships as a lazy bundle; each MomChart loads it through
+        // useChart before its first render.
+        onWillStart(() => this.load());
     }
 
     // ------------------------------------------------------------------

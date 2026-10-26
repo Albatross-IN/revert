@@ -84,13 +84,15 @@ class MailActivitySchedule(models.TransientModel):
     def _action_schedule_activities(self):
         """Carry the MOM values into the activity being created.
 
-        activity_schedule() builds its create values from the ambient context,
-        so default_* is enough and the core call stays untouched.
+        activity_schedule() creates the activities under clean_context(), which
+        drops every default_* key, so the values travel on a context key of
+        their own that mail.activity.create() applies to MOM entries. The core
+        call stays untouched.
         """
         if self.activity_type_id.is_mom:
-            self = self.with_context(
-                default_mom_partner_id=self.mom_partner_id.id,
-                default_mom_site_photo=self.mom_site_photo,
-                default_mom_visit_no=self.mom_visit_no or 1,
-            )
+            self = self.with_context(mom_schedule_values={
+                'mom_partner_id': self.mom_partner_id.id,
+                'mom_site_photo': self.mom_site_photo.to_base64() if self.mom_site_photo else False,
+                'mom_visit_no': self.mom_visit_no or 1,
+            })
         return super(MailActivitySchedule, self)._action_schedule_activities()

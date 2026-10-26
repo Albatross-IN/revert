@@ -2,8 +2,8 @@
 <templates xml:space="preserve">
 
     <t t-name="revert_customizations.MomChart">
-        <div class="o_mom_chart_canvas" t-attf-style="height: {{ props.height or 260 }}px;">
-            <canvas t-ref="canvas"/>
+        <div class="o_mom_chart_canvas" t-attf-style="height: {{ this.props.height or 260 }}px;">
+            <canvas t-ref="this.chart.ref"/>
         </div>
     </t>
 
@@ -17,20 +17,20 @@
                      t-on-keydown="(ev) => this.onBackKeydown(ev)">
                     <span class="o_mom_eyebrow">MOM Dashboard</span>
                     <h1>
-                        <i class="fa fa-angle-left o_mom_back_arrow"/>
-                        <span t-esc="state.data ? state.data.project_name : ''"/>
+                        <i class="oi o_mom_back_arrow" data-icon="chevron_left"/>
+                        <span t-out="this.state.data ? this.state.data.project_name : ''"/>
                     </h1>
                 </div>
                 <div class="o_mom_header_actions">
                     <button class="btn btn-link o_mom_reset"
-                            t-if="activeFilterCount"
+                            t-if="this.activeFilterCount"
                             t-on-click="() => this.resetFilters()">
-                        Reset filters (<t t-esc="activeFilterCount"/>)
+                        Reset filters (<t t-out="this.activeFilterCount"/>)
                     </button>
                     <button class="btn btn-sm o_mom_chip"
-                            t-att-disabled="!state.data or !state.data.entries_total"
+                            t-att-disabled="!this.state.data or !this.state.data.entries_total"
                             t-on-click="() => this.printEntries()">
-                        <i class="fa fa-file-pdf-o me-1"/>Print entries
+                        <i class="oi me-1" data-icon="picture_as_pdf"/>Print entries
                     </button>
                 </div>
             </div>
@@ -41,22 +41,22 @@
                        t-as="choice" t-key="choice[0]">
                         <button type="button"
                                 class="btn btn-sm o_mom_chip"
-                                t-att-class="state.filters.status === choice[0] ? 'is-active' : ''"
-                                t-att-aria-pressed="state.filters.status === choice[0] ? 'true' : 'false'"
+                                t-att-class="this.state.filters.status === choice[0] ? 'is-active' : ''"
+                                t-att-aria-pressed="this.state.filters.status === choice[0] ? 'true' : 'false'"
                                 t-on-click="() => this.setStatus(choice[0])">
-                            <t t-esc="choice[1]"/>
+                            <t t-out="choice[1]"/>
                         </button>
                     </t>
                 </div>
 
                 <div class="o_mom_dates">
                     <input type="date" class="form-control form-control-sm"
-                           t-att-value="state.filters.date_from"
+                           t-att-value="this.state.filters.date_from"
                            t-on-change="(ev) => this.setDate('date_from', ev)"
                            aria-label="From date"/>
                     <span class="o_mom_dash">–</span>
                     <input type="date" class="form-control form-control-sm"
-                           t-att-value="state.filters.date_to"
+                           t-att-value="this.state.filters.date_to"
                            t-on-change="(ev) => this.setDate('date_to', ev)"
                            aria-label="To date"/>
                 </div>
@@ -65,29 +65,29 @@
                    t-as="picker" t-key="picker[0]">
                     <div class="o_mom_picker">
                         <button type="button" class="btn btn-sm o_mom_chip"
-                                t-att-class="{'is-active': state.filters[picker[0]].length, 'is-open': state.openPanel === picker[0]}"
+                                t-att-class="{'is-active': this.state.filters[picker[0]].length, 'is-open': this.state.openPanel === picker[0]}"
                                 t-on-click="() => this.togglePanel(picker[0])">
-                            <t t-esc="selectionLabel(picker[0], filterOptions[picker[1]], picker[2])"/>
-                            <i class="fa fa-caret-down ms-1"/>
+                            <t t-out="this.selectionLabel(picker[0], this.filterOptions[picker[1]], picker[2])"/>
+                            <i class="oi ms-1" data-icon="arrow_drop_down"/>
                         </button>
-                        <div class="o_mom_picker_panel" t-if="state.openPanel === picker[0]">
+                        <div class="o_mom_picker_panel" t-if="this.state.openPanel === picker[0]">
                             <div class="o_mom_picker_head">
-                                <span t-esc="picker[2]"/>
+                                <span t-out="picker[2]"/>
                                 <button class="btn btn-link btn-sm p-0"
-                                        t-if="state.filters[picker[0]].length"
+                                        t-if="this.state.filters[picker[0]].length"
                                         t-on-click="() => this.clearSelection(picker[0])">Clear</button>
                             </div>
                             <div class="o_mom_picker_body">
-                                <t t-if="!filterOptions[picker[1]].length">
+                                <t t-if="!this.filterOptions[picker[1]].length">
                                     <div class="o_mom_muted">Nothing recorded yet.</div>
                                 </t>
-                                <label t-foreach="filterOptions[picker[1]]" t-as="option" t-key="option.id"
+                                <label t-foreach="this.filterOptions[picker[1]]" t-as="option" t-key="option.id"
                                        class="o_mom_option">
                                     <input type="checkbox"
-                                           t-att-checked="isSelected(picker[0], option.id)"
+                                           t-att-checked="this.isSelected(picker[0], option.id)"
                                            t-on-change="() => this.toggleSelection(picker[0], option.id)"/>
-                                    <span class="o_mom_option_name" t-esc="option.name"/>
-                                    <span class="o_mom_option_count" t-esc="option.count"/>
+                                    <span class="o_mom_option_name" t-out="option.name"/>
+                                    <span class="o_mom_option_count" t-out="option.count"/>
                                 </label>
                             </div>
                         </div>
@@ -96,42 +96,42 @@
 
                 <label class="o_mom_check">
                     <input type="checkbox"
-                           t-att-checked="state.filters.with_photo"
+                           t-att-checked="this.state.filters.with_photo"
                            t-on-change="() => this.toggleWithPhoto()"/>
                     <span>With photo</span>
                 </label>
             </div>
 
             <div class="o_mom_body">
-                <t t-if="state.error">
-                    <div class="alert alert-danger" t-esc="state.error"/>
+                <t t-if="this.state.error">
+                    <div class="alert alert-danger" t-out="this.state.error"/>
                 </t>
 
-                <t t-elif="state.loading and !state.data">
+                <t t-elif="this.state.loading and !this.state.data">
                     <div class="o_mom_placeholder">Loading MOM entries…</div>
                 </t>
 
-                <t t-elif="state.data">
+                <t t-elif="this.state.data">
                     <!-- Each tile is the filter it counts: pressed while
                          that filter is on, and a click toggles it. -->
-                    <div class="o_mom_kpis" t-att-class="state.loading ? 'o_mom_busy' : ''">
+                    <div class="o_mom_kpis" t-att-class="this.state.loading ? 'o_mom_busy' : ''">
                         <button type="button"
-                                t-foreach="kpiTiles" t-as="tile" t-key="tile.key"
+                                t-foreach="this.kpiTiles" t-as="tile" t-key="tile.key"
                                 class="o_mom_kpi"
                                 t-att-class="{
-                                    'is-active': kpiActive(tile.key),
+                                    'is-active': this.kpiActive(tile.key),
                                     'o_mom_kpi_alert': tile.key === 'overdue',
-                                    'is-hot': tile.key === 'overdue' and state.data.kpis.overdue,
+                                    'is-hot': tile.key === 'overdue' and this.state.data.kpis.overdue,
                                 }"
-                                t-att-aria-pressed="kpiActive(tile.key) ? 'true' : 'false'"
+                                t-att-aria-pressed="this.kpiActive(tile.key) ? 'true' : 'false'"
                                 t-att-title="tile.hint"
                                 t-on-click="() => this.onKpiClick(tile.key)">
-                            <span class="o_mom_kpi_value" t-esc="state.data.kpis[tile.key]"/>
-                            <span class="o_mom_kpi_label" t-esc="tile.label"/>
+                            <span class="o_mom_kpi_value" t-out="this.state.data.kpis[tile.key]"/>
+                            <span class="o_mom_kpi_label" t-out="tile.label"/>
                         </button>
                     </div>
 
-                    <t t-if="!state.data.kpis.total">
+                    <t t-if="!this.state.data.kpis.total">
                         <div class="o_mom_placeholder">
                             No MOM entries match these filters.
                         </div>
@@ -142,18 +142,18 @@
                             <section class="o_mom_card">
                                 <h2>Status split <small class="o_mom_hint">click a segment to filter</small></h2>
                                 <MomChart type="'doughnut'"
-                                          chartData="statusChartData"
-                                          options="statusChartOptions"
-                                          onSelect.bind="onStatusSelect"
+                                          chartData="this.statusChartData"
+                                          options="this.statusChartOptions"
+                                          onSelect.bind="this.onStatusSelect"
                                           height="240"/>
                             </section>
                             <section class="o_mom_card">
                                 <h2>Top Related To <small class="o_mom_hint">click a bar to filter</small></h2>
-                                <t t-if="state.data.by_partner.length">
+                                <t t-if="this.state.data.by_partner.length">
                                     <MomChart type="'bar'"
-                                              chartData="partnerChartData"
-                                              options="partnerChartOptions"
-                                              onSelect.bind="onPartnerSelect"
+                                              chartData="this.partnerChartData"
+                                              options="this.partnerChartOptions"
+                                              onSelect.bind="this.onPartnerSelect"
                                               height="240"/>
                                 </t>
                                 <t t-else="">
@@ -162,12 +162,12 @@
                             </section>
                         </div>
 
-                        <section class="o_mom_card" t-if="state.data.by_period.length">
+                        <section class="o_mom_card" t-if="this.state.data.by_period.length">
                             <h2>Entries by month <small class="o_mom_hint">click a bar to filter</small></h2>
                             <MomChart type="'bar'"
-                                      chartData="periodChartData"
-                                      options="periodChartOptions"
-                                      onSelect.bind="onPeriodSelect"
+                                      chartData="this.periodChartData"
+                                      options="this.periodChartOptions"
+                                      onSelect.bind="this.onPeriodSelect"
                                       height="240"/>
                         </section>
 
@@ -175,18 +175,18 @@
                             <div class="o_mom_table_head">
                                 <h2>Entries</h2>
                                 <div class="o_mom_pager">
-                                    <span t-esc="pageStart"/>–<span t-esc="pageEnd"/>
+                                    <span t-out="this.pageStart"/>–<span t-out="this.pageEnd"/>
                                     <span class="o_mom_muted"> of </span>
-                                    <span t-esc="state.data.entries_total"/>
-                                    <button class="btn btn-sm o_mom_icon_btn" t-att-disabled="!hasPrevious"
+                                    <span t-out="this.state.data.entries_total"/>
+                                    <button class="btn btn-sm o_mom_icon_btn" t-att-disabled="!this.hasPrevious"
                                             aria-label="Previous page"
                                             t-on-click="() => this.goToPage(-1)">
-                                        <i class="fa fa-chevron-left"/>
+                                        <i class="oi" data-icon="chevron_left"/>
                                     </button>
-                                    <button class="btn btn-sm o_mom_icon_btn" t-att-disabled="!hasNext"
+                                    <button class="btn btn-sm o_mom_icon_btn" t-att-disabled="!this.hasNext"
                                             aria-label="Next page"
                                             t-on-click="() => this.goToPage(1)">
-                                        <i class="fa fa-chevron-right"/>
+                                        <i class="oi" data-icon="chevron_right"/>
                                     </button>
                                 </div>
                             </div>
@@ -208,27 +208,27 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr t-foreach="state.data.entries" t-as="entry" t-key="entry.id"
+                                        <tr t-foreach="this.state.data.entries" t-as="entry" t-key="entry.id"
                                             class="o_mom_row"
                                             t-on-click="() => this.openTask(entry.task_id)">
-                                            <td class="o_mom_num" t-esc="entry.sequence"/>
-                                            <td class="o_mom_num" t-esc="entry.visit_no"/>
-                                            <td t-esc="entry.task_name"/>
-                                            <td class="o_mom_remark" t-esc="entry.summary"/>
-                                            <td t-esc="entry.partner_name"/>
-                                            <td t-esc="entry.user_name"/>
+                                            <td class="o_mom_num" t-out="entry.sequence"/>
+                                            <td class="o_mom_num" t-out="entry.visit_no"/>
+                                            <td t-out="entry.task_name"/>
+                                            <td class="o_mom_remark" t-out="entry.summary"/>
+                                            <td t-out="entry.partner_name"/>
+                                            <td t-out="entry.user_name"/>
                                             <td class="o_mom_num" t-att-title="entry.created_full"
-                                                t-esc="entry.created"/>
-                                            <td class="o_mom_num" t-esc="entry.date_deadline"/>
+                                                t-out="entry.created"/>
+                                            <td class="o_mom_num" t-out="entry.date_deadline"/>
                                             <td>
                                                 <img t-if="entry.has_photo" class="o_mom_thumb"
-                                                     t-att-src="photoUrl(entry.id)" alt="Site photo"
+                                                     t-att-src="this.photoUrl(entry.id)" alt="Site photo"
                                                      t-on-mouseenter="(ev) => this.showPreview(entry, ev)"
                                                      t-on-mouseleave="() => this.hidePreview()"/>
                                             </td>
                                             <td>
                                                 <span class="o_mom_badge" t-att-class="'is-' + entry.status"
-                                                      t-esc="entry.status"/>
+                                                      t-out="entry.status"/>
                                             </td>
                                             <!-- Both buttons stop the click reaching
                                                  the row, which opens the task. -->
@@ -237,14 +237,14 @@
                                                         title="Edit this entry"
                                                         aria-label="Edit this entry"
                                                         t-on-click="(ev) => this.editEntry(entry, ev)">
-                                                    <i class="fa fa-pencil"/>
+                                                    <i class="oi" data-icon="edit"/>
                                                 </button>
                                                 <button class="btn btn-sm o_mom_action o_mom_action_done"
                                                         t-if="entry.status !== 'done'"
                                                         title="Mark done with a closing note"
                                                         aria-label="Mark done"
                                                         t-on-click="(ev) => this.markDone(entry, ev)">
-                                                    <i class="fa fa-check"/>
+                                                    <i class="oi" data-icon="check"/>
                                                 </button>
                                             </td>
                                         </tr>
@@ -256,11 +256,11 @@
                 </t>
             </div>
 
-            <div class="o_mom_preview" t-if="state.preview"
-                 t-attf-style="top: {{ state.preview.top }}px; left: {{ state.preview.left }}px; max-width: {{ state.preview.size }}px;">
-                <img t-att-src="state.preview.url" alt="Site photo"/>
-                <div class="o_mom_preview_caption" t-if="state.preview.summary"
-                     t-esc="state.preview.summary"/>
+            <div class="o_mom_preview" t-if="this.state.preview"
+                 t-attf-style="top: {{ this.state.preview.top }}px; left: {{ this.state.preview.left }}px; max-width: {{ this.state.preview.size }}px;">
+                <img t-att-src="this.state.preview.url" alt="Site photo"/>
+                <div class="o_mom_preview_caption" t-if="this.state.preview.summary"
+                     t-out="this.state.preview.summary"/>
             </div>
         </div>
     </t>
@@ -268,11 +268,11 @@
     <t t-name="revert_customizations.MomDoneDialog">
         <Dialog title="'Mark MOM entry done'" size="'md'">
             <div class="o_mom_done_dialog">
-                <p class="o_mom_done_summary" t-esc="props.entry.summary"/>
+                <p class="o_mom_done_summary" t-out="this.props.entry.summary"/>
                 <label class="form-label" for="mom_done_feedback">Closing note</label>
                 <textarea id="mom_done_feedback" class="form-control" rows="4"
-                          t-ref="feedback"
-                          t-model="state.feedback"
+                          t-ref="this.textareaRef"
+                          t-model.proxy="this.state.feedback"
                           placeholder="What was done to close this point?"/>
                 <p class="o_mom_done_hint">
                     The note is posted to the task's chatter. The entry stays in
@@ -280,11 +280,11 @@
                 </p>
             </div>
             <t t-set-slot="footer">
-                <button class="btn btn-primary" t-att-disabled="state.busy"
+                <button class="btn btn-primary" t-att-disabled="this.state.busy"
                         t-on-click="() => this.confirm()">
                     Mark done
                 </button>
-                <button class="btn btn-secondary" t-att-disabled="state.busy"
+                <button class="btn btn-secondary" t-att-disabled="this.state.busy"
                         t-on-click="() => this.props.close()">
                     Discard
                 </button>

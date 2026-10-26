@@ -1,6 +1,6 @@
 {
     'name': 'Admin Notes Viewer',
-    'version': '18.0.1.0.0',
+    'version': '20.0.1.0.0',
     'category': 'Administration',
     'summary': 'View all logged notes and completed activities globally.',
     'description': """
