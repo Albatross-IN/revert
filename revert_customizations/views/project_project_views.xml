@@ -10,18 +10,21 @@
         <field name="arch" type="xml">
             <!-- Visible entry on the card itself, right under the Tasks count.
                  The card's kebab menu only appears on hover, so a dropdown
-                 entry alone is too easy to miss. -->
+                 entry alone is too easy to miss. An <a>: in a card only links
+                 and buttons with name/type are compiled into actions (the
+                 Tasks row above is a plain div; the whole card opens tasks). -->
             <xpath expr="//div[@name='action_view_tasks']" position="after">
-                <div class="d-flex gap-2 align-items-baseline text-muted text-truncate"
-                     name="action_open_mom_dashboard"
-                     type="object"
-                     groups="project.group_project_user"
-                     title="Open the MOM dashboard for this project">
+                <a class="d-flex gap-2 align-items-baseline text-muted text-truncate"
+                   role="button"
+                   name="action_open_mom_dashboard"
+                   type="object"
+                   groups="project.group_project_user"
+                   title="Open the MOM dashboard for this project">
                     <i class="oi oi-filled" data-icon="assignment" title="MOM"/>
                     <span>
                         <field name="mom_activity_count" class="o_value"/> MOM
                     </span>
-                </div>
+                </a>
             </xpath>
             <xpath expr="//div[@name='project_burndown_menu']" position="after">
                 <div class="d-inline-block w-100" role="menuitem" name="mom_dashboard_menu" groups="project.group_project_user">
