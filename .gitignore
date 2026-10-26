@@ -10,3 +10,6 @@ __pycache__/
 .idea/
 *.swp
 .DS_Store
+
+# ETL: module lists generated for non-default sources (ETL_SRC=...)
+tools/etl/target_modules_prod_*.txt
