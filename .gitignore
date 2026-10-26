@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Logs and local runtime output
+*.log
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
