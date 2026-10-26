@@ -91,10 +91,12 @@ class ProjectProject(models.Model):
         elif status == 'done':
             domain += [('active', '=', False)]
 
+        # The date range is about when the visit happened, not when the
+        # point falls due; Overdue stays on the deadline.
         if filters.get('date_from'):
-            domain += [('date_deadline', '>=', filters['date_from'])]
+            domain += [('mom_visit_date', '>=', filters['date_from'])]
         if filters.get('date_to'):
-            domain += [('date_deadline', '<=', filters['date_to'])]
+            domain += [('mom_visit_date', '<=', filters['date_to'])]
         if filters.get('partner_ids'):
             domain += [('mom_partner_id', 'in', filters['partner_ids'])]
         if filters.get('user_ids'):
@@ -126,10 +128,10 @@ class ProjectProject(models.Model):
         }
 
     def _get_mom_by_period(self, Activity, domain):
-        """Entries per month, split open vs closed, oldest first."""
+        """Entries per visit month, split open vs closed, oldest first."""
         grouped = Activity._read_group(
-            domain + [('date_deadline', '!=', False)],
-            groupby=['date_deadline:month', 'active'],
+            domain + [('mom_visit_date', '!=', False)],
+            groupby=['mom_visit_date:month', 'active'],
             aggregates=['__count'],
         )
         buckets = {}
@@ -219,20 +221,16 @@ class ProjectProject(models.Model):
         partner_styles = self._get_mom_partner_styles(filters)
         rows = []
         for entry in self._get_mom_entry_records(filters):
-            created = (
-                fields.Datetime.context_timestamp(self, entry.create_date)
-                if entry.create_date else False)
             rows.append({
                 'entry': entry,
                 'sequence': entry.mom_sequence,
                 'visit_no': entry.mom_visit_no,
+                'visit_date': entry.mom_visit_date,
                 'task': entry.mom_task_id.display_name or entry.res_name or '',
                 'summary': entry.summary or '',
                 'partner': entry.mom_partner_id.display_name or '',
                 'partner_style': partner_styles.get(entry.mom_partner_id.id, ''),
                 'user': entry.user_id.display_name or '',
-                'created': self._format_mom_date(created),
-                'created_date': created.date() if created else False,
                 'end_date': self._format_mom_date(entry.mom_end_date),
                 'status': self._get_mom_entry_status(entry, today).capitalize(),
             })
@@ -241,9 +239,9 @@ class ProjectProject(models.Model):
     def _get_mom_report_groups(self, filters=None):
         """Report rows grouped by visit, each with the date that visit ran.
 
-        The visit date is taken from when its entries were recorded. Entries
-        of one visit normally share a day; when they do not, the span is shown
-        rather than picking one date and implying the rest.
+        A visit number is the rank of one date, so every row in a group
+        shares it. The span fallback only fires for data that predates the
+        rule and has not been renumbered, and costs nothing to keep.
         """
         self.ensure_one()
         groups = {}
@@ -251,8 +249,8 @@ class ProjectProject(models.Model):
             visit_no = row['visit_no'] or 0
             group = groups.setdefault(visit_no, {'visit_no': visit_no, 'rows': [], 'dates': []})
             group['rows'].append(row)
-            if row['created_date']:
-                group['dates'].append(row['created_date'])
+            if row['visit_date']:
+                group['dates'].append(row['visit_date'])
 
         result = []
         for visit_no in sorted(groups):
@@ -306,6 +304,7 @@ class ProjectProject(models.Model):
                 'partner_name': entry.mom_partner_id.display_name or '',
                 'user_name': entry.user_id.display_name or '',
                 'date_deadline': self._format_mom_date(end_date),
+                'visit_date': self._format_mom_date(entry.mom_visit_date),
                 'created': self._format_mom_date(created),
                 'created_full': (
                     created.strftime(MOM_DATE_FORMAT + ' %H:%M') if created else ''),

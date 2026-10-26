@@ -330,11 +330,16 @@ def main():
             )
     src_mom_col = q1(f"""SELECT count(*) FROM information_schema.columns WHERE table_schema='{S}'
                          AND table_name='mail_activity' AND column_name='mom_meeting_id'""")
+    src_visit_date = q1(f"""SELECT count(*) FROM information_schema.columns WHERE table_schema='{S}'
+                            AND table_name='mail_activity' AND column_name='mom_visit_date'""")
     if src_mom_col:
-        # a source already at module 1.1+: its MOM entries were carried, field by field
+        # a source already at module 1.1+: its MOM entries were carried, field by field (and their
+        # visit dates from 1.8.0 on; an older source gets them from the replayed 1.8.0 script)
+        date_cols = (["s.mom_visit_date"], ["t.mom_visit_date"]) if src_visit_date else ([], [])
         compare("MOM fields of carried entries", "mail.activity", "mail_activity",
-                ["s.mom_sequence", "s.mom_visit_no", "pm.new_id", "mm.new_id", "tm.new_id", "jm.new_id"],
-                ["t.mom_sequence", "t.mom_visit_no", "t.mom_partner_id", "t.mom_meeting_id", "t.mom_task_id", "t.mom_project_id"],
+                ["s.mom_sequence", "s.mom_visit_no", "pm.new_id", "mm.new_id", "tm.new_id", "jm.new_id"] + date_cols[0],
+                ["t.mom_sequence", "t.mom_visit_no", "t.mom_partner_id", "t.mom_meeting_id", "t.mom_task_id",
+                 "t.mom_project_id"] + date_cols[1],
                 joins_src="""LEFT JOIN etl_idmap pm ON pm.model='res.partner' AND pm.old_id = s.mom_partner_id
                              LEFT JOIN etl_idmap mm ON mm.model='mom.meeting' AND mm.old_id = s.mom_meeting_id
                              LEFT JOIN etl_idmap tm ON tm.model='project.task' AND tm.old_id = s.mom_task_id
@@ -349,6 +354,14 @@ def main():
     check("MOM entries carry their task + project (dashboard relations)",
           q1("""SELECT count(*) FROM mail_activity a JOIN mail_activity_type t ON t.id = a.activity_type_id
                 WHERE t.is_mom AND (a.mom_task_id IS NULL OR a.mom_project_id IS NULL)""") == 0)
+    check("every MOM entry has a Visit Date",
+          q1("""SELECT count(*) FROM mail_activity a JOIN mail_activity_type t ON t.id = a.activity_type_id
+                WHERE t.is_mom AND a.mom_visit_date IS NULL""") == 0)
+    off_rank = q1("""SELECT count(*) FROM (
+                         SELECT a.mom_visit_no, dense_rank() OVER (PARTITION BY a.mom_project_id ORDER BY a.mom_visit_date) AS rnk
+                         FROM mail_activity a JOIN mail_activity_type t ON t.id = a.activity_type_id
+                         WHERE t.is_mom AND a.mom_project_id IS NOT NULL) r WHERE r.mom_visit_no <> r.rnk""")
+    check("Visit No# is the rank of the Visit Date in its project (1.8.0 rule)", off_rank == 0, f"{off_rank} off")
     photos_lines = q1(f"SELECT count(*) FROM {S}.ir_attachment WHERE res_model='mom.meeting' AND res_field='site_photo'")
     photos_acts = q1("""SELECT count(*) FROM ir_attachment a JOIN mail_activity m ON m.id = a.res_id
                         WHERE a.res_model='mail.activity' AND a.res_field='mom_site_photo' AND m.mom_meeting_id IS NOT NULL""")
@@ -356,7 +369,8 @@ def main():
     if a.oracle:
         print(f"   oracle: {a.oracle} (an 18 DB that ran the real upgrade on this data)")
         oc = psycopg2.connect(dbname=a.oracle).cursor()
-        sel = """SELECT pj.name->>'en_US', t.name, t.create_date, a.mom_sequence, a.mom_visit_no, a.summary, md5(coalesce(a.note, '')), a.date_deadline,
+        sel = """SELECT pj.name->>'en_US', t.name, t.create_date, a.mom_sequence, a.mom_visit_no, a.mom_visit_date, a.summary,
+                        md5(coalesce(a.note, '')), a.date_deadline,
                         u.login, p.name, a.create_date, a.active, coalesce(ph.checksum, '-')
                  FROM mail_activity a JOIN project_task t ON t.id = a.res_id LEFT JOIN project_project pj ON pj.id = t.project_id
                  LEFT JOIN res_users u ON u.id = a.user_id LEFT JOIN res_partner p ON p.id = a.mom_partner_id
@@ -366,7 +380,7 @@ def main():
         want_rows = sorted(oc.fetchall(), key=lambda r: tuple(map(str, r)))
         got_rows = sorted(qall(sel), key=lambda r: tuple(map(str, r)))
         diff = [(w, g) for w, g in zip(want_rows, got_rows) if w != g]
-        check("MOM upgrade replay == oracle (task, Sr. No., visit, remark, note, end date, assignee, Related To, "
+        check("MOM upgrade replay == oracle (task, Sr. No., visit, visit date, remark, note, end date, assignee, Related To, "
               "created, closed, photo checksum)", len(want_rows) == len(got_rows) and not diff,
               f"{len(got_rows)}/{len(want_rows)} entries" + (f"; first diff {diff[0]}" if diff else ""))
     elif not src_mom_col:

@@ -6,11 +6,14 @@
   every open and closed activity of a migrated record. On a source already at module 1.1+ the MOM
   fields (Related To, visit, sequence, legacy line) are carried; an older source has none.
 * the module upgrade: production on 18 runs revert_customizations at whatever version the
-  source records (18.0.1.0.0 on the 2026-08-31 backup); the target runs 20.0.1.7.0. Every
+  source records (18.0.1.0.0 on the 2026-08-31 backup); the target runs 20.0.1.8.0. Every
   migration script of the module newer than the source version is run on the target, in order,
   exactly as an upgrade on 18 would have run them: 1.1.0 turns each legacy MOM line into a closed
   MOM activity (with its photo), 1.2.0 links, 1.4.0 restores the real creation date, 1.6.0
-  numbers the site visits by date. Runs after the chatter phase (photos must exist)."""
+  numbers the site visits by date, 1.8.0 gives every entry a Visit Date and ranks the visits by
+  it. Folders are compared on the module part only (18.0.1.6.0 and 20.0.1.8.0 are 1.6.0 and
+  1.8.0), since the scripts written on 20 also have to run against an 18 source. Runs after the
+  chatter phase (photos must exist)."""
 import importlib.util
 import logging
 import os
@@ -54,7 +57,8 @@ ACTIVITY_SEQ = FuncStep("mail.activity.sequence", _activity_sequence)
 
 
 def _version_key(v):
-    return tuple(int(x) for x in v.split("."))
+    """The module part of a version: 18.0.1.6.0 and 20.0.1.6.0 are both (1, 6, 0)."""
+    return tuple(int(x) for x in v.split(".")[-3:])
 
 
 def _module_upgrade(engine, ctx):

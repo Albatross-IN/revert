@@ -21,6 +21,11 @@
                            required="is_mom"
                            options="{'no_create_edit': True}"/>
                 </div>
+                <div class="o_outlined d-flex align-items-baseline mb-2 gap-2" name="mom_visit_date_row" invisible="not is_mom">
+                    <i class="oi oi-filled" data-icon="location_on" title="Visit Date"/>
+                    <span class="text-muted text-nowrap">Visit Date</span>
+                    <field name="mom_visit_date" nolabel="1" class="w-100" required="is_mom"/>
+                </div>
                 <div class="o_outlined d-flex align-items-baseline mb-2 gap-2" name="mom_visit_row" invisible="not is_mom">
                     <i class="oi" data-icon="tag" title="Visit No#"/>
                     <span class="text-muted text-nowrap">Visit No#</span>
@@ -46,9 +51,9 @@
     </record>
 
     <!-- FR-07: the form behind a row of the MOM Entries list on the task.
-         Only the remark is editable there; the rest of an entry stays owned by
-         the Activities widget in the chatter, which is where entries are
-         created and closed. Primary, so it applies only where project.task
+         Only the remark and the visit date are editable there; the rest of an
+         entry stays owned by the Activities widget in the chatter, which is
+         where entries are created and closed. Primary, so it applies only where project.task
          asks for it by form_view_ref and never replaces the generic activity
          popup. The core footer goes: inside a one2many the edit is held on the
          task until the task itself is saved, so the activity's own Schedule /
@@ -78,9 +83,6 @@
                 <attribute name="readonly">1</attribute>
             </field>
             <field name="mom_partner_id" position="attributes">
-                <attribute name="readonly">1</attribute>
-            </field>
-            <field name="mom_visit_no" position="attributes">
                 <attribute name="readonly">1</attribute>
             </field>
             <field name="mom_site_photo" position="attributes">
@@ -120,10 +122,10 @@
                 </div>
             </xpath>
             <xpath expr="//div[hasclass('o_activity_details')]/div[.//field[@name='activity_user_id']]" position="after">
-                <div class="o_outlined d-flex align-items-baseline mb-2 gap-2" name="mom_visit_row" invisible="not is_mom">
-                    <i class="oi" data-icon="tag" title="Visit No#"/>
-                    <span class="text-muted text-nowrap">Visit No#</span>
-                    <field name="mom_visit_no" nolabel="1" class="w-100"/>
+                <div class="o_outlined d-flex align-items-baseline mb-2 gap-2" name="mom_visit_date_row" invisible="not is_mom">
+                    <i class="oi oi-filled" data-icon="location_on" title="Visit Date"/>
+                    <span class="text-muted text-nowrap">Visit Date</span>
+                    <field name="mom_visit_date" nolabel="1" class="w-100" required="is_mom"/>
                 </div>
                 <div class="o_outlined d-flex align-items-baseline mb-2 gap-2" name="mom_sequence_row"
                      invisible="not is_mom or not mom_sequence">

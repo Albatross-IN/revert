@@ -46,9 +46,9 @@
                             No MOM entries match the selected filters.
                         </p>
 
-                        <!-- One block per visit: the visit number and the date
-                             it ran head the group, so they are stated once
-                             instead of repeated down a column. -->
+                        <!-- One block per visit: the visit number and its
+                             Visit Date head the group, so the date is stated
+                             once instead of repeated down a column. -->
                         <div t-foreach="visits" t-as="visit" class="mb-4">
                             <div class="o_mom_visit_head" t-if="len(visits) > 1">
                                 <span class="o_mom_visit_no">Visit <t t-out="visit['visit_no']"/></span>
@@ -68,7 +68,6 @@
                                         <th>Remark / Observation / Suggestion</th>
                                         <th style="width:110px;">Related To</th>
                                         <th style="width:110px;">Assigned to</th>
-                                        <th style="width:90px;">Created</th>
                                         <th style="width:90px;">End Date</th>
                                         <th style="width:80px;">Site Photo</th>
                                         <th style="width:70px;">Status</th>
@@ -89,7 +88,6 @@
                                             <span t-out="row['partner']"/>
                                         </td>
                                         <td><span t-out="row['user']"/></td>
-                                        <td><span t-out="row['created']"/></td>
                                         <td><span t-out="row['end_date']"/></td>
                                         <td>
                                             <span t-if="row['entry'].mom_site_photo"

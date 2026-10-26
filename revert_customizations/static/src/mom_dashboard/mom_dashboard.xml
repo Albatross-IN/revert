@@ -200,7 +200,7 @@
                                             <th>Remark</th>
                                             <th>Related To</th>
                                             <th>Assigned to</th>
-                                            <th>Created</th>
+                                            <th>Visit Date</th>
                                             <th>End Date</th>
                                             <th>Photo</th>
                                             <th>Status</th>
@@ -217,8 +217,12 @@
                                             <td class="o_mom_remark" t-out="entry.summary"/>
                                             <td t-out="entry.partner_name"/>
                                             <td t-out="entry.user_name"/>
-                                            <td class="o_mom_num" t-att-title="entry.created_full"
-                                                t-out="entry.created"/>
+                                            <!-- Created moves to the tooltip: still
+                                                 useful as an audit stamp, no longer
+                                                 what the column means. -->
+                                            <td class="o_mom_num"
+                                                t-att-title="'Recorded ' + entry.created_full"
+                                                t-out="entry.visit_date"/>
                                             <td class="o_mom_num" t-out="entry.date_deadline"/>
                                             <td>
                                                 <img t-if="entry.has_photo" class="o_mom_thumb"

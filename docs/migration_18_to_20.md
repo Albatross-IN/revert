@@ -1,6 +1,6 @@
 # Revert: Odoo 18 → Odoo 20 migration
 
-Code: this repository, branch `20.0` (`revert_customizations` 20.0.1.7.0, `admin_notes_viewer` 20.0.1.0.0).
+Code: this repository, branch `20.0` (`revert_customizations` 20.0.1.8.0, `admin_notes_viewer` 20.0.1.0.0).
 Data: `tools/etl/` (fresh Odoo 20 database + explicit transformation of the Odoo 18 data).
 Runtime directory: `/opt/odoo20/etl_revert` (staged source filestore, logs, QA output).
 
@@ -52,11 +52,17 @@ mode (`--delta-t0`, inherited, not exercised on Revert).
 
 The pipeline adapts to the module version found in the backup:
 * `revert_customizations` 18.0.1.0.0 (the 2026-08-31 backup): no MOM activities exist yet; the
-  module's own migration scripts 1.1.0 → 1.6.0 are replayed on the target (legacy MOM lines become
-  closed MOM activities with their photos, visits numbered by date) — exactly what upgrading production
-  would have done. Proven identical to an 18 database that really ran that upgrade (`verify --oracle`).
+  module's own migration scripts 1.1.0 → 1.8.0 are replayed on the target (legacy MOM lines become
+  closed MOM activities with their photos, every entry gets a Visit Date, visits are numbered by the
+  rank of that date) — exactly what upgrading production would have done. Proven identical to an 18
+  database that really ran that upgrade to 18.0.1.8.0 (`verify --oracle`).
 * 18.0.1.6.0 / 1.7.0 (proven with the local dev copy as a second source): the MOM activities and their
-  fields are carried as they are; no migration script is replayed.
+  fields are carried as they are; only the 1.8.0 script (Visit Date) is replayed.
+* 18.0.1.8.0: carried as they are, Visit Date included; no migration script is replayed.
+
+Migration folders are compared on the module part of the version (`18.0.1.6.0` is 1.6.0,
+`20.0.1.8.0` is 1.8.0). Scripts written on 20 are named `20.0.x` so that a 20 database also runs them
+on `-u` (a 20.0.1.7.0 database upgraded to 20.0.1.8.0 gets its Visit Dates the same way).
 
 ## 3. What the ETL does (18 → 20 decisions)
 
@@ -79,12 +85,13 @@ The pipeline adapts to the module version found in the backup:
 
 ## 4. Verification
 
-`python -m tools.etl.verify --db <target> [--oracle <18 db that ran the module upgrade>]` — 97 checks:
+`python -m tools.etl.verify --db <target> [--oracle <18 db that ran the module upgrade>]` — 99 checks:
 every source record mapped once; **field-by-field comparison** of every task (23 fields incl. assignees,
 tags, Studio value), project, stage, update, MOM line, responsibility, partner, user (password hash,
 TOTP, signature) and activity; group memberships (no right lost, none gained); menu visibility; Studio
-fields and views; MOM upgrade replay vs the oracle (task, Sr. No., visit, remark, note, end date,
-assignee, Related To, created, closed, photo checksum); chatter per model; attachments by checksum and
+fields and views; MOM upgrade replay vs the oracle (task, Sr. No., visit, visit date, remark, note, end date,
+assignee, Related To, created, closed, photo checksum); every MOM entry has a Visit Date and its Visit No#
+is that date's rank in the project; chatter per model; attachments by checksum and
 size; **every file in the 20 filestore re-hashed (sha1) against its checksum**; channel members;
 no active cron, no outgoing mail server, no queued e-mail; prod ids kept and record links inside messages
 open the same record; **every common column of the id-kept tables compared row by row** (9 explained
@@ -96,12 +103,13 @@ Functional QA (on a throwaway clone, never on a database people use):
 tools/etl/qa/browser_qa.py --base http://localhost:8174 --db <clone> --menus /dev/null --out /opt/odoo20/etl_revert/qa
 ```
 
-18 browser checks (Chrome headless): every visible menu in normal and debug mode opens without a JS
+19 browser checks (Chrome headless): every visible menu in normal and debug mode opens without a JS
 error; home-screen app icons and the company logo are the real images; the MOM entry on a project card
 opens that project's dashboard (and its URL reloads); the MOM dashboard of every project matches the database (KPIs, charts, rows) and its filters
 work; "Print entries" PDF; task MOM tab (closed entries included); Studio field; chatter with tracked
-changes; attachment downloads byte-identical; "Create MOM" (Related To, photo, next Sr. No., visit
-No#); mark done with a closing note; task MOM PDF; Discuss; Gantt; a non-admin project user.
+changes; attachment downloads byte-identical; "Create MOM" (Related To, photo, next Sr. No., Visit
+Date today and its visit No#); back-dating that entry on the task's MOM tab makes it visit 1 and moves
+every other visit of the project up by one; mark done with a closing note; task MOM PDF; Discuss; Gantt; a non-admin project user.
 The MOM dashboard payload of all 12 projects was also compared between the 18 code on an 18 database
 and the 20 code on the migrated one: identical.
 
@@ -129,9 +137,11 @@ comparisons, **0 unexplained differences**; the explained ones are listed below.
 * "Create MOM": 20 creates the activity under `clean_context()` (drops `default_*`), so the MOM values
   travel on `mom_schedule_values`.
 * MOM dashboard: OWL 3 (`useProps`, `proxy`, `signal.ref`, core `useChart`, `this.`-scoped templates).
-* **Bug fixed (also present on production 18):** the "Create MOM" dialog always offered Visit No# 1
-  because the wizard field had `default=1`, which wins over its compute; it now offers today's visit or
-  the project's last visit + 1, as its help text says.
+* Visit Date (main's "visit date field", 18.0.1.8.0) is merged into 20.0 and ported: the Visit Date
+  row follows the icon-row layout of the 20 dialogs, the wizard hands it over on `mom_schedule_values`,
+  and the 1.8.0 scripts live in `migrations/20.0.1.8.0`. On 20 a date field is a button until clicked.
+  (This replaces the earlier 20-only fix of the wizard's Visit No# default: 1.8.0 removed that field
+  from the dialog; the number is now the rank of the date and is never typed.)
 
 * The MOM entry on the project card is a link (`<a>`): in a 20 card only links and buttons become actions.
 

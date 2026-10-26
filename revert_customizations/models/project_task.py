@@ -74,6 +74,18 @@ class ProjectTask(models.Model):
             return True
         return super().message_subscribe(partner_ids=partner_ids, subtype_ids=subtype_ids)
 
+    def write(self, vals):
+        # A task moving project takes its MOM entries with it, which re-ranks
+        # the visits of both projects. mom_project_id follows the move on its
+        # own (stored related), so only the renumbering has to be asked for.
+        moving = self if 'project_id' in vals else self.browse()
+        before = set(moving.mapped('project_id').ids)
+        res = super().write(vals)
+        if moving:
+            self.env['mail.activity']._mom_renumber_visits(
+                before | set(moving.mapped('project_id').ids))
+        return res
+
     def action_create_mom(self):
         """Open the Schedule Activity dialog with MOM already selected.
 

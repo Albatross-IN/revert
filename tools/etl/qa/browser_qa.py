@@ -10,7 +10,8 @@
 3. task form: MOM tab lists open AND closed entries, legacy lines, Studio field shown, chatter
    history with tracked changes, attachments download byte-identical.
 4. "Create MOM" (Schedule Activity dialog): Related To + site photo + summary -> a MOM entry with
-   the next Sr. No. and today's visit number (checked in the database).
+   the next Sr. No., Visit Date today and that date's visit number (checked in the database); then
+   its Visit Date is back-dated on the task's MOM tab -> it becomes visit 1, the others move up.
 5. mark that entry done from the dashboard with a closing note -> archived, note in the chatter.
 6. both PDF reports (task MOM PDF, MOM entries PDF).
 7. a non-admin project user: login with the password of the clone, projects, My Tasks, dashboard.
@@ -304,16 +305,17 @@ def main():
         # ------------------------------------------------------------ 4. Create MOM
         partner = q("SELECT id, name FROM res_partner WHERE active AND name IS NOT NULL AND id NOT IN (SELECT partner_id FROM res_users) ORDER BY id LIMIT 1")[0]
         before = q("SELECT coalesce(max(mom_sequence), 0) FROM mail_activity WHERE res_model='project.task' AND res_id=%s", (tid,))[0][0]
-        # visit rule: the visit already used today on the project (user's timezone), else the last visit + 1
-        want_visit = q("""WITH tz AS (SELECT coalesce((SELECT p.tz FROM res_users u JOIN res_partner p ON p.id = u.partner_id
-                                                       WHERE u.id = 2), 'UTC') AS z),
-                               pr AS (SELECT project_id AS id FROM project_task WHERE id = %s)
-                          SELECT coalesce(
-                              (SELECT a.mom_visit_no FROM mail_activity a, tz, pr WHERE a.mom_project_id = pr.id
-                                 AND (a.create_date AT TIME ZONE 'UTC' AT TIME ZONE tz.z)::date = (now() AT TIME ZONE tz.z)::date
-                               ORDER BY a.id DESC LIMIT 1),
-                              (SELECT coalesce(max(a.mom_visit_no), 0) + 1 FROM mail_activity a, pr WHERE a.mom_project_id = pr.id))""",
-                       (tid,))[0][0]
+        # visit rule (1.8.0): the Visit Date defaults to today (user's timezone) and the Visit No# is that
+        # date's rank among the dates minuted in the project
+        today, want_visit = q("""WITH tz AS (SELECT coalesce((SELECT p.tz FROM res_users u JOIN res_partner p ON p.id = u.partner_id
+                                                             WHERE u.id = 2), 'UTC') AS z),
+                                     d AS (SELECT (now() AT TIME ZONE tz.z)::date AS today FROM tz)
+                                SELECT d.today, (SELECT count(DISTINCT x) FROM (
+                                           SELECT a.mom_visit_date AS x FROM mail_activity a JOIN mail_activity_type t ON t.id = a.activity_type_id
+                                           WHERE t.is_mom AND a.mom_project_id = (SELECT project_id FROM project_task WHERE id = %s)
+                                             AND a.mom_visit_date <= d.today
+                                           UNION SELECT d.today) u)
+                                FROM d""", (tid,))[0]
         s.goto(f"/odoo/action-{act['project.action_view_task']}/{tid}", wait=".o_form_view")
         s.page.click("button[name=action_create_mom]")
         s.page.wait_for_selector(".modal .o_field_widget[name=mom_partner_id] input", timeout=30000)
@@ -328,21 +330,69 @@ def main():
         s.page.locator(".modal .o_field_widget[name=mom_site_photo] input[type=file]").set_input_files(tmp)
         time.sleep(1.5)
         shown_seq = s.page.locator(".modal .o_field_widget[name=mom_sequence]").inner_text().strip()
-        shown_visit = s.page.locator(".modal .o_field_widget[name=mom_visit_no] input").input_value()
+        # a date field is a button on 20 (short label, full date in its value) until it is clicked
+        shown_date = s.page.locator(".modal .o_field_widget[name=mom_visit_date] button").get_attribute("value")
+        visit_no_in_dialog = s.page.locator(".modal .o_field_widget[name=mom_visit_no]").count()
         s.shot("create_mom_dialog")
         s.page.locator(".modal-footer button[name=action_schedule_activities]").click()
         s.page.wait_for_selector(".modal", state="detached", timeout=30000)
         time.sleep(1.5)
         row = q("""SELECT a.id, a.mom_sequence, a.mom_visit_no, a.mom_partner_id, a.active, a.mom_task_id, a.mom_project_id,
-                          (SELECT count(*) FROM ir_attachment ph WHERE ph.res_model='mail.activity' AND ph.res_field='mom_site_photo' AND ph.res_id=a.id)
+                          (SELECT count(*) FROM ir_attachment ph WHERE ph.res_model='mail.activity' AND ph.res_field='mom_site_photo' AND ph.res_id=a.id),
+                          a.mom_visit_date
                    FROM mail_activity a WHERE a.summary = %s""", (summary,))
         errs = s.take_errors()
         ok = bool(row) and row[0][1] == before + 1 and row[0][2] == want_visit and row[0][3] == partner[0] and row[0][4] \
-            and row[0][7] == 1 and row[0][5] == tid and shown_visit == str(want_visit)
-        record("Create MOM: Related To, photo, next Sr. No., today's visit No#, task + project relation", ok and not errs,
-               f"db row (seq, visit, partner, active, task, project, photos)={row[0][1:] if row else None}; dialog showed "
-               f"Sr. No. {shown_seq!r} / visit {shown_visit!r}; expected {before + 1} / {want_visit} {errs[:1]}")
+            and row[0][7] == 1 and row[0][5] == tid and row[0][8] == today and shown_date and not visit_no_in_dialog
+        record("Create MOM: Related To, photo, next Sr. No., Visit Date today and its visit No#, task + project relation",
+               ok and not errs,
+               f"db row (seq, visit, partner, active, task, project, photos, visit date)={row[0][1:] if row else None}; dialog "
+               f"showed Sr. No. {shown_seq!r} / Visit Date {shown_date!r} / Visit No# field {visit_no_in_dialog}; "
+               f"expected {before + 1} / {want_visit} / {today} {errs[:1]}")
         new_id = row[0][0] if row else None
+
+        # ------------------------------------------------------------ 4b. back-date it on the task's MOM tab
+        # The Visit Date is editable in the MOM entry form; dating the entry before every other visit of the
+        # project makes it visit 1 and moves every other visit up by one.
+        if new_id:
+            proj = row[0][6]
+            ranks_before = dict(q("""SELECT a.id, a.mom_visit_no FROM mail_activity a JOIN mail_activity_type t ON t.id = a.activity_type_id
+                                     WHERE t.is_mom AND a.mom_project_id = %s AND a.id <> %s""", (proj, new_id)))
+            first = q("""SELECT min(a.mom_visit_date) FROM mail_activity a JOIN mail_activity_type t ON t.id = a.activity_type_id
+                         WHERE t.is_mom AND a.mom_project_id = %s""", (proj,))[0][0]
+            back = first.replace(day=1) if first.day > 1 else first.replace(year=first.year - 1)
+            fmt = q("""SELECT l.date_format FROM res_users u JOIN res_partner p ON p.id = u.partner_id
+                       JOIN res_lang l ON l.code = p.lang WHERE u.id = 2""")[0][0]
+            s.goto(f"/odoo/action-{act['project.action_view_task']}/{tid}", wait=".o_form_view")
+            s.page.locator(".o_notebook .nav-link", has_text="MOM Meetings").first.click()
+            time.sleep(1.5)
+            entry_row = s.page.locator(".o_field_widget[name=mom_activity_ids] .o_data_row", has_text=summary)
+            for _ in range(10):   # the list is paged; the new entry is on the last page
+                if entry_row.count():
+                    break
+                s.page.locator(".o_field_widget[name=mom_activity_ids] .o_pager_next").click()
+                time.sleep(1)
+            entry_row.first.click()
+            date_button = s.page.locator(".modal .o_field_widget[name=mom_visit_date] button")
+            date_button.wait_for(timeout=15000)
+            date_button.click()
+            date_input = s.page.locator(".modal .o_field_widget[name=mom_visit_date] input")
+            date_input.fill(back.strftime(fmt))
+            date_input.press("Enter")
+            time.sleep(0.5)
+            s.shot("mom_entry_backdate")
+            s.page.locator(".modal-footer .btn-primary").first.click()
+            s.page.wait_for_selector(".modal", state="detached", timeout=30000)
+            s.page.locator(".o_form_button_save").click()
+            time.sleep(2)
+            moved = q("SELECT mom_visit_date, mom_visit_no FROM mail_activity WHERE id = %s", (new_id,))[0]
+            ranks_after = dict(q("""SELECT a.id, a.mom_visit_no FROM mail_activity a JOIN mail_activity_type t ON t.id = a.activity_type_id
+                                    WHERE t.is_mom AND a.mom_project_id = %s AND a.id <> %s""", (proj, new_id)))
+            shifted = all(ranks_after[i] == n + 1 for i, n in ranks_before.items())
+            errs = s.take_errors()
+            record("Visit Date edited on the task's MOM tab: entry becomes visit 1, the project's visits re-rank",
+                   moved == (back, 1) and shifted and not errs,
+                   f"entry now {moved}, typed {back.strftime(fmt)!r}; {len(ranks_before)} other entries all +1: {shifted} {errs[:1]}")
 
         # ------------------------------------------------------------ 5. mark it done from the dashboard
         if new_id:

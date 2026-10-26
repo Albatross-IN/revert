@@ -101,11 +101,6 @@ class MomMeeting(models.Model):
         # that share a follower make it remove the same partner twice and raise
         # "list.remove(x): x not in list".
         vals_by_project = defaultdict(list)
-        # Per project: which visit number each calendar date belongs to, and
-        # the highest number handed out so far. Seeded from what is already in
-        # the database so a re-run continues the same numbering.
-        visit_by_date = {}
-        highest_visit = {}
         created = 0
         unmatched = 0
 
@@ -119,20 +114,6 @@ class MomMeeting(models.Model):
             taken = set(existing.mapped('mom_sequence'))
             highest = max(taken | {0})
 
-            project_id = task.project_id.id
-            if project_id not in visit_by_date:
-                dates, top = {}, 0
-                for other in Activity.sudo().with_context(active_test=False).search([
-                    ('activity_type_id.is_mom', '=', True),
-                    ('mom_project_id', '=', project_id),
-                ]):
-                    day = Activity._mom_local_date(other.create_date)
-                    visit_no = other.mom_visit_no or 1
-                    dates.setdefault(day, visit_no)
-                    top = max(top, visit_no)
-                visit_by_date[project_id] = dates
-                highest_visit[project_id] = top
-
             for line in task_lines:
                 # Keep the legacy number when it is free, otherwise append
                 # after the highest in use so no two entries share a Sr. No.
@@ -144,14 +125,10 @@ class MomMeeting(models.Model):
                 taken.add(sequence)
                 highest = max(highest, sequence)
 
-                # A visit is a day on site: every line recorded on the same
-                # date in this project shares one visit number.
+                # The legacy line never had a visit date of its own, so the
+                # day it was recorded is the best evidence of when the visit
+                # was. The visit number is ranked from it on create.
                 day = Activity._mom_local_date(line.create_date)
-                dates = visit_by_date[project_id]
-                if day not in dates:
-                    highest_visit[project_id] += 1
-                    dates[day] = highest_visit[project_id]
-                visit_no = dates[day]
 
                 partner = Partner
                 if line.related_to:
@@ -180,7 +157,7 @@ class MomMeeting(models.Model):
                     'mom_partner_id': partner.id or False,
                     'mom_site_photo': line.site_photo or False,
                     'mom_sequence': sequence,
-                    'mom_visit_no': visit_no,
+                    'mom_visit_date': day,
                     'mom_meeting_id': line.id,
                     'active': False,
                     # Carry the legacy line's own audit stamps across. The ORM
