@@ -304,6 +304,11 @@ class OrmStep:
     after:      fn(ctx) called once when the step completes (post hooks)
     context:    extra ORM context.             batch: create batch size
     legacy:     18 column holding the v13 id to store in etl_idmap.legacy13_id (auto-detected if omitted)
+    keep_ids:   create every new record with its 18 id (records are created one by one, the table's id
+                sequence pointed at the 18 id first). URLs, bookmarks and record links in messages then
+                stay valid. An id already taken on the target falls back to a fresh id (reported).
+    id_sequences: fn(row) -> {table: id}: further sequences to point before each create (the partner a
+                res.users create makes on its own)
     lane:       'orm'
     """
 
@@ -330,6 +335,8 @@ class OrmStep:
         self.write_mapped = kw.pop("write_mapped", False)     # rows already in etl_idmap are written, not skipped
         self.retry = kw.pop("retry", None)                    # fn(vals, error_text) -> new vals to retry once, or None
         self.key_allow_null = kw.pop("key_allow_null", False)  # natural key may contain empty values (matched as = False)
+        self.keep_ids = kw.pop("keep_ids", False)
+        self.id_sequences = kw.pop("id_sequences", None)
         self.lane = "orm"
         if kw:
             raise TypeError(f"unknown OrmStep options: {kw}")
@@ -560,8 +567,9 @@ class Engine:
             {ujoin}
             WHERE m.model = %s AND x.id = m.new_id""").format(
             t=psql.Identifier(table), S=psql.Identifier(config.SRC_SCHEMA),
-            uids=psql.SQL(", create_uid = COALESCE(u1.new_id, CASE WHEN s.create_uid IN (1,2) THEN s.create_uid END, 1),"
-                          " write_uid = COALESCE(u2.new_id, CASE WHEN s.write_uid IN (1,2) THEN s.write_uid END, 1)") if set_uid else psql.SQL(""),
+            # a creator 18 never recorded stays unrecorded; an unmapped one becomes the system user
+            uids=psql.SQL(", create_uid = CASE WHEN s.create_uid IS NULL THEN NULL ELSE COALESCE(u1.new_id, CASE WHEN s.create_uid IN (1,2) THEN s.create_uid END, 1) END,"
+                          " write_uid = CASE WHEN s.write_uid IS NULL THEN NULL ELSE COALESCE(u2.new_id, CASE WHEN s.write_uid IN (1,2) THEN s.write_uid END, 1) END") if set_uid else psql.SQL(""),
             ujoin=psql.SQL("LEFT JOIN etl_idmap u1 ON u1.model='res.users' AND u1.old_id = s.create_uid "
                            "LEFT JOIN etl_idmap u2 ON u2.model='res.users' AND u2.old_id = s.write_uid") if set_uid else psql.SQL("")),
             (model,))
@@ -590,6 +598,7 @@ class Engine:
         t0 = time.time()
         _logger.info("%s: %d rows on 18, %d already mapped, %d fields (%d m2m)", step.name, total, done_before, len(plan), len(m2m_names))
         conflicts = 0
+        ids_changed = []
         for rows in self.src.iter_batches(step.table, where, params, step.order, step.batch, after_id=after):
             mapped = self.idmap.load(step.model)
             if self.delta_t0:
@@ -644,7 +653,27 @@ class Engine:
                     self.idmap.refuse(step.name, step.model, old, f"write: {_errmsg(e)}", vals); refused += 1
             # new -> batch create, fall back to one-by-one to isolate refusals
             new = [t for t in todo if not t[2]]
-            if new:
+            if new and step.keep_ids:
+                rows_by_id = {r["id"]: r for r in rows}
+                for old, vals, _ in new:
+                    rec, msg = None, ""
+                    for attempt in (vals, None):
+                        if attempt is None:
+                            attempt = step.retry(dict(vals), msg) if step.retry and msg else None
+                            if not attempt:
+                                break
+                        try:
+                            rec = self._create_with_id(step, Model, old, attempt, rows_by_id[old])
+                            break
+                        except Exception as e2:  # noqa: BLE001
+                            msg = _errmsg(e2)
+                    if rec is None:
+                        self.idmap.refuse(step.name, step.model, old, f"create: {msg}", vals); refused += 1
+                        continue
+                    pairs.append((old, rec.id)); created += 1
+                    if rec.id != old:
+                        ids_changed.append(old)
+            elif new:
                 try:
                     with self.cr.savepoint():
                         recs = Model.create([v for _, v, _ in new])
@@ -676,15 +705,45 @@ class Engine:
             if (created + updated + refused) % (step.batch * 10) < step.batch:
                 _logger.info("%s: %d/%d (%.0f rec/s)", step.name, created + updated + refused, total - done_before,
                              (created + updated + refused) / max(time.time() - t0, 1e-6))
+        if step.keep_ids:
+            # past every id now in use: nothing created later can take an id a prod record needs
+            for table in [Model._table] + list((step.id_sequences({}) if step.id_sequences else {}).keys()):
+                self.cr.execute(psql.SQL("SELECT setval(pg_get_serial_sequence(%s, 'id'), "
+                                         "GREATEST((SELECT coalesce(max(id), 1) FROM {}), 1))").format(psql.Identifier(table)),
+                                (table,))
         restored = self._restore_dates(step.table, step.model) if step.restore_dates else None
         if step.after:
             step.after(ctx)
         self.cr.commit()
         info = dict(src=total, created=created, updated=updated, refused=refused, unresolved=unresolved,
                     restored=restored, conflicts=conflicts, seconds=round(time.time() - t0, 1))
+        if step.keep_ids:
+            info["ids_kept"] = created - len(ids_changed)
+            info["ids_changed"] = ids_changed[:50]
         self.stats[step.name] = info
         _logger.info("%s: DONE %s", step.name, json.dumps(info, default=str))
         return info
+
+    def _point_sequence(self, table, wanted):
+        """Make the next id of `table` be `wanted` when it is free; otherwise move the sequence past every
+        id in use, so the record gets a fresh id instead of one a later prod record needs."""
+        self.cr.execute(psql.SQL("SELECT 1 FROM {} WHERE id = %s").format(psql.Identifier(table)), (wanted,))
+        if not self.cr.fetchone():
+            self.cr.execute("SELECT setval(pg_get_serial_sequence(%s, 'id'), %s, false)", (table, wanted))
+            return True
+        self.cr.execute(psql.SQL("SELECT setval(pg_get_serial_sequence(%s, 'id'), "
+                                 "GREATEST((SELECT coalesce(max(id), 1) FROM {}), 1))").format(psql.Identifier(table)),
+                        (table,))
+        return False
+
+    def _create_with_id(self, step, Model, old, vals, row):
+        """keep_ids: create one record with its 18 id (and the ids id_sequences asks for)."""
+        with self.cr.savepoint():
+            self._point_sequence(Model._table, old)
+            for table, wanted in (step.id_sequences(row) if step.id_sequences else {}).items():
+                if wanted:
+                    self._point_sequence(table, wanted)
+            return Model.create(vals)
 
     # ---- SQL lane
     def run_sql(self, step, ctx):

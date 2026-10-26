@@ -22,9 +22,9 @@ _logger = logging.getLogger("etl.revert")
 S = config.SRC_SCHEMA
 MODULE = "revert_customizations"
 
-MOM_LINES = OrmStep("mom.meeting", force_fields={"seq"},
+MOM_LINES = OrmStep("mom.meeting", force_fields={"seq"}, keep_ids=True,
                     transform=lambda v, r, c: v if v.get("task_id") else None)
-PERSONS = OrmStep("person.person", force_fields={"seq"},
+PERSONS = OrmStep("person.person", force_fields={"seq"}, keep_ids=True,
                   transform=lambda v, r, c: v if v.get("task_id") else None)
 
 ACTIVITIES = TableCopy(

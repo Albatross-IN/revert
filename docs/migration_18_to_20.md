@@ -65,26 +65,30 @@ The pipeline adapts to the module version found in the backup:
 | Users | logins, password hashes and TOTP secrets copied (prod credentials work), group memberships by xmlid, admin's partner (time zone!) and signature, login history |
 | Partners | `mobile` no longer exists on 20 → becomes `phone` (or a note if both are set) |
 | Projects | prod's stages only (20 would add four default stages per project); favourites, alias, last update |
-| Task stages | project stages owned by nobody; personal stages (Inbox, Today, …) land on the ones 20 creates per user |
-| Tasks | private to-dos created one by one (20 applies a parent's project to a whole create batch); 20's create-time stamps (assignment / stage / end dates, allocated hours, default stage) reset to prod's values |
+| Production ids | users, contacts, projects, tasks, tags, updates, MOM lines and responsibilities keep prod's ids (each created with its table's id sequence pointed at the prod id), so `/odoo/project/32/…` URLs, bookmarks, @mentions and task links pasted in messages open the same record on 20 |
+| Task stages | project stages owned by nobody; personal stages (Inbox, Today, …) land on the ones 20 creates per user; time in stage rebuilt from prod's stage history (20 stores it, 18 computed it) |
+| Tasks | 20's onboarding to-dos removed before the load; private to-dos created one by one (20 applies a parent's project to a whole create batch); 20's create-time stamps (assignment / stage / end dates, allocated hours, default stage) reset to prod's values; sub-task visibility in the project, share-link tokens, description history and working-time statistics kept as prod had them |
+| Projects | share-link token; each project update keeps the task counts it showed when it was posted |
 | Studio | `x_studio_responsible_person`, the two Studio views, the empty `x_mom.rec` model — recreated with their `studio_customization` xmlids |
 | Activities | all 118 at +10,000,000 ids; web_studio's "Grant Approval" type recreated as a plain type (20 dropped it) |
 | Chatter | messages, followers, notifications, reactions, tracked values (module `mail_tracking` added; their bodies rendered because 20 shows tracking from the body) |
 | Attachments | byte-identical files hard-linked into the 20 filestore; 18's compiled JS/CSS asset bundles are not carried (20 builds its own) |
 | Discuss | 19 conversations and their members; direct chats get 20's member index |
-| Settings | config parameters the user set, report font/colours/paper format, quarterly digest + subscribers |
+| Settings | config parameters the user set, report font/colours/paper format, the company logo caches (20 kept its placeholder), prod's date/time/number formats of the language, quarterly digest + subscribers |
 | Not carried | language flags/menu icons/asset bundles (rebuilt by 20), the `iap.account` record and its one message, 18's "Default User Template" user, the `project_todo.group_onboarding_todo` group (gone on 20) |
 
 ## 4. Verification
 
-`python -m tools.etl.verify --db <target> [--oracle <18 db that ran the module upgrade>]` — 84 checks:
+`python -m tools.etl.verify --db <target> [--oracle <18 db that ran the module upgrade>]` — 97 checks:
 every source record mapped once; **field-by-field comparison** of every task (23 fields incl. assignees,
 tags, Studio value), project, stage, update, MOM line, responsibility, partner, user (password hash,
 TOTP, signature) and activity; group memberships (no right lost, none gained); menu visibility; Studio
 fields and views; MOM upgrade replay vs the oracle (task, Sr. No., visit, remark, note, end date,
 assignee, Related To, created, closed, photo checksum); chatter per model; attachments by checksum and
 size; **every file in the 20 filestore re-hashed (sha1) against its checksum**; channel members;
-no active cron, no outgoing mail server, no queued e-mail.
+no active cron, no outgoing mail server, no queued e-mail; prod ids kept and record links inside messages
+open the same record; **every common column of the id-kept tables compared row by row** (9 explained
+exceptions, each with its reason in verify.py); company logo; language formats; time in stage.
 
 Functional QA (on a throwaway clone, never on a database people use):
 
@@ -92,13 +96,26 @@ Functional QA (on a throwaway clone, never on a database people use):
 tools/etl/qa/browser_qa.py --base http://localhost:8174 --db <clone> --menus /dev/null --out /opt/odoo20/etl_revert/qa
 ```
 
-15 browser checks (Chrome headless): every visible menu in normal and debug mode opens without a JS
-error; the MOM dashboard of every project matches the database (KPIs, charts, rows) and its filters
+18 browser checks (Chrome headless): every visible menu in normal and debug mode opens without a JS
+error; home-screen app icons and the company logo are the real images; the MOM entry on a project card
+opens that project's dashboard (and its URL reloads); the MOM dashboard of every project matches the database (KPIs, charts, rows) and its filters
 work; "Print entries" PDF; task MOM tab (closed entries included); Studio field; chatter with tracked
 changes; attachment downloads byte-identical; "Create MOM" (Related To, photo, next Sr. No., visit
 No#); mark done with a closing note; task MOM PDF; Discuss; Gantt; a non-admin project user.
 The MOM dashboard payload of all 12 projects was also compared between the 18 code on an 18 database
 and the 20 code on the migrated one: identical.
+
+Screen-by-screen against Odoo 18 (an 18 reference = the production backup upgraded to the current module
+code, served on 8171):
+
+```bash
+tools/etl/qa/compare_18_20.py --v18 http://localhost:8171 --db18 revert18_ref --v20 http://localhost:8174 --db20 <clone> \
+    --out /opt/odoo20/etl_revert/qa/compare
+```
+
+Same URLs on both sides (prod ids): project cards, every MOM dashboard (KPIs + every entry row), a task
+sample (fields, Studio value, MOM tab), All Tasks & Sub-Tasks grouping, PDF report text — 401
+comparisons, **0 unexplained differences**; the explained ones are listed below.
 
 ## 5. Code port notes (18 → 20)
 
@@ -116,7 +133,25 @@ and the 20 code on the migrated one: identical.
   because the wizard field had `default=1`, which wins over its compute; it now offers today's visit or
   the project's last visit + 1, as its help text says.
 
-## 6. Behaviour to know (same as production, not migration issues)
+* The MOM entry on the project card is a link (`<a>`): in a 20 card only links and buttons become actions.
+
+## 6. Differences from 18 that are Odoo 20 itself (same on any 20 database)
+
+* Form fields show dates as "Jul 10, 2025, 12:00 PM" whatever the language's format (prod's
+  `%d-%b-%Y` / `%H:%M:%S` is migrated and used by PDFs, lists and exports).
+* The project card's task count includes sub-tasks (18 counted only tasks shown in the project).
+* Grouped lists say "88 records" where 18 said "(88)".
+* The search bar has no filter arrow on desktop (click into the search box to open Filters / Group By).
+
+## 7. Differences on purpose
+
+* **Closed MOM entries** are listed on the task and printed in the MOM PDF, as the module's
+  requirements say (FR-07 *Must*: "all MOM entries … open and closed"; FR-08 *Must* / AC-5: closed
+  entries printed and marked). Production 18 hides them (the One2many drops archived lines), so on 18 a
+  task whose MOM points are all closed shows none. 20 meets the requirement.
+* OdooBot's onboarding state is not copied (it would restart its onboarding chat for 10 users).
+
+## 8. Behaviour to know (same as production, not migration issues)
 
 * The first report printed asks to "Configure your document layout": production's company has no
   document layout yet (18 asks the same).

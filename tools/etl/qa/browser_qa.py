@@ -161,6 +161,21 @@ def main():
         record("company logo is the production logo (not 20's placeholder)", len(logo) > 0 and placeholder == 0,
                f"{len(logo)} bytes, companies on the default logo: {placeholder}")
 
+        # the MOM entry on a project card opens that project's dashboard (and its url survives a reload)
+        s.goto(f"/odoo/action-{act['project.open_view_project_all']}", wait=".o_kanban_record")
+        card = s.page.locator(".o_kanban_record").filter(has=s.page.locator("[name=action_open_mom_dashboard]")).first
+        card_name = card.inner_text().splitlines()[0].strip()
+        card.locator("[name=action_open_mom_dashboard]").first.click()
+        s.page.wait_for_selector(".o_mom_dashboard .o_mom_kpi_value", timeout=30000)
+        time.sleep(1)
+        title = s.page.locator(".o_mom_header h1").inner_text().strip()
+        url = s.page.url
+        s.page.reload()
+        s.page.wait_for_selector(".o_mom_dashboard .o_mom_kpi_value", timeout=30000)
+        reloaded = s.page.locator(".o_mom_header h1").inner_text().strip()
+        record("project card: clicking MOM opens that project's dashboard; its url reloads", title == card_name == reloaded
+               and "/mom_dashboard" in url and not s.take_errors(), f"{card_name!r} -> {title!r} at {url.split('8174')[-1]}")
+
         # ------------------------------------------------------------ 2. MOM dashboard per project
         projects = q("""SELECT p.id, p.name->>'en_US', count(a.id), count(a.id) FILTER (WHERE a.active),
                                count(a.id) FILTER (WHERE NOT a.active),

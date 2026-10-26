@@ -40,7 +40,7 @@ ACTIVITY_TYPES = OrmStep("mail.activity.type", key=["name"], transform=_activity
                          skip={"chaining_type", "keep_done", "triggered_next_type_id", "previous_type_ids",
                                "suggested_next_type_id", "mail_template_ids", "default_user_id"})
 
-TAGS = OrmStep("project.tags", key=["name"], skip={"project_ids", "task_ids"})
+TAGS = OrmStep("project.tags", key=["name"], skip={"project_ids", "task_ids"}, keep_ids=True)
 PROJECT_STAGES = OrmStep("project.project.stage", key=["name"])
 
 PROJECTS = OrmStep(
@@ -54,6 +54,7 @@ PROJECTS = OrmStep(
     # 20 gives a new project four default task stages; a migrated project has exactly prod's
     # stages (linked by the stage steps below)
     defaults={"type_ids": [(6, 0, [])]},
+    keep_ids=True,   # prod's project ids: /odoo/project/<id> links and bookmarks stay valid
 )
 
 # On 20 the stage owner (user_id) is a stored compute whose DEFAULT is the current user: a stage
@@ -88,9 +89,24 @@ TASK_FORCE = {"date_last_stage_update", "date_assign", "date_end", "date_deadlin
 # holds sub-tasks of a single parent, private to-dos included: private tasks (no project, no
 # parent) are therefore created on their own.
 TASKS = OrmStep("project.task", batch=300, order="id", where="project_id IS NOT NULL OR parent_id IS NOT NULL",
-                skip=TASK_SKIP, force_fields=TASK_FORCE)
+                skip=TASK_SKIP, force_fields=TASK_FORCE, keep_ids=True)
 PRIVATE_TASKS = OrmStep("project.task", name="project.task.private", batch=1, order="id",
-                        where="project_id IS NULL AND parent_id IS NULL", skip=TASK_SKIP, force_fields=TASK_FORCE)
+                        where="project_id IS NULL AND parent_id IS NULL", skip=TASK_SKIP, force_fields=TASK_FORCE,
+                        keep_ids=True)
+
+
+def _purge_onboarding(engine, ctx):
+    """20 gives every new user a "Welcome <name>!" to-do; creating the users made them, and they hold
+    task ids prod's tasks need. Prod's own to-dos are migrated like any task."""
+    env = engine.env
+    tasks = env["project.task"].sudo().with_context(active_test=False).search(
+        [("id", "not in", list(engine.idmap.load("project.task").values()))])
+    n = len(tasks)
+    tasks.unlink()
+    return dict(removed=n)
+
+
+PURGE_ONBOARDING = FuncStep("project.task.purge_onboarding", _purge_onboarding)
 
 
 def _task_fixups(engine, ctx):
@@ -120,9 +136,18 @@ def _task_fixups(engine, ctx):
                    FROM etl_idmap m JOIN {S}.project_task s ON s.id = m.old_id
                    LEFT JOIN etl_idmap st ON st.model = 'project.task.type' AND st.old_id = s.stage_id
                    WHERE m.model = 'project.task' AND t.id = m.new_id
-                     AND (t.stage_id IS DISTINCT FROM st.new_id
-                          OR coalesce(t.allocated_hours, 0) IS DISTINCT FROM coalesce(s.allocated_hours, 0))""")
+                     AND (t.stage_id IS DISTINCT FROM st.new_id OR t.allocated_hours IS DISTINCT FROM s.allocated_hours)""")
     derived = cr.rowcount
+    # stored values the create lane recomputes or never copies: whether a sub-task shows in the
+    # project's kanban (prod hides most of them), the share-link token (links sent to customers keep
+    # working), the description's revision history, the working-time statistics of closed tasks
+    cr.execute(f"""UPDATE project_task t SET display_in_project = s.display_in_project, access_token = s.access_token,
+                          html_field_history = s.html_field_history, recurring_task = s.recurring_task,
+                          working_hours_open = s.working_hours_open, working_hours_close = s.working_hours_close,
+                          working_days_open = s.working_days_open, working_days_close = s.working_days_close
+                   FROM etl_idmap m JOIN {S}.project_task s ON s.id = m.old_id
+                   WHERE m.model = 'project.task' AND t.id = m.new_id""")
+    kept = cr.rowcount
     # personal stage of every (task, assignee): the 20 create lane put the user's default one
     cr.execute(f"""UPDATE project_task_user_rel r SET stage_id = st.new_id
                    FROM {S}.project_task_user_rel s
@@ -140,13 +165,14 @@ def _task_fixups(engine, ctx):
     missing_assignees = cr.rowcount
     engine._restore_dates("project_task", "project.task")
     return dict(parents_relinked=parents, active_restored=actives, dates_restored=dates, derived_restored=derived,
+                stored_values_kept=kept,
                 personal_stages=personal,
                 assignees_added=missing_assignees)
 
 
 TASK_FIXUPS = FuncStep("project.task.fixups", _task_fixups)
 
-UPDATES = OrmStep("project.update", skip={"email_cc"}, force_fields={"status", "progress", "date"})
+UPDATES = OrmStep("project.update", skip={"email_cc"}, force_fields={"status", "progress", "date"}, keep_ids=True)
 
 
 def _project_links(engine, ctx):
@@ -173,6 +199,14 @@ def _project_links(engine, ctx):
                    JOIN etl_idmap t ON t.model = 'project.tags' AND t.old_id = r.project_tags_id
                    ON CONFLICT DO NOTHING""")
     tags = cr.rowcount
+    # share-link token of each project; each project update's task counts are a snapshot taken when
+    # it was posted (20 would recompute today's numbers into old updates)
+    cr.execute(f"""UPDATE project_project p SET access_token = s.access_token
+                   FROM etl_idmap m JOIN {S}.project_project s ON s.id = m.old_id
+                   WHERE m.model = 'project.project' AND p.id = m.new_id AND p.access_token IS DISTINCT FROM s.access_token""")
+    cr.execute(f"""UPDATE project_update u SET task_count = s.task_count, closed_task_count = s.closed_task_count
+                   FROM etl_idmap m JOIN {S}.project_update s ON s.id = m.old_id
+                   WHERE m.model = 'project.update' AND u.id = m.new_id""")
     # e-mail alias of each project (alias name + who may write to it)
     cr.execute(f"""UPDATE mail_alias a SET alias_name = sa.alias_name, alias_contact = sa.alias_contact,
                           alias_defaults = sa.alias_defaults
@@ -201,6 +235,47 @@ def _task_cover(engine, ctx):
 
 TASK_COVER = FuncStep("project.task.cover", _task_cover)
 
+
+def _stage_durations(engine, ctx):
+    """Time in each stage. 18 computed it on the fly from the stage-change history (tracking values);
+    20 keeps it in the stored JSON duration_tracking {"s": current stage, "d": since when (UTC),
+    "<stage id>": minutes spent in earlier stages}, which the create lane started "now". Rebuilt from
+    prod's history exactly as 18 counted it: from the record's creation, one interval per change."""
+    import json
+    from collections import defaultdict
+    cr = engine.cr
+    out = {}
+    for model, stage_model in (("project.task", "project.task.type"), ("project.project", "project.project.stage")):
+        table = model.replace(".", "_")
+        cr.execute(f"""SELECT m.res_id, v.create_date, v.old_value_integer
+                       FROM {S}.mail_tracking_value v JOIN {S}.mail_message m ON m.id = v.mail_message_id
+                       JOIN {S}.ir_model_fields f ON f.id = v.field_id AND f.model = %s AND f.name = 'stage_id'
+                       WHERE m.model = %s ORDER BY v.id""", (model, model))
+        history = defaultdict(list)
+        for res_id, when, old_stage in cr.fetchall():
+            history[res_id].append((when, old_stage))
+        stages = engine.idmap.load(stage_model)
+        cr.execute(f"""SELECT s.id, s.create_date, s.stage_id, m.new_id FROM {S}.{table} s
+                       JOIN etl_idmap m ON m.model = %s AND m.old_id = s.id""", (model,))
+        rows = []
+        for old_id, created, stage, new_id in cr.fetchall():
+            minutes, since = defaultdict(int), created
+            for when, old_stage in history.get(old_id, []):
+                key = str(stages.get(old_stage, 0) if old_stage else 0)
+                minutes[key] += int((when - since).total_seconds() // 60)
+                since = when
+            value = dict(minutes)
+            value["s"] = stages.get(stage, 0) if stage else 0
+            value["d"] = since.strftime("%Y-%m-%d %H:%M:%S")
+            rows.append((json.dumps(value), new_id))
+        for value, new_id in rows:
+            cr.execute(f"UPDATE {table} SET duration_tracking = %s::jsonb WHERE id = %s", (value, new_id))
+        out[model] = dict(records=len(rows), with_history=sum(1 for r in history if r))
+    return out
+
+
+STAGE_DURATIONS = FuncStep("project.stage_durations", _stage_durations)
+
 STEPS = [XMLID_MAPS, ACTIVITY_TYPES, TAGS, PROJECT_STAGES, PROJECTS, TASK_TYPES, PERSONAL_STAGES, TASK_TYPE_PROJECTS,
-         TASKS, PRIVATE_TASKS, TASK_FIXUPS, UPDATES, PROJECT_LINKS]
-POST_CHATTER_STEPS = [TASK_COVER]
+         PURGE_ONBOARDING, TASKS, PRIVATE_TASKS, TASK_FIXUPS, UPDATES, PROJECT_LINKS]
+POST_CHATTER_STEPS = [TASK_COVER, STAGE_DURATIONS]

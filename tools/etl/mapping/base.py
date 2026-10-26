@@ -113,6 +113,8 @@ USERS = OrmStep(
     skip=USER_SKIP,
     rename={"groups_id": "group_ids"},
     transform=_user_transform, after=_after_users, context={"no_reset_password": True},
+    # prod's user ids AND partner ids: @mentions in messages and bookmarks keep pointing at the right person
+    keep_ids=True, id_sequences=lambda row: {"res_partner": row.get("partner_id")},
 )
 # group membership resolved by group xmlid (natural resolver returns None for unknown groups);
 # groups that no longer exist on 20 drop silently.
@@ -213,11 +215,12 @@ PARTNERS_1 = OrmStep(
     where=f"parent_id IS NULL AND id NOT IN (SELECT partner_id FROM {S}.res_users WHERE partner_id IS NOT NULL)",
     skip=PARTNER_SKIP, transform=_partner_transform, batch=400, retry=_partner_retry,
     write_mapped=True,   # the pre-mapped company partner gets prod's values written
+    keep_ids=True,
 )
 PARTNERS_2 = OrmStep(
     "res.partner", name="res.partner.children",
     where=f"parent_id IS NOT NULL AND id NOT IN (SELECT partner_id FROM {S}.res_users WHERE partner_id IS NOT NULL)",
-    skip=PARTNER_SKIP, transform=_partner_transform, batch=400, retry=_partner_retry,
+    skip=PARTNER_SKIP, transform=_partner_transform, batch=400, retry=_partner_retry, keep_ids=True,
 )
 # base.default_user (18's template user, gone on 20) is not migrated, so neither is its partner
 DEFAULT_USER_PARTNER = (f"(SELECT u.partner_id FROM {S}.res_users u JOIN {S}.ir_model_data d ON d.model = 'res.users'"

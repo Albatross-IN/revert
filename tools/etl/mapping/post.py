@@ -1,5 +1,5 @@
 """Phase 'post' (after chatter): settings (config parameters, company details and report layout,
-company logo caches, digest), canned responses, module channels' names, menu-group deltas, tz
+company logo caches, digest, the language's date/time/number formats), canned responses, module channels' names, menu-group deltas, tz
 aliases, and the purge of fresh-install onboarding records prod does not have."""
 import logging
 
@@ -124,6 +124,16 @@ def _digest(engine, ctx):
 
 DIGEST = FuncStep("digest.digest", _digest)
 
+
+LANG_FORMATS = SqlStep("res.lang.formats", f"""
+    UPDATE res_lang t SET date_format = s.date_format, time_format = s.time_format,
+                          week_start = s.week_start, decimal_point = s.decimal_point, thousands_sep = s.thousands_sep,
+                          grouping = s.grouping
+    FROM {{S}}.res_lang s
+    WHERE s.code = t.code AND s.active
+      AND (t.date_format, t.time_format, t.week_start, t.decimal_point, t.thousands_sep, t.grouping)
+          IS DISTINCT FROM (s.date_format, s.time_format, s.week_start, s.decimal_point, s.thousands_sep, s.grouping)""")
+
 CANNED = OrmStep("mail.canned.response", key=["source"], skip={"description", "group_ids", "is_shared", "is_editable"})
 
 
@@ -188,4 +198,4 @@ def _tz_aliases(engine, ctx):
 
 TZ_ALIASES = FuncStep("parity.tz_aliases", _tz_aliases)
 
-STEPS = [PARAMS, COMPANY_DETAILS, COMPANY_LOGO, DIGEST, CANNED, MODULE_CHANNELS, PURGE_INSTALL, MENU_GROUPS, TZ_ALIASES]
+STEPS = [PARAMS, COMPANY_DETAILS, COMPANY_LOGO, DIGEST, LANG_FORMATS, CANNED, MODULE_CHANNELS, PURGE_INSTALL, MENU_GROUPS, TZ_ALIASES]
