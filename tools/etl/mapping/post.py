@@ -1,10 +1,11 @@
 """Phase 'post' (after chatter): settings (config parameters, company details and report layout,
-digest), canned responses, module channels' names, menu-group deltas, tz aliases, and the
-purge of fresh-install onboarding records prod does not have."""
+company logo caches, digest), canned responses, module channels' names, menu-group deltas, tz
+aliases, and the purge of fresh-install onboarding records prod does not have."""
 import logging
 
 from ..core import OrmStep, FuncStep, SqlStep
 from .. import config
+from .common import recompute_stored
 
 _logger = logging.getLogger("etl.post")
 S = config.SRC_SCHEMA
@@ -79,6 +80,26 @@ def _company(engine, ctx):
 
 
 COMPANY_DETAILS = FuncStep("res.company.details", _company)
+
+
+def _company_logo(engine, ctx):
+    """The logo is the company partner's image (prod's arrived with the chatter phase), but 20 keeps
+    two STORED computes of it — logo_web (what /logo.png, the web client and e-mails show) and
+    uses_default_logo — that were computed from 20's "Your logo" placeholder when the empty target was
+    created. Recompute them from prod's logo."""
+    env = engine.env
+    companies = env["res.company"].search([])
+    names = recompute_stored(env, "res.company", companies.ids, ["logo_web", "uses_default_logo"])
+    env.invalidate_all()
+    # the placeholder's old logo_web attachment, if the recompute left it behind
+    engine.cr.execute("""DELETE FROM ir_attachment a WHERE a.res_model = 'res.company' AND a.res_field = 'logo_web'
+                         AND EXISTS (SELECT 1 FROM ir_attachment b WHERE b.res_model = a.res_model
+                                     AND b.res_id = a.res_id AND b.res_field = a.res_field AND b.id > a.id)""")
+    return dict(recomputed=names, default_logo={c.name: c.uses_default_logo for c in companies},
+                stale_removed=engine.cr.rowcount)
+
+
+COMPANY_LOGO = FuncStep("res.company.logo_caches", _company_logo)
 
 
 def _digest(engine, ctx):
@@ -167,4 +188,4 @@ def _tz_aliases(engine, ctx):
 
 TZ_ALIASES = FuncStep("parity.tz_aliases", _tz_aliases)
 
-STEPS = [PARAMS, COMPANY_DETAILS, DIGEST, CANNED, MODULE_CHANNELS, PURGE_INSTALL, MENU_GROUPS, TZ_ALIASES]
+STEPS = [PARAMS, COMPANY_DETAILS, COMPANY_LOGO, DIGEST, CANNED, MODULE_CHANNELS, PURGE_INSTALL, MENU_GROUPS, TZ_ALIASES]

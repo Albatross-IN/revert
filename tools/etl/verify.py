@@ -371,6 +371,18 @@ def main():
     broken = q1("SELECT count(*) FROM ir_attachment WHERE type = 'binary' AND store_fname IS NULL AND db_datas IS NULL AND coalesce(file_size, 0) > 0")
     check("no binary attachment without content", broken == 0, f"{broken}")
 
+    # the company logo as the web client serves it (stored caches of the partner image)
+    src_logo = q1(f"""SELECT count(*) FROM {S}.ir_attachment WHERE res_model = 'res.partner' AND res_field = 'image_1920'
+                      AND res_id = (SELECT partner_id FROM {S}.res_company ORDER BY id LIMIT 1)""")
+    default_logo = q1("SELECT uses_default_logo FROM res_company ORDER BY id LIMIT 1")
+    # logo_web is rewritten in place when recomputed: a cache never rewritten since the empty target was
+    # created still holds 20's "Your logo" placeholder
+    web_logo_fresh = q1("""SELECT count(*) FROM ir_attachment w JOIN res_company c ON w.res_model = 'res.company'
+                           AND w.res_id = c.id AND w.res_field = 'logo_web' WHERE w.write_date > w.create_date""")
+    check("company logo served by the web client is prod's (logo_web recomputed)",
+          not src_logo or (default_logo is False and web_logo_fresh == 1),
+          f"prod logo: {bool(src_logo)}, uses_default_logo={default_logo}, logo_web recomputed: {bool(web_logo_fresh)}")
+
     # ------------------------------------------------------------------ discuss
     print("\n== discuss ==")
     want = q1(f"SELECT count(*) FROM {S}.discuss_channel_member WHERE guest_id IS NULL")

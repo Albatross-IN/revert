@@ -136,6 +136,31 @@ def main():
         record(f"crawl: {len(seen)} menu actions open without JS error or error dialog", not crawl_bad,
                "; ".join(f"{p}: {e}" for p, e in crawl_bad[:6]))
 
+        # ------------------------------------------------------------ 1b. home screen + company logo
+        s.page.goto(f"{a.base}/odoo", timeout=60000)
+        s.page.wait_for_selector(".o_home_menu .o_app, .o_apps .o_app", timeout=60000)
+        time.sleep(2)
+        icons = s.page.eval_on_selector_all(
+            ".o_home_menu .o_app img, .o_apps .o_app img",
+            "els => els.map(e => [e.closest('.o_app').innerText.trim(), e.currentSrc || e.src])")
+        s.shot("home_menu")
+        # a missing file is answered with 200 + the placeholder image, so compare the bytes
+        placeholder_sha = hashlib.sha1(open("/opt/odoo20/odoo20/addons/web/static/img/placeholder.png", "rb").read()).hexdigest()
+        broken = []
+        for name, src in icons:
+            if src.startswith("data:"):
+                body = base64.b64decode(src.split(",", 1)[1])
+            else:
+                body = s.ctx.request.get(src if src.startswith("http") else a.base + src).body()
+            if not body or hashlib.sha1(body).hexdigest() == placeholder_sha:
+                broken.append(name)
+        record("home screen: every app icon is the real icon (not the missing-file placeholder)", icons and not broken,
+               f"{len(icons)} apps, broken: {broken}")
+        logo = s.ctx.request.get(f"{a.base}/web/binary/company_logo?company=1").body()
+        placeholder = q("""SELECT count(*) FROM res_company WHERE uses_default_logo""")[0][0]
+        record("company logo is the production logo (not 20's placeholder)", len(logo) > 0 and placeholder == 0,
+               f"{len(logo)} bytes, companies on the default logo: {placeholder}")
+
         # ------------------------------------------------------------ 2. MOM dashboard per project
         projects = q("""SELECT p.id, p.name->>'en_US', count(a.id), count(a.id) FILTER (WHERE a.active),
                                count(a.id) FILTER (WHERE NOT a.active),
