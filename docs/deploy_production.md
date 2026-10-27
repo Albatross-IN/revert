@@ -37,7 +37,8 @@ The scripts are in `tools/deploy/`. Everything runs as root on the server unless
 3. **Code:** `git archive <commit> revert_customizations admin_notes_viewer` into
    `/opt/erp/addons/revert`, owner `erp`. Then announce and do one `systemctl restart erp-odoo20`
    so the service sees new or changed modules.
-4. **Database:** `load_db.sh <host> <dump> <filestore.tar.gz>`. It refuses to overwrite an existing
+4. **Database:** `[PGPORT=<cluster port>] load_db.sh <host> <dump> <filestore.tar.gz>` (PGPORT when
+   Odoo 20's PostgreSQL is not the cluster on 5432). It refuses to overwrite an existing
    database or filestore. The postgres superuser creates the `vector` and `pg_trgm` extensions
    first; `erp` cannot, and a plain `odoo-bin db load` silently skips them, which drops the AI
    embedding table. Then `erp` restores the dump, and the script ends with `check_filestore.py`:

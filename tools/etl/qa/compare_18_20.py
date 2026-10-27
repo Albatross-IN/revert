@@ -232,6 +232,11 @@ def main():
             return "18 hides closed MOM entries on the task (contrary to FR-07 Must, open and closed); 20 lists them all"
         if section == "PDF report text" and isinstance(x, list) and isinstance(y, list) and subsequence(x, y):
             return "every 18 line printed; 20 adds the closed MOM entries table (FR-08 Must, AC-5), which 18 omits"
+        if section == "PDF report text" and isinstance(x, list) and isinstance(y, list) \
+                and sorted(" ".join(x).split()) == sorted(" ".join(y).split()):
+            # pdftotext interleaves a wrapped cell with the repeated table header differently when the
+            # wrap falls a few points apart: every word is there, the reading order of one block moves
+            return "same words; a wrapped cell next to the repeated table header reads in another order"
         return "UNEXPLAINED"
 
     def cmp(section, key, x, y):

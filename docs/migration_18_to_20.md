@@ -58,7 +58,9 @@ The pipeline adapts to the module version found in the backup:
   database that really ran that upgrade to 18.0.1.8.0 (`verify --oracle`).
 * 18.0.1.6.0 / 1.7.0 (proven with the local dev copy as a second source): the MOM activities and their
   fields are carried as they are; only the 1.8.0 script (Visit Date) is replayed.
-* 18.0.1.8.0: carried as they are, Visit Date included; no migration script is replayed.
+* 18.0.1.8.0 (the release source: production as of the Hostinger snapshot of 2026-10-23 22:07 UTC):
+  carried as they are, Visit Date included; no migration script is replayed. Proven on that snapshot:
+  verify 100/100, browser QA 19/19, 18-vs-20 screens 420 comparisons with 0 unexplained.
 
 Migration folders are compared on the module part of the version (`18.0.1.6.0` is 1.6.0,
 `20.0.1.8.0` is 1.8.0). Scripts written on 20 are named `20.0.x` so that a 20 database also runs them

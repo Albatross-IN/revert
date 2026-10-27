@@ -423,7 +423,8 @@ def main():
                    st and st[0][0] is False and note == 1 and not errs, f"active={st[0][0] if st else None} note={note} {errs[:1]}")
 
         # ------------------------------------------------------------ 6. task MOM PDF
-        r = s.ctx.request.get(f"{a.base}/report/pdf/revert_customizations.task_report/{tid}")
+        # the busiest task's MOM PDF carries every site photo: ~35 s on 18 and 20 alike
+        r = s.ctx.request.get(f"{a.base}/report/pdf/revert_customizations.task_report/{tid}", timeout=300000)
         body = r.body()
         open(os.path.join(a.out, "task_mom.pdf"), "wb").write(body)
         record("task 'MOM PDF' report renders", r.status == 200 and body[:5] == b"%PDF-" and len(body) > 20000, f"{len(body)} bytes")
@@ -465,10 +466,13 @@ def main():
             u.page.wait_for_selector(".o_mom_dashboard .o_mom_kpi_value", timeout=30000)
             time.sleep(1)
             kpi_total = u.page.locator(".o_mom_kpi").nth(0).locator(".o_mom_kpi_value").inner_text().strip()
+            # counted now: the Create MOM step above may have added an entry to this very project
+            want_total = q("""SELECT count(*) FROM mail_activity a JOIN mail_activity_type t ON t.id = a.activity_type_id
+                              WHERE t.is_mom AND a.mom_project_id = %s""", (pid,))[0][0]
             errs = u.take_errors()
             record(f"non-admin user {a.user}: projects, My Tasks, MOM dashboard", cards == want_cards and
-                   kpi_total == str(projects[0][2]) and not errs,
-                   f"{cards}/{want_cards} project cards, {my} own tasks, dashboard total {kpi_total} {errs[:1]}")
+                   kpi_total == str(want_total) and not errs,
+                   f"{cards}/{want_cards} project cards, {my} own tasks, dashboard total {kpi_total}/{want_total} {errs[:1]}")
             u.page.goto(a.base + "/odoo/settings", timeout=60000)
             time.sleep(2)
             denied = u.page.locator(".o_error_dialog, .o_settings_container").count() == 0 or \
