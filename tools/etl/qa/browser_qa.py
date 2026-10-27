@@ -86,6 +86,9 @@ def main():
     ap.add_argument("--admin-password", default="admin")
     ap.add_argument("--user", default="kishan@revert.com")
     ap.add_argument("--user-password", default="QaTest#2026")
+    # a copy on the server, reached through an SSH tunnel: map its host name to the tunnel
+    # (e.g. "revert-qa.local 127.0.0.1"); the database is then reached through PGHOST/PGPORT/PGUSER
+    ap.add_argument("--host-map", help="Chrome --host-resolver-rules MAP entry: '<host> <ip>'")
     a = ap.parse_args()
     os.makedirs(os.path.join(a.out, "shots"), exist_ok=True)
     conn = psycopg2.connect(dbname=a.db); conn.autocommit = True
@@ -99,7 +102,8 @@ def main():
                     (('project','open_view_project_all'), ('project','action_view_task'), ('project','action_view_my_task'),
                      ('revert_customizations','action_view_all_tasks_subtasks'), ('mail','action_discuss'))"""))
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(channel="chrome", headless=True)
+        browser = pw.chromium.launch(channel="chrome", headless=True,
+                                     args=[f"--host-resolver-rules=MAP {a.host_map}"] if a.host_map else [])
         s = Session(browser, a.base, a.out, "admin")
         s.login("admin", a.admin_password)
 
