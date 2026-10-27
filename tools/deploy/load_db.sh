@@ -26,8 +26,11 @@ if [ -e "$FSDIR" ]; then
 fi
 sudo -u erp test -r "$DUMP" && sudo -u erp test -r "$FS" || { echo "erp cannot read $DUMP / $FS" >&2; exit 1; }
 
-echo "[$(date +%T)] create $DB (owner erp) + extensions, cluster port $PORT"
-sudo -u postgres createdb -p "$PORT" -O erp "$DB"
+# Collation as on production 18 and in every test of the release (en_US.UTF-8), not the cluster's or
+# template_erp's default (C): it decides how lists sort by name (C puts "Zebra" before "apple").
+LOCALE=${DB_LOCALE:-en_US.UTF-8}
+echo "[$(date +%T)] create $DB (owner erp, collation $LOCALE) + extensions, cluster port $PORT"
+sudo -u postgres createdb -p "$PORT" -O erp -T template0 -E UTF8 --locale-provider=libc --locale="$LOCALE" "$DB"
 sudo -u postgres psql -p "$PORT" -XAtq -v ON_ERROR_STOP=1 -d "$DB" \
     -c "CREATE EXTENSION IF NOT EXISTS vector" -c "CREATE EXTENSION IF NOT EXISTS pg_trgm"
 
