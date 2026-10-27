@@ -17,7 +17,7 @@ are announced to the other project first, as are restarts of `erp-odoo20`, which
 | data | `/opt/erp/data/filestore/<host>`, sessions in `/opt/erp/data/sessions` |
 | log | `/var/log/erp/odoo20.log` (daily, 30 kept); nginx `/var/log/nginx/<host>.*.log` |
 | PostgreSQL | 18, role `erp` (owner of the databases, not superuser), local socket only |
-| nginx | `sites-available/erp-revert.conf` + shared `snippets/erp-odoo.conf`, `erp-tls.conf` |
+| nginx | `sites-available/erp-revert.conf` + shared `snippets/erp-odoo.conf`, `erp-tls.conf`; pre-release lock `snippets/erp-revert-prerelease.conf` |
 | certificates | Let's Encrypt, `certbot.timer` renews and reloads nginx |
 | firewall | ufw: 22, 80, 443 only |
 | backups | `erp-backup.timer`, daily 20:30 UTC: every `erp` database + filestore to `/opt/erp/backups/<db>/<stamp>/`, checked, `SHA256SUMS`, 14 days kept |
@@ -41,14 +41,22 @@ The scripts are in `tools/deploy/`. Everything runs as root on the server unless
    Odoo 20's PostgreSQL is not the cluster on 5432). It refuses to overwrite an existing
    database or filestore. The postgres superuser creates the `vector` and `pg_trgm` extensions
    first; `erp` cannot, and a plain `odoo-bin db load` silently skips them, which drops the AI
-   embedding table. Then `erp` restores the dump, and the script ends with `check_filestore.py`:
-   every stored file present with the sha1 Odoo recorded.
+   embedding table. The database gets production's collation, `en_US.UTF-8` (`DB_LOCALE` overrides),
+   not the `C` of the shared `template_erp`, which would sort capitals before lowercase in every
+   list. Then `erp` restores the dump, and the script ends with `check_filestore.py`: every stored
+   file present with the sha1 Odoo recorded. Load before the restart if you like, but run step 5
+   only after it: once scheduled actions are on, a worker that has not seen the modules would load
+   the database without them.
 5. **Go-live settings:** pipe `golive.py` into `odoo-bin shell` with `HOST=<host>` (the command is in
    the script's docstring). It sets `web.base.url` to `https://<host>` and turns the scheduled
    actions on as production 18 had them. It is idempotent.
-6. **Site and certificate:** `vhost.sh <host> [email]`. The DNS A record must point at the server first;
-   the script checks this.
-7. **Checks** (below), then hand the URL to users.
+6. **Site and certificate:** `LOCK=1 vhost.sh <host> [email]`. The DNS A record must point at the server
+   first; the script checks this. `LOCK=1` includes `snippets/erp-revert-prerelease.conf`: only the
+   tester's address and the server itself reach Odoo, everyone else gets
+   `/var/www/revert-maintenance/upgrading.html` (503).
+7. **Checks** (below).
+8. **Release:** `vhost.sh <host>` again without `LOCK`, then `nginx -t` and reload (the script does
+   both). Hand the URL to users.
 
 ## Checks
 

@@ -1,14 +1,23 @@
 #!/bin/bash
 # nginx site + Let's Encrypt certificate for Revert on the shared Odoo 20 server. Run as root:
-#   vhost.sh <host> [email for Let's Encrypt]
+#   [LOCK=1] vhost.sh <host> [email for Let's Encrypt]
 # <host> is also the database name (dbfilter ^%h$). Its DNS A record must already point to this
 # server. Same layout as the Albatross site: :80 answers the ACME challenge and redirects, :443
 # includes the shared snippets (erp-tls, erp-odoo). Stage 1 serves :80 only so certbot can prove the
 # domain; stage 2 installs the HTTPS server once the certificate exists. Re-runnable.
+# LOCK=1 keeps the site pre-release: only the addresses in snippets/erp-revert-prerelease.conf reach
+# Odoo, everyone else gets the "being upgraded" page. Release = run again without LOCK.
 set -euo pipefail
 HOST=${1:?host}
 EMAIL=${2:-}
 SITE=/etc/nginx/sites-available/erp-revert.conf
+LOCK_SNIPPET=/etc/nginx/snippets/erp-revert-prerelease.conf
+if [ "${LOCK:-0}" = 1 ]; then
+    [ -f "$LOCK_SNIPPET" ] || { echo "LOCK=1 but $LOCK_SNIPPET is missing" >&2; exit 1; }
+    LOCK_LINE="    include snippets/erp-revert-prerelease.conf;"
+else
+    LOCK_LINE="    # released: no pre-release lock"
+fi
 
 http_block() {
 cat <<EOF
@@ -36,6 +45,7 @@ server {
     add_header Strict-Transport-Security "max-age=31536000" always;
     access_log /var/log/nginx/$HOST.access.log;
     error_log /var/log/nginx/$HOST.error.log;
+$LOCK_LINE
     include snippets/erp-odoo.conf;
 }
 EOF
