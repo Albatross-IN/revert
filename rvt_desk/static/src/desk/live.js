@@ -3,7 +3,9 @@
    - Every operation still runs locally first, exactly as in the preview, so the screen answers at once;
      it is then sent to the server, and the next snapshot is the truth.
    - The desk comes back where it was closed: section, project, tab, scroll and drafts (not the records). */
-const LIVE={queue:[],busy:false,ids:{},saving:false,depth:0},LKEY='rvt_desk_ui_v1';
+const LIVE={queue:[],busy:false,ids:{},saving:false,depth:0,img:{}},LKEY='rvt_desk_ui_v1';
+/* records made on the screen before the server answers carry ids from 9,000,001 up, so they never meet a real one */
+const LOCAL0=9e6,localSeq=()=>({lid:LOCAL0,did:LOCAL0,ptid:LOCAL0,bid:LOCAL0,vid:LOCAL0,pid:LOCAL0,q:LOCAL0});
 const EMPTY_PIC={status:'ok',progress:{ag:[0,0],dr:[0,0],wk:[0,0,0,0],pt:[0,0,0,0]},week:{rel:0,started:0,done:0,closed:0},blockers:[],next:{revert:[],agencies:[],client:[]},noDwg:[]};
 
 async function rpc(method,args){
@@ -20,7 +22,8 @@ function applySnapshot(s){const m=s.masters,fill=(a,b)=>{a.length=0;b.forEach(x=
  fill(PRESETS,m.presets);fill(EXTRAS,m.extras);fill(DEFAULT_TRADES,m.default_trades);fill(DTYPES,m.dtypes);
  const [y,mo,d]=s.today_date.split('-').map(Number);BASE=Date.UTC(y,mo-1,d);
  const t=new Date(),h=t.getHours();NOW=((h%12)||12)+':'+String(t.getMinutes()).padStart(2,'0')+(h<12?' am':' pm');
- DB=Object.assign(seed(),{set:s.set,staff:s.staff,agencies:s.agencies,projects:s.projects,drawings:s.drawings,visits:s.visits,points:s.points,bills:s.bills,wa:s.wa,
+ const seq=DB&&DB.seq&&DB.seq.ptid>=LOCAL0?DB.seq:localSeq();
+ DB=Object.assign(seed(),{seq,set:s.set,staff:s.staff,agencies:s.agencies,projects:s.projects,drawings:s.drawings,visits:s.visits,points:s.points,bills:s.bills,wa:s.wa,
   features:s.features,mytasks:s.mytasks,today:s.today,company:s.company,prefix:s.prefix,admin:s.admin});
  DB.projects.forEach(p=>{if(p.pic)p.pic.noDwg=p.pic.noDwg.map(x=>p.lines.find(l=>l.id===x.id)).filter(Boolean)});
  UI.user=s.me;document.documentElement.dataset.nof=Object.keys(s.features).filter(k=>!s.features[k]).join(' ')}
@@ -56,6 +59,13 @@ wrapOP('release',(r,d,to)=>sync('release',{drawing:d.id,to}));
 wrapOP('answer',(r,d,qid,text)=>sync('answer',{question:qid,text}));
 wrapOP('ask',(r,d,by,byName,text,photo,via)=>sync('ask',{drawing:d.id,by,name:byName||'',text},d.q[d.q.length-1].id));
 
+/* points and MOM */
+const takeImg=(...keys)=>{for(const k of keys){const g=LIVE.img[k];if(g){delete LIVE.img[k];return g.b64}}return ''};
+wrapOP('addPoint',(x,o)=>sync('add_point',{pid:o.pid,vid:o.vid||'',kind:o.kind,party:o.party||'',text:o.text,e:o.e||'',t:o.t||'',due:o.due==null?null:+o.due,photo:o.photo?takeImg('m_photo','rp_photo'):''},x.id));
+wrapOP('closePoint',(r,x,note,photo)=>sync('close_point',{point:x.id,note:note||'',photo:photo?takeImg('cp_photo'):''}));
+wrapOP('confirmPoint',(r,x)=>sync('confirm_point',{point:x.id}));
+wrapOP('sendParty',(n,v,key)=>{if(n)sync('send_party',{visit:v.id,key})});
+
 /* ---------- actions that differ from the preview: they talk to the server or leave the desk ---------- */
 const wrapA=(name,after)=>{const o=A[name];A[name]=function(v,el,dev){const r=o.apply(A,arguments);after(v,el,dev);return r}};
 A.signin=function(){};A.asuser=function(){};A.reset=function(){};A.scen=function(){};A.setview=function(){};A.jump=function(){};A.guide=function(){};A.wapanel=function(){};A.replay=function(){intro()};
@@ -68,12 +78,14 @@ A.refresh=function(){reload()};
 A.taskent=function(v,el,dev){const [pid,tid]=v.split('|'),p=pOf(pid),t=p.tasks.find(x=>String(x.id)===tid);if(!t)return;const ty=guessType(t.n);
  p.ents.push({id:'e'+t.id,n:t.n,ty});p.tasks=p.tasks.filter(x=>x!==t);sync('task_entity',{task:t.id,type:ty});toast(`“${t.n}” is now a room of ${p.name}. Tick its trades in Project configuration.`)};
 
+/* a real file from the computer: a drawing's PDF, a point's photo */
+function pickFile(accept,max,tooBig,done){const i=document.createElement('input');i.type='file';i.accept=accept;
+ i.onchange=()=>{const file=i.files[0];if(!file)return;if(file.size>max){toast(tooBig,'wait');return render()}
+  const rd=new FileReader();rd.onload=()=>done(file,String(rd.result).split(',')[1]);rd.readAsDataURL(file)};i.click()}
 /* drawings: a real PDF is chosen, kept until it is sent, and shown where the preview drew a sample sheet */
 const fmtSize=n=>n>=1e6?(n/1e6).toFixed(1)+' MB':Math.max(1,Math.round(n/1e3))+' KB';
 const lastFile=d=>[...d.revs].reverse().find(x=>x.file);
-A.pickpdf=function(v,el,dev){const i=document.createElement('input');i.type='file';i.accept='application/pdf,.pdf';
- i.onchange=()=>{const file=i.files[0];if(!file)return;if(file.size>25e6){toast('That file is larger than 25 MB. Export a lighter PDF.','wait');return render()}
-  const rd=new FileReader();rd.onload=()=>{LIVE.pdf={name:file.name,size:file.size,b64:String(rd.result).split(',')[1]};dev.f.sa_file=true;render()};rd.readAsDataURL(file)};i.click()};
+A.pickpdf=function(v,el,dev){pickFile('application/pdf,.pdf',25e6,'That file is larger than 25 MB. Export a lighter PDF.',(file,b64)=>{LIVE.pdf={name:file.name,size:file.size,b64};dev.f.sa_file=true;render()})};
 A.droppdf=function(v,el,dev){LIVE.pdf=null;dev.f.sa_file=false};
 const sendappr0=SHEETS.sendappr;SHEETS.sendappr=function(dev,s){const o=sendappr0(dev,s),f=dev.f,p=LIVE.pdf,r=cur(dOf(s.id)),on=!!(f.sa_file&&p);
  const label=on?`<b>${esc(p.name)}</b> · ${fmtSize(p.size)} · tap to remove`:r.file?`<b>${esc(r.fname)}</b> · on file · tap to replace`:'Choose the PDF';
@@ -82,6 +94,26 @@ const dosend0=A.dosend;A.dosend=function(v,el,dev){const d=dOf(v);if(dev.f.sa_fi
 const dwgPaper0=dwgPaper;dwgPaper=function(d){const r=lastFile(d);return r?`<div class="pdfw"><iframe class="pdfv" title="${esc(sheetNo(d)+' '+d.title)}" src="/rvt/desk/revision/${r.id}/pdf#view=FitH&toolbar=0"></iframe></div>`:dwgPaper0(d)};
 wrapA('dstart',v=>sync('dstart',{drawing:v}));
 wrapA('newrev',v=>sync('new_revision',{drawing:v}));
+
+/* MOM: a visit is started on the server; a photo is a real photo; the PDF is the real PDF */
+const startmom0=A.startmom;A.startmom=function(v,el,dev){const had=new Set(DB.visits.map(x=>x.id));startmom0.call(A,v,el,dev);const nv=DB.visits.find(x=>!had.has(x.id));if(nv)sync('start_visit',{project:nv.pid},nv.id)};
+wrapA('finishvisit',v=>sync('finish_visit',{visit:v}));
+const tog0=A.tog;A.tog=function(v,el,dev){if(!['m_photo','rp_photo','cp_photo'].includes(v))return tog0.call(A,v,el,dev);
+ if(dev.f[v]&&LIVE.img[v]){dev.f[v]=false;delete LIVE.img[v];return}
+ dev.f[v]=false;pickFile('image/*',12e6,'That photo is larger than 12 MB.',(file,b64)=>{LIVE.img[v]={b64,name:file.name};dev.f[v]=true;render()})};
+A.photo=function(v,el,dev){openSheet(dev,'photo',{id:v})};
+SHEETS.photo=function(dev,s){const x=ptOf(s.id);return {title:'Photo · point '+(x?x.n:''),sub:x?x.text:'',wide:true,body:`<div class="phw"><img class="phv" alt="Photo of the point" src="/rvt/desk/point/${String(s.id).replace(/\D/g,'')}/photo"></div>`,foot:Bt('Close','close',null,'ghost')}};
+SHEETS.pdf=function(dev,s){return {title:s.kind==='mom'?'MOM PDF':'Open points PDF',sub:'What the party receives on WhatsApp',wide:true,
+ body:`<div class="pdfw"><iframe class="pdfv" title="PDF" src="/rvt/desk/mom/pdf?kind=${encodeURIComponent(s.kind)}&a=${encodeURIComponent(s.a||'')}&b=${encodeURIComponent(s.b||'all')}#view=FitH&toolbar=0"></iframe></div>`,foot:Bt('Close','close',null,'ghost')}};
+/* Setup › Earlier MOM: the real verification report of the move, read when the tab is opened */
+function etlReport(dev){const R=LIVE.etl;if(!isOwner()&&!DB.admin)return `<div class="note">${ic('lock')}The verification report of the move is for owners.</div>`;
+ if(!R){if(!LIVE.etlBusy){LIVE.etlBusy=true;rpc('op',['etl_report',{}]).then(r=>{LIVE.etl=r}).catch(e=>{LIVE.etl={error:e.message}}).finally(()=>{LIVE.etlBusy=false;render()})}
+  return `<div class="note">${ic('clock')}Reading the earlier entries…</div>`}
+ if(R.error)return `<div class="note bad">${ic('alert')}${esc(R.error)}</div>`;
+ const T=R.rows.reduce((a,r)=>a.map((v,i)=>v+r.b[i]),[0,0,0,0,0]),badge=!R.moved?`<span class="pill wait">${ic('clock')}not moved yet</span>`:R.all_equal&&!R.left?`<span class="pill ok">${ic('check')}before = after, every project</span>`:`<span class="pill bad">${ic('alert')}${R.left?R.left+' still to move':'not equal: see the rows'}</span>`;
+ return `<div class="kpis">${kpi('Entries moved',R.moved)}${kpi('Open',T[1],'c-wait')}${kpi('Closed',T[2],'c-ok')}${kpi('Photos, by checksum',T[3])}${kpi('Visits',T[4])}</div>${card('Verification report',badge,`<div class="tw"><table class="tb"><thead><tr><th>Project</th><th class="ar">Entries</th><th class="ar">Open</th><th class="ar">Closed</th><th class="ar">Photos</th><th class="ar">Visits</th><th>Check</th></tr></thead><tbody>${R.rows.map(r=>`<tr><td><b>${esc(r.p)}</b></td>${r.b.map((v,i)=>`<td class="ar num">${v}${r.a?` <span class="mu">= ${r.a[i]}</span>`:''}</td>`).join('')}<td>${r.eq==null?pill('to move','wait'):r.eq?pill('equal','ok','check'):pill('different','bad','alert')}</td></tr>`).join('')}</tbody></table></div>
+   <div class="note">${ic('info')}<span>Every earlier MOM entry became a point with its text, person, photo, visit date and number, serial number, due date, state, closing note and author. A second run creates nothing. The earlier screens are switched off only after the owner compares three projects and signs off.</span></div>`)}
+  ${card('People to match','<span class="mu f12">from the sheet Revert fills in</span>',`<div class="kv"><div><span>People named in earlier entries</span><b>${R.people}</b></div><div><span>Matched through the sheet</span><b class="c-ok">${R.people-R.unmapped}</b></div><div><span>Kept as vendors, listed for review</span><b class="c-wait">${R.unmapped}</b></div><div><span>Entries without a person</span><b>${R.noperson}</b></div></div>`)}`}
 
 /* onboarding: the wizard is the preview's; the result is written by the server in one go.
    A new project starts with the real principal, and with the person who sets it up on its team. */

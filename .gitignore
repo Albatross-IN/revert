@@ -13,3 +13,6 @@ __pycache__/
 
 # ETL: module lists generated for non-default sources (ETL_SRC=...)
 tools/etl/target_modules_prod_*.txt
+
+# The MOM move report names people of the client: it stays on the machine
+tools/etl_mom_report.txt

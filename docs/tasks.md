@@ -29,9 +29,9 @@ Release 1 replaces Phases D and 1–9 below as the first thing built. Those phas
 - [x] R1.2a (2026-11-19) `rvt_drawing`: register, revisions, approval by the principal (setting), release with receivers, opened tracking, questions, client approval / change request
 - [x] R1.2b (2026-11-19) Desk: Drawings and Review sections; picture rules B2, B3, B8, B9 and drawing progress
 - [ ] R1.2c Exit: staff of the pilot projects release every drawing through the system for two weeks
-- [ ] R1.3a `rvt_mom`: points and visits (one record type for MOM points and office-raised items), numbering, close with note/photo, PDFs (visit, per party, open points)
-- [ ] R1.3b Desk: MOM section and project MOM tab with the present dashboard's figures; picture rule B7 and points progress; "Remind on WhatsApp" per item with R1.4
-- [ ] R1.3c ETL of existing MOM entries (`revert_customizations` activities) into points, with a verification report (counts, photos, visit numbers per project); dry run on `revert20`; present MOM screens off; supersedes task 6.6
+- [x] R1.3a (2026-11-19) `rvt_mom`: points and visits (one record type for MOM points and office-raised items), numbering, close with note/photo, PDFs (visit, per party, open points)
+- [x] R1.3b (2026-11-19; "Remind on WhatsApp" arrives with R1.4) Desk: MOM section and project MOM tab with the present dashboard's figures; picture rule B7 and points progress; "Remind on WhatsApp" per item with R1.4
+- [ ] R1.3c (move built and run on the dev copy 2026-11-19: 741 entries, every project equal, second run moves nothing; switching the present MOM screens off waits for the owner's sign-off and is one command, `SWITCH_OFF=1`) ETL of existing MOM entries (`revert_customizations` activities) into points, with a verification report (counts, photos, visit numbers per project); dry run on `revert20`; present MOM screens off; supersedes task 6.6
 - [ ] R1.4a Vendor `open_whatsapp_connector` 20.0.95.0.0 and `web_auth_otp_login` from sudi_20; sidecar service on production; dedicated number paired (🧑)
 - [ ] R1.4b `rvt_notify`: message texts en/gu/hi, MOM PDF and drawing sends, caps, delivery log, push (FCM)
 - [ ] R1.5a `rvt_api`: staff login, phone + WhatsApp code, every desk function incl. `GET /projects/{id}/picture`, secure links

@@ -4,6 +4,7 @@ from odoo import fields, http
 from odoo.http import request
 from odoo.http.stream import content_disposition
 from odoo.modules import get_module_path
+from odoo.tools.mimetypes import guess_mimetype
 
 from odoo.addons.rvt_project.models.rvt_picture import MONTHS, WEEKDAYS
 from odoo.addons.web.controllers.home import Home
@@ -72,6 +73,61 @@ class RvtDeskController(http.Controller):
             ("Content-Type", "application/pdf"),
             ("Content-Disposition", content_disposition(name, "inline")),
             ("Cache-Control", "private, max-age=300"),
+        ])
+
+
+    @http.route(DESK_URL + "/mom/pdf", type="http", auth="user")
+    def desk_mom_pdf(self, kind="mom", a="", b="all", **kw):
+        """The MOM of a visit (whole, or one party's points) or the open points of a project."""
+        env = request.env
+        if not _is_staff(env.user):
+            return request.not_found()
+        number = lambda ref: int("".join(ch for ch in str(ref) if ch.isdigit()) or 0)
+        try:
+            if kind == "open":
+                project = env["project.project"].browse(number(a)).exists()
+                project.check_access("read")
+                pdf = env["ir.actions.report"].sudo()._render_qweb_pdf("rvt_mom.action_report_open_points", project.ids)[0]
+                name = "Open points - %s.pdf" % project.name
+            else:
+                visit = env["rvt.visit"].browse(number(a)).exists()
+                party = False
+                if b in ("all", ""):
+                    pass
+                elif b.startswith("v:"):
+                    party = {"kind": "vendor", "name": b[2:]}
+                elif b == "client":
+                    party = {"kind": "client"}
+                elif b.startswith("a"):
+                    party = {"kind": "agency", "partner_id": number(b)}
+                elif b.startswith("s"):
+                    party = {"kind": "staff", "user_id": number(b)}
+                pdf = visit.rvt_pdf(party)
+                name = "MOM - %s - visit %s.pdf" % (visit.project_id.name, visit.number)
+        except Exception:  # noqa: BLE001  (no access or nothing there: not found)
+            return request.not_found()
+        return request.make_response(pdf, headers=[
+            ("Content-Type", "application/pdf"),
+            ("Content-Disposition", content_disposition(name, "inline")),
+            ("Cache-Control", "private, no-store"),
+        ])
+
+    @http.route(DESK_URL + "/point/<int:point_id>/photo", type="http", auth="user")
+    def desk_point_photo(self, point_id, close=None, **kw):
+        if not _is_staff(request.env.user):
+            return request.not_found()
+        point = request.env["rvt.point"].browse(point_id).exists()
+        try:
+            point.check_access("read")
+        except Exception:  # noqa: BLE001
+            return request.not_found()
+        value = point.close_photo if close else point.photo
+        if not point or not value:
+            return request.not_found()
+        content = value.content
+        return request.make_response(content, headers=[
+            ("Content-Type", guess_mimetype(content, default="image/jpeg")),
+            ("Cache-Control", "private, max-age=3600"),
         ])
 
 

@@ -84,7 +84,7 @@ class TestDesk(RvtCommon):
         p = self.row(snap, self.plain)
         self.assertFalse(p["onb"])
         self.assertNotIn("pic", p)
-        self.assertEqual(p["tasks"], [{"id": self.room_task.id, "n": "Drawing room", "stage": p["tasks"][0]["stage"], "subs": 1, "mom": 0}])
+        self.assertEqual(p["tasks"], [{"id": self.room_task.id, "n": "Drawing room", "stage": p["tasks"][0]["stage"], "subs": 1, "mom": 0, "moved": False}])
         self.assertEqual([t["n"] for t in snap["mytasks"]], ["Drawing room"])
         self.assertEqual(snap["mytasks"][0]["p"], "Patel Bungalow")
 

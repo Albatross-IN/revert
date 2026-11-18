@@ -3,7 +3,7 @@ let BASE=Date.UTC(2026,10,18);const MON=['Jan','Feb','Mar','Apr','May','Jun','Ju
 const dt=o=>new Date(BASE+o*864e5);
 const fd=o=>{const d=dt(o);return d.getUTCDate()+' '+MON[d.getUTCMonth()]};
 const fdw=o=>DOW[dt(o).getUTCDay()]+' '+fd(o);
-const dueW=o=>o===0?'today':o===1?'tomorrow':o===-1?'yesterday':o>1&&o<7?DOW[dt(o).getUTCDay()]:fd(o);
+const dueW=o=>o==null?'no date':o===0?'today':o===1?'tomorrow':o===-1?'yesterday':o>1&&o<7?DOW[dt(o).getUTCDay()]:fd(o);
 const days=n=>n<=0?'today':n===1?'1 day':n+' days';
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const inr=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');

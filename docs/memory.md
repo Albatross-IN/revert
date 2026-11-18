@@ -125,7 +125,7 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 
 ### Update 2026-11-19
 - Preview v4 approved by the project owner; development started. Phase log in implementation_plan_r1.md §6; additions of the day in its §8.
-- P1 `rvt_base`, P2 `rvt_project`, P3 `rvt_desk` and P4 `rvt_drawing` done. Local test logins on the dev copy (never on production): `meera` (coordinator), plus local passwords on two existing users for browser checks.
+- P1 `rvt_base`, P2 `rvt_project`, P3 `rvt_desk`, P4 `rvt_drawing` and P5 `rvt_mom` done (the earlier MOM is moved on the dev copy; its screens are still on). Local test logins on the dev copy (never on production): `meera` (coordinator), plus local passwords on two existing users for browser checks.
 
 ### Traps found while building Release 1
 - Odoo 20: an `ir.actions.act_window` has no `target="inline"` any more (current / new / fullscreen / main).
@@ -152,6 +152,13 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 - An access rule for outside users must not hang on a state that changes while they still need the record (a released drawing goes back to "in progress" when revision 2 is started): key it on what they received (`released_revision_id`, `receiver_ids`).
 - Reading a Binary attachment field loads the file. Use the file name (or `bin_size=True`) to know whether a file is there.
 - Browser file pickers need a real click: in headless checks use `Input.dispatchMouseEvent` with `Page.setInterceptFileChooserDialog`, not a dispatched event.
+
+- Tests run on a copy of real data: never assert on totals of the whole database or on names that the client also uses ("Rahul bhai", "Jitu Bhai" exist for real). Use invented, unmistakable names and compare only your own records.
+- In a test run a QWeb PDF is rendered as HTML (no PDF engine): assert on the text, check the real PDF by hand.
+- Report templates: the loop variable must not be called `doc` or `o` when it is not a record (`web.basic_layout` reads `doc._name`).
+- A new MOM activity must name a person ("Related To" is required), but 346 earlier entries have none; to make such a row in a test, null the column with SQL after creating it.
+- `html2plaintext` turns bold into asterisks; strip tags yourself when the plain words are wanted.
+- Parsing a party key: `'all'.startswith('a')` is true. Test the literal first.
 
 ## 7. Glossary
 | Term | Meaning |

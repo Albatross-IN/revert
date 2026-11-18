@@ -23,6 +23,8 @@ PATCHES = {
         ("const BASE=Date.UTC(2026,10,18),MON=", "let BASE=Date.UTC(2026,10,18);const MON="),
         ("const NOW='10:42 am';", "let NOW='10:42 am';"),
         ("const canSee=(u,p)=>", "let canSee=(u,p)=>"),
+        # a point moved from the earlier MOM may have no date
+        ("const dueW=o=>o===0?'today'", "const dueW=o=>o==null?'no date':o===0?'today'"),
         # an owner may do what the principal does (the server agrees)
         ("const isPrincipal=()=>has(me(),'principal');", "const isPrincipal=()=>has(me(),'principal')||has(me(),'owner');"),
     ],
@@ -39,6 +41,11 @@ PATCHES = {
         ("ps.e.forEach(([ty,c])=>{for(let i=1;i<=c;i++)ob.ents.push({u:++OBU,n:c>1?(ty==='Bedroom'?'Bedroom '+(i+1):ty.replace(' / bathroom','')+' '+i):ty,ty})});",
          "ps.e.forEach(([ty,c,f])=>{for(let i=1;i<=c;i++)ob.ents.push({u:++OBU,n:c>1?ty+' '+(i+(f||1)-1):ty,ty})});"),
     ],
+    "blocks.js": [
+        # the camera on a point opens its photo
+        ("""<span class="tx">${esc(x.text)}</span>${x.photo?ic('cam','mu'):''}</div>""",
+         """<span class="tx">${esc(x.text)}</span>${x.photo?`<span class="phb" role="button" tabindex="0" data-a="photo" data-v="${x.id}" aria-label="Open the photo">${ic('cam','mu')}</span>`:''}</div>"""),
+    ],
     "desk.js": [
         # Today lists the hand-made tasks assigned to me (plan P3), not the first five of my projects
         ("const tasks=ps.flatMap(p=>p.tasks.map(t=>[p,t])).slice(0,5).map(([p,t])=>",
@@ -49,11 +56,17 @@ PATCHES = {
         ("Bt('Use as a room','taskent',p.id+'|'+x.n,'sm')}</div></div>`",
          "Bt('Use as a room','taskent',p.id+'|'+x.id,'sm')}${Bt('Open','opentask',x.id,'sm ghost','chev')}</div></div>`"),
         ("'<span class=\"mu f12\">date task · no longer needed for MOM</span>':", "Bt('Open','opentask',x.id,'sm ghost','chev'):"),
-        ("${x.mom} MOM entries moved to the new MOM</div>", "${x.mom} MOM ${x.mom===1?'entry':'entries'}${DB.features.mom?' moved to the new MOM':''}</div>"),
+        ("${x.mom} MOM entries moved to the new MOM</div>", "${x.mom} MOM ${x.mom===1?'entry':'entries'}${x.moved?' moved to the new MOM':''}</div>"),
         ("card('Earlier tasks','<span class=\"mu f12\">made by hand · they keep working as before</span>',",
          "card('Earlier tasks','<span class=\"mu f12\">made by hand · they keep working as before</span>'+Bt('Task board','taskboard',p.id,'sm ghost','grid'),"),
     ],
 }
+
+
+# (file, text the range starts with, text the range ends before, what goes there instead)
+RANGES = [
+    ("desk.js", " if(t==='etl'){const R=[[", " if(t==='log')b=card('Messages'", " if(t==='etl')b=etlReport(dev);\n"),
+]
 
 
 def main():
@@ -68,8 +81,13 @@ def main():
             if text.count(old) != 1:
                 sys.exit("%s: expected exactly one match for\n  %s\nfound %s" % (name, old[:90], text.count(old)))
             text = text.replace(old, new)
+        ranges = [r for r in RANGES if r[0] == name]
+        for _name, start, end, new in ranges:
+            if text.count(start) != 1 or text.count(end) != 1 or text.index(start) > text.index(end):
+                sys.exit("%s: range not found exactly once between\n  %s\n  %s" % (name, start[:60], end[:60]))
+            text = text[:text.index(start)] + new + text[text.index(end):]
         (dst / name).write_text(text)
-        print("copied", name, "(%s changes)" % len(PATCHES.get(name, [])))
+        print("copied", name, "(%s changes)" % (len(PATCHES.get(name, [])) + len(ranges)))
 
 
 if __name__ == "__main__":
