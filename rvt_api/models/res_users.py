@@ -10,11 +10,16 @@ class ResUsers(models.Model):
     def rvt_api_role(self):
         """Which app a person gets: staff, agency or client. Nothing for anybody else."""
         self.ensure_one()
-        if self.has_group("rvt_base.group_rvt_staff"):
+        # Asked in superuser mode, always. The framework keeps a user's groups in a cache filled by
+        # the first question, and an agency person or a client may not read their own groups: asked
+        # under their own rights first (a request with a token, right after a restart), the cache
+        # would keep "no groups" and lock them out until the next restart.
+        user = self.sudo()
+        if user.has_group("rvt_base.group_rvt_staff"):
             return "staff"
-        if self.has_group("rvt_base.group_rvt_agency"):
+        if user.has_group("rvt_base.group_rvt_agency"):
             return "agency"
-        if self.has_group("rvt_base.group_rvt_client"):
+        if user.has_group("rvt_base.group_rvt_client"):
             return "client"
         return False
 
@@ -66,7 +71,11 @@ class ResUsers(models.Model):
             if not user.active:
                 user.active = True
             return user
+        login = "rvt:%s" % e164(person.phone)
+        if self.sudo().with_context(active_test=False).search_count([("login", "=", login)]):
+            # the same number stands on a second contact card whose account exists: each card keeps its own
+            login = "%s:%s" % (login, person.id)
         return self.sudo().with_context(no_reset_password=True).create({
-            "name": person.name, "login": "rvt:%s" % e164(person.phone), "partner_id": person.id,
+            "name": person.name, "login": login, "partner_id": person.id,
             "group_ids": [(6, 0, [group.id])],
         })

@@ -3,6 +3,7 @@ import json
 from odoo.tests import HttpCase
 
 from odoo.addons.rvt_mom.tests.common import MomCommon
+from odoo.addons.rvt_notify.models.rvt_notify import e164
 
 ROOT = "/api/rvt/v1"
 PASSWORD = "revert-test-pw-1"
@@ -21,6 +22,21 @@ class ApiCase(MomCommon, HttpCase):
         cls.carp_person = Partner.search([("parent_id", "=", cls.ag_carp.id), ("name", "=", "Bherubhai Suthar")])
         cls.elec_person = Partner.search([("parent_id", "=", cls.ag_elec.id), ("name", "=", "Jaybhai Solanki")])
         cls.carp_phone, cls.elec_phone, cls.client_phone = "98244 18830", "98790 22014", "98250 70011"
+        cls._own_the_numbers()
+
+    @classmethod
+    def _own_the_numbers(cls):
+        """Sign-in goes by mobile number. A copy of a live database may hold people with the very
+        numbers of these fixtures; inside the test they give them up, so the fixtures are who answers."""
+        Partner = cls.env["res.partner"].with_context(active_test=False)
+        started = cls.env.cr.now()
+        mine = Partner.search([("phone", "!=", False), ("create_date", ">=", started)])
+        numbers = {e164(p.phone) for p in mine} - {False, ""}
+        others = Partner.search([("phone", "!=", False), ("create_date", "<", started)]).filtered(lambda p: e164(p.phone) in numbers)
+        others.write({"phone": False})
+        for user in cls.env["res.users"].with_context(active_test=False).search([("login", "in", ["rvt:%s" % n for n in numbers])]):
+            if user.partner_id not in mine:
+                user.login = "held:%s" % user.id
 
     def setUp(self):
         super().setUp()

@@ -1,6 +1,7 @@
 from odoo.tests import new_test_user, tagged
 
 from .common import PASSWORD, ApiCase
+from odoo.addons.rvt_notify.models.rvt_notify import e164
 
 
 @tagged("post_install", "-at_install")
@@ -96,6 +97,17 @@ class TestAuth(ApiCase):
         self.assertEqual((session["me"]["role"], session["me"]["name"]), ("client", "Nirav Shah"))
         user = self.env["res.users"].browse(session["me"]["id"])
         self.assertTrue(user.has_group("rvt_base.group_rvt_client"))
+
+    def test_a_number_on_two_contact_cards(self):
+        """The same mobile number stands on two cards (the office entered the person twice) and the
+        other card has an account already. This card still gets in, with an account of its own."""
+        twin = self.env["res.partner"].create({"name": "Bherubhai (earlier card)", "phone": self.carp_phone})
+        self.env["res.users"].with_context(no_reset_password=True).create({
+            "name": twin.name, "login": "rvt:%s" % e164(self.carp_phone), "partner_id": twin.id,
+            "group_ids": [(6, 0, [self.env.ref("rvt_base.group_rvt_client").id])]})
+        answer = self.otp(self.carp_phone)
+        self.assertEqual(answer["me"]["role"], "agency")
+        self.assertEqual(answer["me"]["name"], self.carp_person.name)
 
     def test_unknown_number_wrong_tries_and_too_many_codes(self):
         self.assertRefused(self.post("/auth/otp/request", {"phone": "90000 00001"}), 404, "UNKNOWN_NUMBER")

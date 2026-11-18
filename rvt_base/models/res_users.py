@@ -27,7 +27,7 @@ class ResUsers(models.Model):
             if key == "principal":
                 if self.env.ref(xmlid) in explicit:
                     roles.append(key)
-            elif self.has_group(xmlid):
+            elif self.sudo().has_group(xmlid):     # sudo: see rvt_api_role (the groups cache)
                 roles.append(key)
         return roles
 

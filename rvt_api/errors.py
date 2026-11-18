@@ -56,6 +56,16 @@ def _rollback(error):
         _logger.exception("rvt_api: could not roll back a refused request")
 
 
+def _plain_refusal(error):
+    """Our own refusals are one short line and go out as written. The framework's
+    access messages (several lines, record names, user ids) stay in the server log."""
+    text = str(error.args[0] if error.args else error)
+    if "\n" not in text and len(text) <= 160:
+        return text
+    _logger.warning("rvt_api: access refused\n%s", text, exc_info=error)
+    return "You are not allowed to do this."
+
+
 def _answer(error, status, code, message, **extra):
     _rollback(error)
     return JSONResponse(status_code=status, content={"error": dict(extra, code=code, message=message)})
@@ -76,7 +86,7 @@ class RvtErrorMiddleware(BaseHTTPMiddleware):
             if isinstance(error, AccessDenied):
                 return _answer(error, 401, "AUTH", "Sign in again.")
             if isinstance(error, AccessError):
-                return _answer(error, 403, "FORBIDDEN", str(error.args[0] if error.args else error))
+                return _answer(error, 403, "FORBIDDEN", _plain_refusal(error))
             if isinstance(error, MissingError):
                 return _answer(error, 404, "NOT_FOUND", "That record is not there any more.")
             return _answer(error, 422, "VALIDATION", str(error.args[0] if error.args else error))

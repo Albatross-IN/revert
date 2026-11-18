@@ -52,6 +52,10 @@ def caller(
         raise unauthorized("This device was signed out.")
     device._touch()
     bound = user.env(user=user.id, su=False, context=dict(user.env.context, lang=user.lang or "en_US", tz=user.tz or "Asia/Kolkata"))
+    # The request began as the public user. From here on the transaction belongs to the caller,
+    # as it does after a web sign-in: the framework checks links to contacts and users against
+    # the transaction's own user, whoever the environment at hand says it is.
+    bound.transaction.default_env = bound
     me = bound["res.users"].browse(user.id)
     role = me.rvt_api_role()
     if not role:

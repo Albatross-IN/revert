@@ -9,7 +9,7 @@ onboarding reads (trades, entity types with their usual trades, site
 presets, standard drawing sets); the agency mark on contacts; and the
 settings the project picture and the release flow depend on.
 """,
-    "version": "20.0.1.3.0",
+    "version": "20.0.1.3.1",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Albatross",
