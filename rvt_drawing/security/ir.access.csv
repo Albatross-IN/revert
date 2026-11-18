@@ -1,0 +1,18 @@
+id,name,model_id,group_id/id,operation,domain
+access_rvt_drawing_staff,rvt.drawing staff,rvt.drawing,rvt_base.group_rvt_staff,crud,
+access_rvt_drawing_system,rvt.drawing system,rvt.drawing,base.group_system,crud,
+rvt_drawing_project_rule,rvt.drawing: staff only on a project they may see,rvt.drawing,,crud,"[(1, '=', 1)] if not user.has_group('rvt_base.group_rvt_staff') else [('project_id', 'access', 'read')]"
+access_rvt_drawing_agency,rvt.drawing agency: released to it,rvt.drawing,rvt_base.group_rvt_agency,r,"[('released_revision_id', '!=', False), ('receiver_ids', 'in', [user.partner_id.commercial_partner_id.id])]"
+access_rvt_drawing_client,rvt.drawing client: marked for the client and released to it,rvt.drawing,rvt_base.group_rvt_client,r,"[('for_client', '=', True), ('client_released', '=', True), ('project_id.rvt_client_contact_ids', 'in', [user.partner_id.id])]"
+access_rvt_drawing_revision_staff,rvt.drawing.revision staff,rvt.drawing.revision,rvt_base.group_rvt_staff,crud,
+access_rvt_drawing_revision_system,rvt.drawing.revision system,rvt.drawing.revision,base.group_system,crud,
+rvt_drawing_revision_project_rule,rvt.drawing.revision: staff only on a project they may see,rvt.drawing.revision,,crud,"[(1, '=', 1)] if not user.has_group('rvt_base.group_rvt_staff') else [('project_id', 'access', 'read')]"
+access_rvt_drawing_revision_outside,rvt.drawing.revision outside: the released one of a drawing it may see,rvt.drawing.revision,base.group_portal,r,"[('state', '=', 'released'), ('drawing_id', 'access', 'read')]"
+access_rvt_drawing_receipt_staff,rvt.drawing.receipt staff,rvt.drawing.receipt,rvt_base.group_rvt_staff,r,
+access_rvt_drawing_receipt_system,rvt.drawing.receipt system,rvt.drawing.receipt,base.group_system,crud,
+rvt_drawing_receipt_project_rule,rvt.drawing.receipt: staff only on a project they may see,rvt.drawing.receipt,,crud,"[(1, '=', 1)] if not user.has_group('rvt_base.group_rvt_staff') else [('project_id', 'access', 'read')]"
+access_rvt_drawing_receipt_outside,rvt.drawing.receipt outside: its own,rvt.drawing.receipt,base.group_portal,r,"['|', ('partner_id', '=', user.partner_id.commercial_partner_id.id), '&', ('kind', '=', 'client'), ('project_id.rvt_client_contact_ids', 'in', [user.partner_id.id])]"
+access_rvt_drawing_question_staff,rvt.drawing.question staff,rvt.drawing.question,rvt_base.group_rvt_staff,crud,
+access_rvt_drawing_question_system,rvt.drawing.question system,rvt.drawing.question,base.group_system,crud,
+rvt_drawing_question_project_rule,rvt.drawing.question: staff only on a project they may see,rvt.drawing.question,,crud,"[(1, '=', 1)] if not user.has_group('rvt_base.group_rvt_staff') else [('project_id', 'access', 'read')]"
+access_rvt_drawing_question_outside,rvt.drawing.question outside: its own questions,rvt.drawing.question,base.group_portal,r,"['|', ('partner_id', '=', user.partner_id.commercial_partner_id.id), ('partner_id', '=', user.partner_id.id)]"

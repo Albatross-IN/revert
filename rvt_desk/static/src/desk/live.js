@@ -48,6 +48,14 @@ function wrapOP(name,send){const orig=OP[name];if(!orig)return;OP[name]=function
 wrapOP('setLine',(r,p,l,st,x)=>sync('set_line',{line:l.id,state:st,cause:(x||{}).cause||'',ref:(x||{}).ref||'',note:(x||{}).note||'',agency:l.ag||''}));
 wrapOP('assign',(r,p,t,ag,by)=>sync('assign',{project:p.id,trade:t,agency:ag||'',by:by==null||isNaN(by)?7:by}));
 
+/* drawings */
+wrapOP('sendForApproval',(r,d,note)=>{const f=LIVE.pdf;LIVE.pdf=null;sync('send_for_approval',{drawing:d.id,note:note||'',file:f?f.b64:'',name:f?f.name:''})});
+wrapOP('approve',(r,d)=>sync('approve',{drawing:d.id}));
+wrapOP('sendBack',(r,d,note)=>sync('send_back',{drawing:d.id,note:note||''}));
+wrapOP('release',(r,d,to)=>sync('release',{drawing:d.id,to}));
+wrapOP('answer',(r,d,qid,text)=>sync('answer',{question:qid,text}));
+wrapOP('ask',(r,d,by,byName,text,photo,via)=>sync('ask',{drawing:d.id,by,name:byName||'',text},d.q[d.q.length-1].id));
+
 /* ---------- actions that differ from the preview: they talk to the server or leave the desk ---------- */
 const wrapA=(name,after)=>{const o=A[name];A[name]=function(v,el,dev){const r=o.apply(A,arguments);after(v,el,dev);return r}};
 A.signin=function(){};A.asuser=function(){};A.reset=function(){};A.scen=function(){};A.setview=function(){};A.jump=function(){};A.guide=function(){};A.wapanel=function(){};A.replay=function(){intro()};
@@ -60,6 +68,21 @@ A.refresh=function(){reload()};
 A.taskent=function(v,el,dev){const [pid,tid]=v.split('|'),p=pOf(pid),t=p.tasks.find(x=>String(x.id)===tid);if(!t)return;const ty=guessType(t.n);
  p.ents.push({id:'e'+t.id,n:t.n,ty});p.tasks=p.tasks.filter(x=>x!==t);sync('task_entity',{task:t.id,type:ty});toast(`“${t.n}” is now a room of ${p.name}. Tick its trades in Project configuration.`)};
 
+/* drawings: a real PDF is chosen, kept until it is sent, and shown where the preview drew a sample sheet */
+const fmtSize=n=>n>=1e6?(n/1e6).toFixed(1)+' MB':Math.max(1,Math.round(n/1e3))+' KB';
+const lastFile=d=>[...d.revs].reverse().find(x=>x.file);
+A.pickpdf=function(v,el,dev){const i=document.createElement('input');i.type='file';i.accept='application/pdf,.pdf';
+ i.onchange=()=>{const file=i.files[0];if(!file)return;if(file.size>25e6){toast('That file is larger than 25 MB. Export a lighter PDF.','wait');return render()}
+  const rd=new FileReader();rd.onload=()=>{LIVE.pdf={name:file.name,size:file.size,b64:String(rd.result).split(',')[1]};dev.f.sa_file=true;render()};rd.readAsDataURL(file)};i.click()};
+A.droppdf=function(v,el,dev){LIVE.pdf=null;dev.f.sa_file=false};
+const sendappr0=SHEETS.sendappr;SHEETS.sendappr=function(dev,s){const o=sendappr0(dev,s),f=dev.f,p=LIVE.pdf,r=cur(dOf(s.id)),on=!!(f.sa_file&&p);
+ const label=on?`<b>${esc(p.name)}</b> · ${fmtSize(p.size)} · tap to remove`:r.file?`<b>${esc(r.fname)}</b> · on file · tap to replace`:'Choose the PDF';
+ o.body=o.body.replace(/<button type="button" class="drop[^]*?<\/button>/,`<button type="button" class="drop ${on||r.file?'on':''}" data-a="${on?'droppdf':'pickpdf'}">${ic(on||r.file?'file':'plus')}<span>${label}</span></button>`);return o};
+const dosend0=A.dosend;A.dosend=function(v,el,dev){const d=dOf(v);if(dev.f.sa_file&&!LIVE.pdf)dev.f.sa_file=false;if(!dev.f.sa_file&&cur(d).file)dev.f.sa_file=true;return dosend0.call(A,v,el,dev)};
+const dwgPaper0=dwgPaper;dwgPaper=function(d){const r=lastFile(d);return r?`<div class="pdfw"><iframe class="pdfv" title="${esc(sheetNo(d)+' '+d.title)}" src="/rvt/desk/revision/${r.id}/pdf#view=FitH&toolbar=0"></iframe></div>`:dwgPaper0(d)};
+wrapA('dstart',v=>sync('dstart',{drawing:v}));
+wrapA('newrev',v=>sync('new_revision',{drawing:v}));
+
 /* onboarding: the wizard is the preview's; the result is written by the server in one go.
    A new project starts with the real principal, and with the person who sets it up on its team. */
 const obStart0=obStart;obStart=function(dev,pid){const ob=obStart0(dev,pid),u=me();
@@ -69,7 +92,7 @@ function obPayload(ob){const p=ob.pid?pOf(ob.pid):null,on=obTrades(ob),ticks=[];
  return {pid:ob.pid||'',name:ob.name.trim(),client:ob.client.trim(),cphone:(ob.cphone||'').trim(),address:ob.address||'',area:ob.area||'',kind:ob.kind,label:ob.label||'',billedTo:ob.billedTo,
   principal:ob.principal||'',designers:ob.designers,coords:ob.coords,
   ents:ob.ents.map(e=>{const t=e.task&&p?p.tasks.find(x=>x.n===e.task):null;return {u:e.u,n:e.n,ty:e.ty,id:e.id||'',taskId:t?t.id:''}}),
-  tr:ob.tr,ticks,dr:DB.features.drawings?ob.dr.filter(d=>d.on&&!d.exists):[],inv:DB.features.wa?Object.keys(ob.inv).filter(k=>ob.inv[k]):[]}}
+  tr:ob.tr,ticks,dr:DB.features.drawings?ob.dr.filter(d=>d.on&&!d.exists).map(d=>({code:d.code,n:d.n,t:d.t||'',ds:d.ds||'',due:+d.due||0,client:!!d.client,appr:!!d.appr})):[],inv:DB.features.wa?Object.keys(ob.inv).filter(k=>ob.inv[k]):[]}}
 A.obfinish=function(v,el,dev){const ob=dev.ob;if(!ob||LIVE.saving)return;if(!ob.name.trim())return toast('Give the project a name first.','wait');
  const was=!!(ob.pid&&pOf(ob.pid)&&pOf(ob.pid).onb);LIVE.saving=true;document.documentElement.dataset.sync='1';
  rpc('op',['onboard',obPayload(ob)]).then(async r=>{applySnapshot(await rpc('snapshot'));dev.ob=null;openProj(dev,r.pid,'picture');dev.sec='projects';flash(dev,was?'Saved':'Project started','check',!was);

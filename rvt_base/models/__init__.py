@@ -1,4 +1,5 @@
 from . import rvt_config
+from . import rvt_notify
 from . import rvt_trade
 from . import rvt_entity_type
 from . import rvt_site_preset

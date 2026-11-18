@@ -26,8 +26,8 @@ Release 1 replaces Phases D and 1–9 below as the first thing built. Those phas
 - [x] R1.1c (2026-11-19; served at `/rvt/desk`, see the phase log) `rvt_desk`: single window (Today, Projects panel, Setup), Glass + Identity at `/office`, other menus hidden for staff (sfj_admin pattern)
 - [ ] R1.1d Exit: two pilot projects and the running projects onboarded by staff in the browser
 - [x] R1.1e (2026-11-19) Project picture v1 (phase1_adoption §5.10, §7.1): computed method on the project (progress, blockers B1/B5/B6, next actions, status), project Overview, Review rows, Today from the same items; "Waiting" cause on work lines; settings for day limits
-- [ ] R1.2a `rvt_drawing`: register, revisions, approval by the principal (setting), release with receivers, opened tracking, questions, client approval / change request
-- [ ] R1.2b Desk: Drawings and Review sections; picture rules B2, B3, B8, B9 and drawing progress
+- [x] R1.2a (2026-11-19) `rvt_drawing`: register, revisions, approval by the principal (setting), release with receivers, opened tracking, questions, client approval / change request
+- [x] R1.2b (2026-11-19) Desk: Drawings and Review sections; picture rules B2, B3, B8, B9 and drawing progress
 - [ ] R1.2c Exit: staff of the pilot projects release every drawing through the system for two weeks
 - [ ] R1.3a `rvt_mom`: points and visits (one record type for MOM points and office-raised items), numbering, close with note/photo, PDFs (visit, per party, open points)
 - [ ] R1.3b Desk: MOM section and project MOM tab with the present dashboard's figures; picture rule B7 and points progress; "Remind on WhatsApp" per item with R1.4

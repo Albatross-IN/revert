@@ -334,11 +334,15 @@ class RvtDesk(models.AbstractModel):
                 line.rvt_agency_id = wanted
         cause = a.get("cause") or None
         trade = self.env["rvt.trade"].search([("code", "=", a.get("ref"))], limit=1) if cause == "trade" else None
-        extra = {"ref": a.get("ref")} if cause in ("drawing", "client") else {}
+        extra = self._wait_extra(cause, a.get("ref"))
         line.rvt_set_state(
             state, cause=cause, wait_trade_id=trade.id if trade else None, note=a.get("note"),
             **({"expected_finish": a["fin"]} if "fin" in a else {}), **extra)
         return {"id": "l%s" % line.id}
+
+    def _wait_extra(self, cause, ref):
+        """Hook: the record a waiting line points at, from the desk's reference."""
+        return {}
 
     def _op_assign(self, a):
         project = self.env["project.project"].browse(_num(a.get("project"))).exists()

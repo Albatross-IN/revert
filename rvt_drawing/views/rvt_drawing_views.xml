@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Plain views for administrators. Staff work in the desk. -->
+    <record id="rvt_drawing_view_list" model="ir.ui.view">
+        <field name="name">rvt.drawing.list</field>
+        <field name="model">rvt.drawing</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="state != 'released' and due_date &lt; context_today().strftime('%Y-%m-%d')">
+                <field name="project_id"/>
+                <field name="sheet_no"/>
+                <field name="name"/>
+                <field name="trade_id" placeholder="General set"/>
+                <field name="designer_id" widget="many2one_avatar_user"/>
+                <field name="due_date"/>
+                <field name="for_client" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'released'" decoration-warning="state == 'awaiting_approval'" decoration-info="state == 'in_progress'"/>
+            </list>
+        </field>
+    </record>
+    <record id="rvt_drawing_view_form" model="ir.ui.view">
+        <field name="name">rvt.drawing.form</field>
+        <field name="model">rvt.drawing</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name"/></h1>
+                        <h3><field name="sheet_no"/></h3>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="project_id"/>
+                            <field name="type_id"/>
+                            <field name="code"/>
+                            <field name="trade_id" placeholder="General set"/>
+                            <field name="entity_id"/>
+                        </group>
+                        <group>
+                            <field name="designer_id"/>
+                            <field name="due_date"/>
+                            <field name="for_client"/>
+                            <field name="needs_client_approval" invisible="not for_client"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Revisions" name="revisions">
+                            <field name="revision_ids" readonly="1">
+                                <list>
+                                    <field name="number"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="file_name"/>
+                                    <field name="note"/>
+                                    <field name="sent_by_id"/>
+                                    <field name="approved_by_id"/>
+                                    <field name="released_on"/>
+                                    <field name="client_decision"/>
+                                    <field name="client_decided_by"/>
+                                    <field name="client_decided_on"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Questions" name="questions">
+                            <field name="question_ids" readonly="1">
+                                <list>
+                                    <field name="asked_on"/>
+                                    <field name="partner_id"/>
+                                    <field name="asked_by_name"/>
+                                    <field name="text"/>
+                                    <field name="answer"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="rvt_drawing_view_search" model="ir.ui.view">
+        <field name="name">rvt.drawing.search</field>
+        <field name="model">rvt.drawing</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('sheet_no', 'ilike', self)]"/>
+                <field name="project_id"/>
+                <field name="designer_id"/>
+                <field name="trade_id"/>
+                <filter name="to_release" string="Not released" domain="[('state', '!=', 'released')]"/>
+                <filter name="awaiting" string="Awaiting approval" domain="[('state', '=', 'awaiting_approval')]"/>
+                <filter name="for_client" string="For the client" domain="[('for_client', '=', True)]"/>
+                <group>
+                    <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+                    <filter name="group_designer" string="Designer" context="{'group_by': 'designer_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="rvt_drawing_action" model="ir.actions.act_window">
+        <field name="name">Drawings</field>
+        <field name="res_model">rvt.drawing</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_project': 1}</field>
+    </record>
+    <menuitem id="menu_rvt_drawings" name="Drawings" parent="rvt_base.menu_rvt_config" action="rvt_drawing_action" sequence="60"/>
+</odoo>

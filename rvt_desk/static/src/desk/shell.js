@@ -51,7 +51,7 @@ const A={
  obtrade(v,el,dev){dev.ob.tr[v].on=!dev.ob.tr[v].on},obtick(v,el,dev){const [u,t]=v.split('|'),ob=dev.ob,e=ob.ents.find(x=>x.u==u);ob.ticks[u+'|'+t]=!obTick(ob,e,t)},
  obdraw(v,el,dev){const d=dev.ob.dr[+v];d.on=!d.on},obdue(v,el,dev){const [i,n]=v.split('|');dev.ob.dr[+i].due=Math.max(0,dev.ob.dr[+i].due+ +n)},
  obflag(v,el,dev){const [i,k]=v.split('|'),d=dev.ob.dr[+i];d[k]=!d[k];if(!d.client)d.appr=false},
- obadddraw(v,el,dev){const ob=dev.ob;if(!ob.nd.trim())return toast('Type the drawing’s name first.','wait');ob.dr.push({code:'AD',n:ob.nd.trim(),t:'',on:true,ds:ob.designers[0]||'s4',due:14,client:false,appr:false,custom:true});ob.nd=''},
+ obadddraw(v,el,dev){const ob=dev.ob;if(!ob.nd.trim())return toast('Type the drawing’s name first.','wait');ob.dr.push({code:'AD',n:ob.nd.trim(),t:'',on:true,ds:ob.designers[0]||(DB.staff.find(u=>has(u,'designer'))||{id:''}).id,due:14,client:false,appr:false,custom:true});ob.nd=''},
  obinv(v,el,dev){dev.ob.inv[v]=!dev.ob.inv[v]},
  obfinish(v,el,dev){const ob=dev.ob;if(!ob.name.trim())return toast('Give the project a name first.','wait');const r=obApply(ob);dev.ob=null;if(dev.phone)dev.stack=[{s:'projects'}];openProj(dev,r.p.id,'picture');
   flash(dev,r.was?'Saved':'Project started','check',!r.was);toast(`${r.p.name}: ${plural(r.nl,'work line')} and ${plural(r.nd,'drawing')} added${r.inv?' · '+plural(r.inv,'invitation')+' '+sent():''}.`)},
@@ -71,7 +71,7 @@ const A={
  dwg(v,el,dev){openDwg(dev,v)},dstart(v){dOf(v).st='in_progress';toast('Marked in progress.')},view(v,el,dev){openSheet(dev,'view',{id:v})},
  dosend(v,el,dev){const d=dOf(v);if(!dev.f.sa_file)return toast('Choose the PDF first.','wait');OP.sendForApproval(d,dev.f.sa_note);dev.f.sa_file=false;dev.f.sa_note='';
   if(DB.set.approval){dev.sheet=null;flash(dev,'Sent','send');toast(`${sheetNo(d)} sent to ${stf(pOf(d.pid).principal).n} for approval.`)}else relPrefill(dev,d)},
- approve(v,el,dev){if(!isPrincipal())return toast('Only the principal approves a release. Switch “Signed in as” to Pranav to try it.','wait');dev.f.ap_note='';openSheet(dev,'approve',{id:v})},
+ approve(v,el,dev){if(!isPrincipal())return toast('Only the principal approves a release.','wait');dev.f.ap_note='';openSheet(dev,'approve',{id:v})},
  doapprove(v,el,dev){const [id,rel]=v.split('|'),d=dOf(id);OP.approve(d);if(rel)relPrefill(dev,d);else{dev.sheet=null;flash(dev,'APPROVED','stamp');toast(`${sheetNo(d)} approved. ${stf(d.ds).n} can release it now.`)}},
  sendback(v,el,dev){const d=dOf(v);if(!(dev.f.ap_note||'').trim())return toast('Say why it goes back.','wait');OP.sendBack(d,dev.f.ap_note.trim());dev.sheet=null;toast(`${sheetNo(d)} sent back to ${stf(d.ds).n}.`)},
  release(v,el,dev){relPrefill(dev,dOf(v))},

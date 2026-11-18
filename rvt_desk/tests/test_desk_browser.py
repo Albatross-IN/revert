@@ -20,7 +20,7 @@ TOUR = """
         throw new Error('timed out: ' + what);
     };
     try {
-        // the six steps (five until drawings have their back end)
+        // the six steps
         act('onb', ''); await sleep(150);
         type('ob_desk_name', 'Tour Residence'); type('ob_desk_client', 'Mr. Tour Client'); type('ob_desk_cphone', '98250 00000');
         type('ob_desk_area', 'Bopal');
@@ -30,7 +30,9 @@ TOUR = """
         act('obpreset', '2 BHK'); await sleep(100);
         if (document.querySelectorAll('.entrow').length !== 9) throw new Error('2 BHK should propose 9 rooms (8 and the whole site), got ' + document.querySelectorAll('.entrow').length);
         act('obgo', '4'); await sleep(100);
-        act('obgo', '5'); await sleep(100);
+        act('obgo', '5'); await sleep(150);
+        if (!document.querySelectorAll('.drow.on').length) throw new Error('no drawing is proposed in step 5');
+        act('obgo', '6'); await sleep(100);
         act('obfinish');
         await until(() => q('.prjh h1') && q('.prjh h1').textContent === 'Tour Residence', 'the project panel');
         // the picture is there, then one cell of the grid is changed
@@ -98,6 +100,11 @@ class TestDeskBrowser(HttpCase):
         self.assertEqual(project.rvt_site_label, "2 BHK")
         self.assertEqual(len(project.rvt_entity_ids), 9)
         self.assertEqual(len(project.rvt_trade_plan_ids), 7)
+        drawings = project.rvt_drawing_ids
+        self.assertTrue(drawings, "step 5 put the ticked standard drawings on the list")
+        self.assertIn("FL", drawings.mapped("code"))
+        self.assertEqual(set(drawings.mapped("state")), {"to_draw"})
+        self.assertFalse(drawings.filtered(lambda d: not d.designer_id), "every drawing has its designer")
         line = self.env["project.task"].search([
             ("project_id", "=", project.id), ("rvt_kind", "=", "work"),
             ("parent_id.name", "=", "Kitchen"), ("rvt_trade_id.code", "=", "civ")])

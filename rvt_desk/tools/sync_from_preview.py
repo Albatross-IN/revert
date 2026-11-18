@@ -23,8 +23,18 @@ PATCHES = {
         ("const BASE=Date.UTC(2026,10,18),MON=", "let BASE=Date.UTC(2026,10,18);const MON="),
         ("const NOW='10:42 am';", "let NOW='10:42 am';"),
         ("const canSee=(u,p)=>", "let canSee=(u,p)=>"),
+        # an owner may do what the principal does (the server agrees)
+        ("const isPrincipal=()=>has(me(),'principal');", "const isPrincipal=()=>has(me(),'principal')||has(me(),'owner');"),
+    ],
+    "shell.js": [
+        # the preview's demo hint has no place in the product
+        ("return toast('Only the principal approves a release. Switch “Signed in as” to Pranav to try it.','wait')",
+         "return toast('Only the principal approves a release.','wait')"),
+        # a drawing added by hand goes to the project's first designer, not to an invented person
+        ("ds:ob.designers[0]||'s4',due:14", "ds:ob.designers[0]||(DB.staff.find(u=>has(u,'designer'))||{id:''}).id,due:14"),
     ],
     "sheets.js": [
+        ("ds=ob.designers.length?ob.designers:['s4'];", "ds=ob.designers.length?ob.designers:[(DB.staff.find(u=>has(u,'designer'))||{id:''}).id];"),
         # rooms of a preset are numbered from the master data (bedrooms beside a master bedroom start at 2)
         ("ps.e.forEach(([ty,c])=>{for(let i=1;i<=c;i++)ob.ents.push({u:++OBU,n:c>1?(ty==='Bedroom'?'Bedroom '+(i+1):ty.replace(' / bathroom','')+' '+i):ty,ty})});",
          "ps.e.forEach(([ty,c,f])=>{for(let i=1;i<=c;i++)ob.ents.push({u:++OBU,n:c>1?ty+' '+(i+(f||1)-1):ty,ty})});"),

@@ -32,12 +32,28 @@ class RvtConfig(models.AbstractModel):
         return {n: self.get(n) for n in PARAMS}
 
     @api.model
+    def _zone(self):
+        name = self.env.context.get("tz") or self.env.user.tz or DEFAULT_TZ
+        try:
+            return pytz.timezone(name)
+        except pytz.UnknownTimeZoneError:
+            return pytz.timezone(DEFAULT_TZ)
+
+    @api.model
+    def to_date(self, moment):
+        """The local date of a stored moment (the database keeps UTC): "released today"
+        must be true at one in the morning too."""
+        if not moment:
+            return False
+        return pytz.utc.localize(moment).astimezone(self._zone()).date()
+
+    @api.model
+    def to_local(self, moment):
+        """A stored moment as local time, for "9:12 am"."""
+        return pytz.utc.localize(moment).astimezone(self._zone()) if moment else False
+
+    @api.model
     def today(self):
         """Today's date where the work happens. A person's own time zone when they have one;
         India's otherwise (agency people and clients sign in by phone and have none set)."""
-        name = self.env.context.get("tz") or self.env.user.tz or DEFAULT_TZ
-        try:
-            zone = pytz.timezone(name)
-        except pytz.UnknownTimeZoneError:
-            zone = pytz.timezone(DEFAULT_TZ)
-        return datetime.now(zone).date()
+        return datetime.now(self._zone()).date()

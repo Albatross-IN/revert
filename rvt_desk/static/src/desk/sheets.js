@@ -91,7 +91,7 @@ function obPreset(ob,name){const ps=PRESETS.find(x=>x.n===name);ob.preset=name;o
  if(!ob.ents.some(e=>e.ty==='Whole site'))ob.ents.push({u:++OBU,n:'Whole site',ty:'Whole site'});if(!ob.label)ob.label=name}
 const obTick=(ob,e,t)=>ob.ticks[e.u+'|'+t]!==undefined?ob.ticks[e.u+'|'+t]:(ETX[e.ty]||ETX['Other room']).tr.includes(t);
 const obTrades=ob=>TRADES.filter(t=>ob.tr[t.id].on).map(t=>t.id);
-function obDrawings(ob){const want=['',...obTrades(ob)],ds=ob.designers.length?ob.designers:['s4'];
+function obDrawings(ob){const want=['',...obTrades(ob)],ds=ob.designers.length?ob.designers:[(DB.staff.find(u=>has(u,'designer'))||{id:''}).id];
  ob.dr=ob.dr.filter(d=>d.exists||d.custom||want.includes(d.t));
  DTYPES.filter(x=>want.includes(x.t)).forEach(x=>{if(ob.dr.some(d=>d.code===x.code))return;const first=DTYPES.find(y=>y.t===x.t)===x,svc=['elec','plmb','ac','av'].includes(x.t);
   ob.dr.push({code:x.code,n:x.n,t:x.t,on:x.client||first,ds:svc&&ds[1]?ds[1]:ds[0],due:x.off,client:x.client,appr:x.appr})});

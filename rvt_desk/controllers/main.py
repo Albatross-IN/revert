@@ -2,6 +2,7 @@ import os
 
 from odoo import fields, http
 from odoo.http import request
+from odoo.http.stream import content_disposition
 from odoo.modules import get_module_path
 
 from odoo.addons.rvt_project.models.rvt_picture import MONTHS, WEEKDAYS
@@ -51,6 +52,26 @@ class RvtDeskController(http.Controller):
         return request.make_response(body, headers=[
             ("Content-Type", "application/javascript; charset=utf-8"),
             ("Cache-Control", "private, max-age=31536000, immutable"),
+        ])
+
+
+    @http.route(DESK_URL + "/revision/<int:revision_id>/pdf", type="http", auth="user")
+    def desk_revision_pdf(self, revision_id, **kw):
+        """A revision's PDF for staff: read with the person's own rights."""
+        if not _is_staff(request.env.user):
+            return request.not_found()
+        revision = request.env["rvt.drawing.revision"].browse(revision_id).exists()
+        try:
+            revision.check_access("read")
+        except Exception:  # noqa: BLE001  (a missing or foreign revision is simply not found)
+            return request.not_found()
+        if not revision or not revision.file:
+            return request.not_found()
+        name = revision.file_name or "%s.pdf" % revision.display_name
+        return request.make_response(revision.file.content, headers=[
+            ("Content-Type", "application/pdf"),
+            ("Content-Disposition", content_disposition(name, "inline")),
+            ("Cache-Control", "private, max-age=300"),
         ])
 
 

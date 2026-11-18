@@ -44,7 +44,7 @@ const agN=id=>(agOf(id)||{n:'Undecided'}).n;
 const me=()=>stf(UI.user);
 const has=(u,r)=>u.roles.includes(r);
 const isOwner=()=>has(me(),'owner');
-const isPrincipal=()=>has(me(),'principal');
+const isPrincipal=()=>has(me(),'principal')||has(me(),'owner');
 const planOf=(p,t)=>p.plan.find(x=>x.t===t);
 const lineAg=(p,l)=>l.ag||(planOf(p,l.t)||{}).ag||null;
 const entN=(p,id)=>(p.ents.find(e=>e.id===id)||{n:''}).n;

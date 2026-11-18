@@ -10,6 +10,7 @@ Status: **Release 1 is being built on branch `20.0-release1`** (started 2026-11-
 |---|---|
 | `rvt_base` | Roles, trades, entity types, site presets, standard drawing sets, settings |
 | `rvt_project` | Onboarding service, one task per room, one work line per trade, team access, the project picture |
+| `rvt_drawing` | Drawing register, revisions, approval, release with receivers, opened tracking by link, questions, the client's approval |
 | `rvt_desk` | The single window for staff at `/rvt/desk`, and the log-in page. It runs the screen code of the approved preview (`revert_fe/design`) on live data: see `rvt_desk/tools/sync_from_preview.py` |
 
 ## Shared modules copied in (not edited here)

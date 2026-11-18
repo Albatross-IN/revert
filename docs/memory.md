@@ -125,7 +125,7 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 
 ### Update 2026-11-19
 - Preview v4 approved by the project owner; development started. Phase log in implementation_plan_r1.md §6; additions of the day in its §8.
-- P1 `rvt_base`, P2 `rvt_project` and P3 `rvt_desk` done. Local test logins on the dev copy (never on production): `meera` (coordinator), plus local passwords on two existing users for browser checks.
+- P1 `rvt_base`, P2 `rvt_project`, P3 `rvt_desk` and P4 `rvt_drawing` done. Local test logins on the dev copy (never on production): `meera` (coordinator), plus local passwords on two existing users for browser checks.
 
 ### Traps found while building Release 1
 - Odoo 20: an `ir.actions.act_window` has no `target="inline"` any more (current / new / fullscreen / main).
@@ -145,6 +145,13 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 - With `identity` installed the standard back office is at `/app` by default; `/office` needs `identity_web_prefix = office` in the server config file. Build links from `rvt.desk._web_prefix()`, never from a literal `/odoo`.
 - The preview's screen code hard-codes a few invented ids (`s1` as principal, `s4` as designer). `_num('s1')` is 1, the system user: the adapter must replace such defaults (see `obStart` in live.js) and the server must refuse non-staff on a team (`_rvt_onboard_project_vals`).
 - Dates: use `env['rvt.config'].today()`, not `fields.Date.context_today`: people outside the office have no time zone set, and UTC is yesterday until 05:30 in India.
+
+- Odoo test framework: `assertRaises` rolls the transaction back to a savepoint, so everything done inside the `with` block (also the steps that succeeded before the error) is undone.
+- Stored moments are UTC. `released_on.date()` is yesterday's date until 05:30 in India: compare local dates (`rvt.config.to_date`).
+- `odoo.http.content_disposition` is gone: `from odoo.http.stream import content_disposition` (it takes "inline").
+- An access rule for outside users must not hang on a state that changes while they still need the record (a released drawing goes back to "in progress" when revision 2 is started): key it on what they received (`released_revision_id`, `receiver_ids`).
+- Reading a Binary attachment field loads the file. Use the file name (or `bin_size=True`) to know whether a file is there.
+- Browser file pickers need a real click: in headless checks use `Input.dispatchMouseEvent` with `Page.setInterceptFileChooserDialog`, not a dispatched event.
 
 ## 7. Glossary
 | Term | Meaning |
