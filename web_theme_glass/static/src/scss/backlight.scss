@@ -1,0 +1,170 @@
+// =============================================================================
+// Glass — app backlight
+//
+// Every app is a keycap: the key (icon box, card) stays clay, the legend (app name)
+// glows in the hue of the app's official Odoo icon, and a little light bleeds
+// evenly round the key. Nothing else takes colour. CSS only — Odoo's DOM is untouched;
+// apps are identified by the hooks Odoo already renders:
+//   * home menu     `.o_app[data-menu-xmlid]`                 (root menu xml-id)
+//   * navbar        `.o_menu_brand[data-menu-xmlid]` (Community) or the section
+//                   entries' xml-id prefix (Enterprise, via :has())
+//   * Apps kanban   `.o_modules_kanban` card, via the icon URL of the module
+// Intensities live in tokens.scss (`--nm-bl-*`); hues below are the six colours the
+// icon family is drawn in. Discuss deliberately has no entry.
+// =============================================================================
+
+$glass-amber:     #F5A623;
+$glass-coral:     #EE6352;
+$glass-orange:    #F26522;
+$glass-plum:      #8E5A8C;
+$glass-teal:      #1DBFA8;
+$glass-teal-deep: #0F7F7A;
+$glass-blue:      #2B9FE6;
+
+// root menu xml-id: (icon module, (navbar section xml-ids — a module prefix, or an exact id when it contains a dot), hue)
+// (Odoo 20: AI is `ai_agentic`, Payroll's root moved to `hr_payroll`, Field Service is no app of its own)
+$glass-apps: (
+    "ai_agentic.ai_menu_root":                               (ai_agentic, (ai_agentic), $glass-plum),   // AI
+    "appointment.main_menu_appointments":                    (appointment, (appointment), $glass-blue),   // Appointments
+    "hr_appraisal.menu_hr_appraisal_root":                   (hr_appraisal, (hr_appraisal), $glass-amber),   // Appraisals
+    "approvals.approvals_menu_root":                         (approvals, (approvals), $glass-teal),   // Approvals
+    "hr_attendance.menu_hr_attendance_root":                 (hr_attendance, (hr_attendance), $glass-amber),   // Attendances
+    "crm.crm_menu_root":                                     (crm, (crm), $glass-teal),   // CRM
+    "calendar.mail_menu_calendar":                           (calendar, (calendar), $glass-plum),   // Calendar
+    "contacts.menu_contacts":                                (contacts, (contacts), $glass-teal-deep),   // Contacts
+    "spreadsheet_dashboard.spreadsheet_dashboard_menu_root": (spreadsheet_dashboard, (spreadsheet_dashboard), $glass-blue),   // Dashboards
+    "data_recycle.menu_data_cleaning_root":                  (data_recycle, (data_recycle), $glass-blue),   // Data Cleaning
+    "databases.menu_main_databases":                         (databases, (databases), $glass-blue),   // Databases
+    "documents.menu_root":                                   (documents, (documents), $glass-coral),   // Documents
+    "esg.esg_main_menu":                                     (esg, (esg), $glass-teal),   // ESG
+    "mass_mailing.mass_mailing_menu_root":                   (mass_mailing, (mass_mailing), $glass-blue),   // Email Marketing
+    "hr.menu_hr_root":                                       (hr, (hr), $glass-amber),   // Employees
+    "equity.menu_equity":                                    (equity, (equity), $glass-teal),   // Equity
+    "event.event_main_menu":                                 (event, (event), $glass-orange),   // Events
+    "hr_expense.menu_hr_expense_root":                       (hr_expense, (hr_expense), $glass-blue),   // Expenses
+    "fleet.menu_root":                                       (fleet, (fleet), $glass-plum),   // Fleet
+    "frontdesk.frontdesk_menu_root":                         (frontdesk, (frontdesk), $glass-amber),   // Frontdesk
+    "helpdesk.menu_helpdesk_root":                           (helpdesk, (helpdesk), $glass-teal),   // Helpdesk
+    "stock.menu_stock_root":                                 (stock, (stock), $glass-plum),   // Inventory
+    "account.menu_finance":                                  (account, (account), $glass-blue),   // Invoicing
+    "iot.iot_menu_root":                                     (iot, (iot), $glass-blue),   // IoT
+    "obox.menu_obox_root":                                   (obox, (obox), $glass-amber),   // Obox (IoT boxes)
+    "pos_enterprise.menu_point_kitchen_display_root":        (pos_enterprise, (pos_enterprise), $glass-plum),   // Kitchen Display
+    "knowledge.knowledge_menu_root":                         (knowledge, (knowledge), $glass-teal),   // Knowledge
+    "utm.menu_link_tracker_root":                            (utm, (utm), $glass-amber),   // Link Tracker
+    "im_livechat.menu_livechat_root":                        (im_livechat, (im_livechat), $glass-coral),   // Live Chat
+    "lunch.menu_lunch":                                      (lunch, (lunch), $glass-amber),   // Lunch
+    "maintenance.menu_maintenance_title":                    (maintenance, (maintenance), $glass-blue),   // Maintenance
+    "mrp.menu_mrp_root":                                     (mrp, (mrp), $glass-teal),   // Manufacturing
+    "marketing_automation.marketing_automation_menu":        (marketing_automation, (marketing_automation), $glass-teal),   // Marketing Automation
+    "marketing_card.card_menu":                              (marketing_card, (marketing_card), $glass-teal),   // Marketing Card
+    "room.room_menu_root":                                   (room, (room), $glass-teal-deep),   // Meeting Rooms
+    "mrp_plm.menu_mrp_plm_root":                             (mrp_plm, (mrp_plm), $glass-blue),   // PLM
+    "hr_payroll.menu_hr_payroll_root":                       (hr_payroll, (hr_payroll), $glass-coral),   // Payroll
+    "voip.menu_voip_root":                                   (voip, (voip), $glass-teal),   // Phone
+    "planning.planning_menu_root":                           (planning, (planning), $glass-teal),   // Planning
+    "point_of_sale.menu_point_root":                         (point_of_sale, (point_of_sale, pos_restaurant), $glass-amber),   // Point of Sale
+    "project.menu_main_pm":                                  (project, (project), $glass-teal),   // Project
+    "purchase.menu_purchase_root":                           (purchase, (purchase), $glass-plum),   // Purchase
+    "quality_control.menu_quality_root":                     (quality_control, (quality_control), $glass-blue),   // Quality
+    "hr_recruitment.menu_hr_recruitment_root":               (hr_recruitment, (hr_recruitment), $glass-teal),   // Recruitment
+    "hr_referral.menu_hr_referral_root":                     (hr_referral, (hr_referral), $glass-coral),   // Referrals
+    "sale_renting.rental_menu_root":                         (sale_renting, (sale_renting), $glass-plum),   // Rental
+    "repair.menu_repair_order":                              (repair, (repair), $glass-teal),   // Repairs
+    "mass_mailing_sms.mass_mailing_sms_menu_root":           (mass_mailing_sms, (mass_mailing_sms), $glass-coral),   // SMS Marketing
+    "sale.sale_menu_root":                                   (sale_management, (sale, sale_management), $glass-amber),   // Sales
+    "mrp_workorder.menu_mrp_workorder_root":                 (mrp_workorder, (mrp_workorder), $glass-blue),   // Shop Floor
+    "sign.menu_document":                                    (sign, (sign), $glass-blue),   // Sign
+    "social.menu_social_global":                             (social, (social), $glass-orange),   // Social Marketing
+    "sale_subscription.menu_sale_subscription_root":         (sale_subscription, (sale_subscription), $glass-teal),   // Subscriptions
+    "survey.menu_surveys":                                   (survey, (survey), $glass-blue),   // Surveys
+    "hr_holidays.menu_hr_holidays_root":                     (hr_holidays, (hr_holidays), $glass-blue),   // Time Off
+    "hr_timesheet.timesheet_menu_root":                      (hr_timesheet, (hr_timesheet, timesheet_grid), $glass-teal-deep),   // Timesheets
+    "project_todo.menu_todo_todos":                          (project_todo, (project_todo), $glass-blue),   // To-do
+    "website.menu_website_configuration":                    (website, (website), $glass-blue),   // Website
+    "whatsapp.whatsapp_menu_main":                           (whatsapp, (whatsapp), $glass-teal),   // WhatsApp
+    "website_slides.website_slides_menu_root":               (website_slides, (website_slides), $glass-teal),   // eLearning
+    "stock_barcode.stock_barcode_menu":                      (stock_barcode, (stock_barcode), $glass-plum),   // stock_barcode
+    "base.menu_management":                                  (base, ("base.menu_apps"), $glass-blue),   // Apps
+    "base.menu_administration":                              (base, ("base.menu_users", "base.menu_config", "base.menu_custom"), $glass-orange),   // Settings
+    "accountant.menu_accounting":                            (accountant, (accountant, account_accountant), $glass-coral),   // Accounting — kept last: its navbar also carries `account.` sections, so it must beat Invoicing
+);
+
+@mixin glass-legend {
+    color: color-mix(in srgb, var(--nm-app, var(--nm-text)) var(--nm-bl-legend), var(--nm-text));
+    text-shadow: 0 0 3px color-mix(in srgb, var(--nm-app, transparent) var(--nm-bl-glow-a), transparent),
+                 0 0 8px color-mix(in srgb, var(--nm-app, transparent) var(--nm-bl-glow-b), transparent);
+    // dark: the app's own hue lifted to a bright tone and made a little more vivid, crisp on the
+    // charcoal, with one light, low glow instead of the tight halo that softened the letters.
+    // The colour above stays as the fallback where relative colours are not supported; the string
+    // keeps Sass from reading `max()` as its own function.
+    // v3: the dark legend honours the same share as the light one (0 % = ink), it only lifts the hue
+    @if $-nm-dark {
+        color: #{"color-mix(in srgb, oklch(from var(--nm-app, var(--nm-text)) max(l, 0.8) calc(c * 1.35) h) var(--nm-bl-legend), var(--nm-text))"};
+        text-shadow: 0 0 10px color-mix(in srgb, var(--nm-app, transparent) var(--nm-bl-glow-b), transparent);
+    }
+}
+@function glass-key-fill($base: var(--nm-surface-high)) {
+    @return color-mix(in srgb, var(--nm-app, transparent) var(--nm-bl-key), #{$base});
+}
+@function glass-ring($blur: 14px, $spread: 3px) {
+    @return 0 0 $blur $spread color-mix(in srgb, var(--nm-app, transparent) var(--nm-bl-ring), transparent);
+}
+
+.o_theme_glass {
+    // ------------------------------------------------------------ 1. Identify the app
+    @each $xmlid, $spec in $glass-apps {
+        $module: nth($spec, 1);
+        $prefixes: nth($spec, 2);
+        $hue: nth($spec, 3);
+        $nav: ".o_main_navbar .o_menu_brand[data-menu-xmlid='#{$xmlid}']";
+        @each $p in $prefixes {
+            $nav: if(str-index("#{$p}", "."),
+                     "#{$nav}, .o_main_navbar .o_menu_sections [data-menu-xmlid='#{$p}']",
+                     "#{$nav}, .o_main_navbar .o_menu_sections [data-menu-xmlid^='#{$p}.']");
+        }
+        .o_home_menu .o_app[data-menu-xmlid="#{$xmlid}"],
+        &:has(#{$nav}),                               // <body> itself (Odoo puts o_web_client on body), so views can use the app hue too
+        .o_modules_kanban .o_kanban_record:has(img[src*="/#{$module}/static/description/icon"]) { --nm-app: #{$hue}; }
+    }
+
+    // ------------------------------------------------------------ 2. Home menu keys
+    // v3: the key itself (fill, shadows, rest / hover filter) is drawn in theme.scss §8 for the mono
+    // icon set; only the legend is kept here (ink, `--nm-bl-legend` is 0 %).
+    .o_home_menu .o_app {
+        .o_caption { @include glass-legend; opacity: 1; }
+        &:hover .o_caption, &:focus-visible .o_caption, &.o_focused .o_caption { color: var(--nm-action); text-shadow: none; }
+    }
+
+    // ------------------------------------------------------------ 3. Navbar legend
+    .o_main_navbar {
+        .o_menu_toggle { box-shadow: var(--nm-raised-sm), glass-ring(12px, 2px); }
+        .o_menu_brand, .o_menu_toggle .o_menu_brand, .o_menu_brand:hover { @include glass-legend; }
+        .o_menu_brand_icon, .o_app_icon { border-radius: 6px; }
+        // pressed section keys: the legend lights up (theme.scss §8 draws the key itself)
+        .o_menu_sections .o_nav_entry, .o_menu_sections > .dropdown-toggle, .o_menu_sections > .dropdown > .dropdown-toggle, .o_menu_sections_more .dropdown-toggle {
+            &.active, &.show, &:active, &:focus-visible { @include glass-legend; }
+        }
+    }
+
+    // ------------------------------------------------------------ 5. App dashboards
+    // the figures of the app's stat cards are legends too (theme.scss §14c draws the keys)
+    .o_purchase_dashboard .purchase-dashboard-card:not(.bg-warning-subtle):not(.bg-danger-subtle) .fs-2,
+    .o_timeoff_dashboard .o_timeoff_card .o_timeoff_duration,
+    .o_helpdesk_banner .btn.btn-primary > :first-child { @include glass-legend; }
+
+    // ------------------------------------------------------------ 4. Apps kanban cards
+    // The card itself stays clay (no tint); only the icon key and the title are lit.
+    .o_modules_kanban .o_kanban_record {
+        aside .o_field_image_url { box-shadow: var(--nm-raised-sm), 0 0 0 3px var(--nm-surface); }
+        main > .fw-bold.fs-5 { @include glass-legend; }            // <field name="shortdesc"> renders as this span
+    }
+
+    // ------------------------------------------------------------ 6. The way back
+    // parent crumbs are the back links of a page: green legend, in every app
+    .o_control_panel .breadcrumb-item a, .o_control_panel .o_back_button a {
+        --nm-app: var(--nm-success);
+        @include glass-legend; font-weight: 500 !important; text-decoration: none;
+        &:hover { color: var(--nm-success); }
+    }
+}

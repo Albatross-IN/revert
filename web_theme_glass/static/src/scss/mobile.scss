@@ -1,0 +1,752 @@
+// =============================================================================
+// Glass — Mobile / app-like adaptation  (pure CSS, phone widths only)
+//
+// EVERYTHING in this file lives inside `@media (max-width: 767.98px)` — the exact
+// breakpoint below which Odoo's `ui` service reports `isSmall`. Desktop and tablet
+// (>= 768px) are never affected: no rule here exists outside the query.
+//
+// It re-composes Odoo's OWN backend DOM for the thumb — it never redraws a view and
+// never touches a record's data or images. Two hard rules drive it:
+//   • vertical scroll only — nothing scrolls the page sideways;
+//   • the desktop split-form / left-pane / control-panel stay exactly as shipped
+//     the moment the screen grows back past 768px.
+//
+// The interactive shell (bottom tab bar, launcher, sheets) lives in
+// web_glass_workspace/static/src/mobile — this file only reserves room for it
+// (guarded by `body.o_glass_mobile`, a class that shell sets when it is on screen).
+// =============================================================================
+
+@media (max-width: 767.98px) {
+  body.o_theme_glass {
+
+    // -- 1. no horizontal scroll, anywhere -----------------------------------
+    // `overflow: hidden` (not only -x): with -x alone the body becomes a vertical scroller on
+    // iOS Safari and the whole page — navbar with "N selected" and all — scrolled away under the
+    // toolbar (user report, Point 4). Odoo itself never scrolls the body (.o_web_client scrolls).
+    overflow: hidden;
+    .o_action_manager,
+    .o_content,
+    .o_view_controller,
+    .o_action { max-width: 100vw; }
+
+    // room under the page for the record form's bottom action bar (§5, v2) — with or without the shell
+    &:has(.o_view_controller.o_form_view .o_form_statusbar) .o_action_manager { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+
+    // reserve room for the fixed bottom tab bar — ONLY when the shell is mounted
+    &.o_glass_mobile {
+      .o_action_manager { padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px)); }
+      // …and the action bar sits on top of the tab bar (tab bar hidden on records: back to the edge)
+      .o_view_controller.o_form_view .o_form_statusbar { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); padding-bottom: 10px !important; }
+      &:has(.o_view_controller.o_form_view .o_form_statusbar) .o_action_manager { padding-bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
+      &.o_glass_m_notab.o_glass_m_form .o_view_controller.o_form_view .o_form_statusbar { bottom: env(safe-area-inset-bottom, 0px); padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important; }
+      &.o_glass_m_notab.o_glass_m_form:has(.o_view_controller.o_form_view .o_form_statusbar) .o_action_manager { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important; }
+      // lock page scroll while a shell sheet is open
+      &.o_glass_m_locked .o_action_manager { overflow: hidden; }
+      // Discuss opens conversations as a position:fixed full-screen chat window that escapes the
+      // action-manager padding. Constrain it to sit between the top of the screen and just above
+      // the tab bar so BOTH the native header (name + minimise + close) AND the message composer
+      // stay visible and reachable — nothing about Odoo's chat is changed, only its bounds.
+      // (validated live)
+      .o-mail-ChatWindow.fixed-bottom {
+        top: 0 !important;
+        bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+        height: auto !important;
+      }
+      // The same problem, generically: every native bar that pins itself to the bottom of the
+      // phone screen either hides under the tab bar, or — when it carries a higher z-index —
+      // sits ON TOP of the tab bar and traps the user in that app with no way to switch
+      // (measured live: Calendar's Appointments "Share" box, z-index 1055 over our 1041 —
+      // the "stuck, can't open other apps" bug). Lift each one by the tab-bar height so BOTH
+      // stay reachable. List enumerated from every `position-fixed`/`bottom-0` in Odoo 19 CE+EE.
+      .o_appointment_scheduling_box.position-fixed,     // Calendar › Appointments share / slots box
+      .o_mrp_display_onboarding_button_container,        // Shop Floor onboarding "Activate…" button
+      .o_account_report_mobile_chatter,                  // Accounting report chatter drawer
+      .o-toolbar-above-keyboard {                        // html editor's phone toolbar (any html field, Knowledge…)
+        bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+      // …and that toolbar is 500px of buttons scrolling sideways — wrap it onto two rows instead
+      .o-toolbar-above-keyboard .o-we-toolbar { flex-wrap: wrap !important; height: auto !important; }
+      // minimised Discuss chat bubbles: Odoo exposes its own "lift" variable — use it
+      .o-mail-ChatHub-bubbles { --mail-ChatHub-bubbles-bottomLift: calc(60px + env(safe-area-inset-bottom, 0px)); }
+      // Sign's "save as template" box is min-width 400px pinned right:30px — wider than a phone
+      .o_sign_save_template_dialog_container { min-width: 0 !important; left: 12px !important; right: 12px !important; }
+      // While one of OUR sheets is open (the stage picker) those same
+      // bars — some at z-index 1055–2000 — would float over the sheet and swallow taps on its
+      // bottom rows (measured live: Calendar's Share box hid the "Configuration" row). Odoo does
+      // exactly this for its own bottom sheet (`:has(.o_bottom_sheet) .o-toolbar-above-keyboard`),
+      // so mirror it: hidden only while the sheet is up, back the moment it closes.
+      &.o_glass_m_locked {
+        .o_appointment_scheduling_box.position-fixed,
+        .o_mrp_display_onboarding_button_container,
+        .o_account_report_mobile_chatter,
+        .o-toolbar-above-keyboard,
+        .o-mail-ChatHub-bubbles { visibility: hidden !important; }
+      }
+    }
+
+    // -- 2. control panel: ONE compact row (no tall empty band) --------------
+    // Measured live: the desktop control panel wrapped the pager/search group to a 2nd row,
+    // leaving a 103px band. Keeping it on one line drops it to ~50px. Breadcrumbs shrink
+    // (flex 0 1 auto + min-width:0) so the pager/view-switcher/search always fit on the right.
+    .o_control_panel {
+      gap: 8px;
+      padding: 6px var(--glass-gutter) 8px;
+      min-height: 0;
+      .o_control_panel_main {
+        flex-wrap: nowrap;
+        align-items: center;
+        gap: 8px;
+        min-height: 0;
+      }
+      .o_control_panel_breadcrumbs { flex: 0 1 auto; min-width: 0; }
+      .o_breadcrumb { min-width: 0; font-size: .95rem;
+        .o_last_breadcrumb_item { overflow: hidden; text-overflow: ellipsis; }
+      }
+      // pager + view switcher + search stay on the same row, pushed to the right
+      .o_control_panel_navigation { flex: 0 0 auto; margin-left: auto; flex-wrap: nowrap; }
+    }
+
+    // -- 2a. Odoo repaints the top bar in its brand colour (Community purple) while a systray
+    // menu is open on a phone (messaging_menu_in_dropdown.scss) — keep the clay bar
+    &.o-mail-discuss-systray-menu-open .o_main_navbar { background-color: var(--nm-surface) !important; }
+
+    // -- 2b. the breadcrumb Odoo 20 portals into the top bar on phones: a clay Back key and the
+    // page name (a `btn-link` in Odoo, which the theme otherwise keeps flat)
+    .o_navbar_breadcrumbs, .o_fallback_breadcrumbs {
+      .o_breadcrumb { align-items: center; gap: 8px; min-width: 0; }
+      .o_breadcrumb .o_back_button.btn {
+        flex: 0 0 auto; width: 36px; height: 36px; padding: 0 !important; display: inline-grid; place-items: center;
+        border-radius: var(--nm-radius-sm); background: var(--nm-surface) !important; color: var(--nm-action) !important;
+        box-shadow: var(--nm-raised-sm) !important; text-decoration: none !important;
+        &:active { box-shadow: var(--nm-inset-sm) !important; }
+      }
+      .o_last_breadcrumb_item { font-weight: 600; color: var(--nm-text); }
+    }
+
+    // -- 3. LIST view -> clean stacked cards ---------------------------------
+    // Scoped to the MAIN list controller only (x2many lists inside a form are not wrapped in
+    // `.o_view_controller.o_list_view`, so they keep the normal editable table).
+    //
+    // Design (validated live): each row is a card. The FIRST field is the bold title on its own
+    // line; every other field flows below as inline-block muted text that WRAPS (no sideways
+    // scroll, no crammed single line). Cells are flattened (no inset boxes) and empty cells are
+    // hidden. No per-field labels because the column headers can't be injected in CSS — the
+    // wrapping muted flow reads cleanly without them.
+    // Card anatomy helpers (used by the title / hidden-cell rules below).
+    // A leading cell that is not the title: an icon-only widget…
+    $m-lead-icon: ":is(.o_priority_cell, .o_boolean_favorite_cell, .o_todo_done_checkmark_cell, .o_activity_exception_cell, .o_boolean_toggle_cell)";
+    // …an avatar / image…
+    $m-lead-avatar: ":has(> .o_field_image, > .o_field_image_url, > .o_field_widget > img, > img)";
+    // …or a cell with nothing to show (Odoo flags an empty value with o_field_empty; a widget
+    // may also render one empty span / div — never an <a> / <i>, those are icon buttons)
+    $m-hidden-a: ":has(> .o_field_widget.o_field_empty)";
+    $m-hidden-b: ":has(> .o_field_widget > span:only-child:empty)";
+    $m-hidden-c: ":has(> .o_field_widget > div:only-child:empty)";
+    @mixin m-card-title {
+      flex: 1 1 100% !important;
+      margin: 0 0 2px 0 !important;
+      font-size: 1rem !important;
+      font-weight: 700 !important;
+      color: var(--nm-text) !important;
+      // room for the floating chatter key (set by web_glass_workspace on rows that have one)
+      padding-right: var(--glass-title-clear, 0px) !important;
+      --glass-cell-label: none;   // no label over the title (the label rule reads this variable)
+      // the title never truncates on a card (Odoo's many2one links are text-truncate)
+      .text-truncate, .o_field_widget, span { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
+    }
+
+    .o_view_controller.o_list_view {
+      // min-width 0: where o_content is a flex row (Accounting › Reconcile has a pop-out icon
+      // next to the list) the renderer must not take the sort-chip strip's width (752px)
+      .o_list_renderer { overflow: visible !important; min-width: 0; }
+
+      // !important throughout: Odoo's own list CSS sets the table/cell display, so without it
+      // these rules lose the cascade and the native (overflowing) table shows instead.
+      .o_list_table {
+        border: 0 !important;
+        display: block !important;
+        // The header row becomes a strip of sort chips (Odoo's own <th> elements, so tapping one
+        // sorts exactly as on the desktop and the sort arrow shows) — hiding it entirely had removed
+        // column sorting from every phone list (QA BUG-0004). Only sortable columns are shown.
+        // The strip is the ONE contained sideways scroller of the phone lists (like Odoo's own
+        // statusbar and facet strips): 12 sortable columns wrapped would push the list down by
+        // four rows. Its right edge fades out when there is more (the row's own padding keeps the
+        // last chip out of the fade when everything fits).
+        thead {
+          display: block !important; overflow-x: auto; -webkit-overflow-scrolling: touch;
+          margin: 0 0 10px !important; padding: 2px 2px 6px !important; scrollbar-width: none;
+          -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+          mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+          &::-webkit-scrollbar { display: none; }
+          tr { display: flex !important; gap: 6px; width: max-content !important; padding-right: 36px !important; }
+          th { display: none !important; }
+          th.o_column_sortable:not(.o_handle_cell) {
+            display: inline-flex !important; align-items: center; position: relative; width: auto !important; height: 30px;
+            padding: 0 26px 0 12px !important; border: 0 !important; border-radius: 999px;
+            background: var(--nm-surface) !important; box-shadow: var(--nm-raised-sm); font-size: 12px; font-weight: 600;
+            color: var(--nm-text-muted); white-space: nowrap; text-transform: none;
+            .o_resize { display: none !important; }
+            i, .o_list_sortable_icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); margin: 0; }
+            &.table-active, &[aria-sort] { color: var(--nm-action); box-shadow: var(--nm-inset-sm); }
+          }
+        }
+        // `th` too: grouped lists render their group rows with <th> cells (measured live on Data
+        // Cleaning: a 437px group name + Merge/Discard buttons kept the table 192px too wide)
+        tbody, tr, td, th { display: block !important; width: auto !important; }
+
+        tbody {
+          tr.o_data_row {
+            display: flex !important; flex-wrap: wrap; gap: 6px 10px; align-items: flex-start;
+            position: relative;   // the drag grip and the chatter key are placed against the card
+            margin: 0 0 10px 0 !important;
+            padding: 11px 14px !important;
+            border: 0 !important;
+            border-radius: var(--nm-radius) !important;
+            background: var(--nm-surface) !important;
+            box-shadow: var(--nm-raised-sm) !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            transition: box-shadow .15s var(--nm-ease-exit);
+            &:active { box-shadow: var(--nm-inset-sm) !important; }
+            // selection mode (long-press): Odoo's `table-info` highlight was lost under the card
+            // background (QA BUG-0003) — seated card with an accent ring and a tick before the title
+            &.o_data_row_selected {
+              box-shadow: var(--nm-inset-sm), 0 0 0 2px var(--nm-action) !important;
+              background: color-mix(in srgb, var(--nm-action) 12%, var(--nm-surface)) !important;
+              // the tick sits on the title line, before the title (or before the lead icon / avatar)
+              > td.o_data_cell:first-of-type {
+                flex-direction: row !important; align-items: center; gap: 6px;
+                &::before { @include glass-glyph("check", 16px); content: "check" !important; color: var(--nm-action); margin: 0; }
+              }
+            }
+          }
+          // record selector, drag handle, delete, optional-columns: out of the way on a phone
+          .o_list_record_selector,
+          .o_list_record_remove,
+          .o_optional_columns_dropdown { display: none !important; }
+          // the trailing optional-columns / actions cell renders as an empty grey box on a card
+          // (it is the last cell and never a data cell) — collapse it
+          tr > td:last-child:not(.o_data_cell) { display: none !important; }
+
+          // the fields of a row: title first, then label/value blocks two per row so the values
+          // line up ("static holders" = the column labels, user request; the header row is not on
+          // the card). Empty cells vanish; a cell with a blank label (a count next to a button)
+          // is shown small at the end.
+          td.o_data_cell {
+            display: flex !important; flex-direction: column;
+            flex: 1 1 calc(50% - 5px);
+            width: auto !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            border: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            text-align: left !important;
+            vertical-align: middle !important;
+            white-space: normal !important;
+            overflow-wrap: break-word !important;
+            background: transparent !important;    // flatten the boxy inset cell backgrounds
+            box-shadow: none !important;
+            min-height: 0 !important;
+            line-height: 1.4 !important;
+            font-size: .86rem !important;
+            color: var(--nm-text) !important;
+            &:empty { display: none !important; margin: 0 !important; }  // hide empty cells
+            &[data-glass-label]:not(:empty)::before {
+              content: var(--glass-cell-label, attr(data-glass-label));
+              display: block;
+              margin-bottom: 2px;
+              font-size: .64rem;
+              font-weight: 600;
+              letter-spacing: .05em;
+              line-height: 1.2;
+              text-transform: uppercase;
+              color: var(--nm-text-faint);
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+            // ---- the card title = the first VISIBLE value cell -------------------------------
+            // Cells that come first but are never the title: the drag grip, an avatar / image, an
+            // icon-only widget (priority star, favourite, To-do's "mark as done" check, activity
+            // exception) — those sit at the left of the title line — and a cell hidden because its
+            // value is empty (a draft's "/" number, see the display:none rules below): then the
+            // cell after it is the title. Nothing of Odoo's row is moved, only sized.
+            &:first-of-type:not(.o_handle_cell):not(#{$m-lead-icon}):not(#{$m-lead-avatar}):not(#{$m-hidden-a}):not(#{$m-hidden-b}):not(#{$m-hidden-c}),
+            &:first-of-type.o_handle_cell + td.o_data_cell,
+            &:first-of-type#{$m-hidden-a} + td.o_data_cell,
+            &:first-of-type#{$m-hidden-b} + td.o_data_cell,
+            &:first-of-type#{$m-hidden-c} + td.o_data_cell {
+              @include m-card-title;
+            }
+            // an avatar / image first column (Contacts, Employees…) sits at the left of the title line
+            &:first-of-type#{$m-lead-avatar} {
+              flex: 0 0 auto !important; width: auto !important; margin: 0 !important; font-size: inherit !important;
+              --glass-cell-label: none;
+              img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+            }
+            &:first-of-type#{$m-lead-avatar} + td.o_data_cell {
+              @include m-card-title;
+              flex: 1 1 calc(100% - 56px) !important; align-self: center;
+            }
+            // an icon-only widget first (To-do check, priority star, favourite): a key-sized icon
+            // at the left of the title line — hiding it had removed "mark as done" from the phone
+            &:first-of-type#{$m-lead-icon}:not(#{$m-hidden-a}):not(#{$m-hidden-b}):not(#{$m-hidden-c}) {
+              flex: 0 0 auto !important; width: auto !important; margin: 0 !important; align-self: center; font-size: 1.1rem !important;
+              --glass-cell-label: none;
+              .o_field_widget { width: auto; min-width: 24px; }
+            }
+            &:first-of-type#{$m-lead-icon}:not(#{$m-hidden-a}):not(#{$m-hidden-b}):not(#{$m-hidden-c}) + td.o_data_cell {
+              @include m-card-title;
+              flex: 1 1 calc(100% - 64px) !important; align-self: center;   // 64: icon + selection tick
+            }
+            // drag handle (sequence): a grip on the left edge of the card — rows can still be
+            // reordered by touch; it is never a value block
+            &.o_handle_cell {
+              display: flex !important; position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+              flex: none !important; width: 16px !important; font-size: 14px; color: var(--nm-text-faint);
+              --glass-cell-label: none;   // never the "Sequence" label
+            }
+            &[data-glass-label=" "], &[data-glass-label=""] { flex: 0 0 auto; align-self: flex-end; font-size: .78rem !important; color: var(--nm-text-muted) !important; --glass-cell-label: none; }
+            // Odoo's table rows are 1px tall with cells growing from their content; as flex
+            // items that height clipped a 2-line title under the next row of blocks
+            height: auto !important; max-height: none !important; overflow: visible !important;
+            .o_field_widget { width: 100%; max-width: 100%; min-width: 0; }
+          }
+          tr.o_data_row:has(> td.o_data_cell.o_handle_cell) { padding-left: 34px !important; }
+          // a value block whose widget has nothing to show (empty date, empty count…) is
+          // dropped in read mode — a label with nothing under it only confuses
+          tr.o_data_row:not(.o_selected_row) > td.o_data_cell:not(.o_handle_cell)#{$m-hidden-a},
+          tr.o_data_row:not(.o_selected_row) > td.o_data_cell:not(.o_handle_cell)#{$m-hidden-b},
+          tr.o_data_row:not(.o_selected_row) > td.o_data_cell:not(.o_handle_cell)#{$m-hidden-c},
+          tr.o_data_row.o_selected_row > td.o_data_cell:has(> .o_field_widget.o_readonly_modifier.o_field_empty) { display: none !important; }
+          // never a stray grey box: cells that are neither values, buttons nor the chatter key
+          // (optional-columns / actions cell) are gone on a card
+          tr.o_data_row > td:not(.o_data_cell):not(.o_list_button):not(.o_glass_chatter_cell) { display: none !important; }
+          // row buttons (History / Apply / Clear, Confirm, Print…) and the count next to them:
+          // one line at the bottom-right of the card instead of scattered between the values
+          tr.o_data_row::after { content: ""; flex: 1 1 100%; order: 98; height: 0; margin-top: -6px; }
+          tr.o_data_row:not(:has(> td.o_list_button))::after { display: none; }
+          tr.o_data_row > td.o_list_button {
+            display: flex !important; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 6px;
+            order: 99; flex: 0 0 auto !important; margin-left: auto !important; width: auto !important; padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important;
+            .btn { height: 32px; padding: 0 12px; border-radius: var(--nm-radius-sm); font-size: .82rem; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; background: var(--nm-surface); box-shadow: var(--nm-raised-sm); color: var(--nm-action); }
+            .btn:active { box-shadow: var(--nm-inset-sm); }
+          }
+          tr.o_data_row > td.o_list_button ~ td.o_list_button { margin-left: 6px !important; }
+          // editing a row on the card: every field is a labelled, boxed input the thumb can hit
+          // (the flat in-cell inputs of the desktop table gave no clue where to type — user report)
+          tr.o_data_row.o_selected_row {
+            > td.o_data_cell {
+              .o_input, .o_field_widget input.o_input, .o_field_widget .o_input_dropdown > .o_input, .o_field_widget .form-select, .o_field_widget select {
+                display: block; width: 100% !important; min-height: 40px; padding: 8px 12px !important; border-radius: var(--nm-radius-sm);
+                background: var(--nm-surface) !important; box-shadow: var(--nm-inset-sm) !important; color: var(--nm-text);
+              }
+              .o_field_widget .o_input_dropdown > .o_input, .o_field_widget .o-autocomplete input.o_input { padding-right: 30px !important; }
+              .o_field_widget .o_input_dropdown::after { display: block; right: 12px; }
+              .o_field_widget:focus-within .o_input, .o_field_widget:focus-within .form-select { box-shadow: var(--nm-inset-sm), var(--nm-focus) !important; }
+              .o_field_widget > .d-flex, .o_field_widget > div.d-inline-flex { width: 100%; }
+              .o_field_boolean, .o_field_priority, .o_field_boolean_toggle { min-height: 40px; display: flex; align-items: center; }
+              // the "open record" arrow of a many2one sits beside the box, not over it
+              .o_external_button { position: static !important; margin-left: 6px; }
+              // phone date / datetime fields are a button that opens the picker: same box as an input
+              .o_field_date > div, .o_field_datetime > div, .o_field_daterange > div { height: auto !important; width: 100%; }
+              .o_field_date > div > button, .o_field_datetime > div > button, .o_field_daterange > div > button {
+                flex: 1 1 auto; min-height: 40px; padding: 8px 12px; text-align: left; border-radius: var(--nm-radius-sm);
+                background: var(--nm-surface) !important; box-shadow: var(--nm-inset-sm); color: var(--nm-text);
+              }
+            }
+            > td.o_data_cell:first-of-type { font-weight: 600 !important; }
+          }
+          // group headers (grouped list) -> full-width section labels that WRAP (name, count,
+          // aggregates and any group buttons such as Data Cleaning's Merge / Discard)
+          tr.o_group_header {
+            // one flex line: name + count, the aggregates inline after it, the group's ⚙ menu
+            // (o_group_config) at the right end — as blocks the ⚙ sat alone on a second line
+            display: flex !important; flex-wrap: wrap; align-items: center; gap: 4px 10px;
+            margin: 4px 0 8px !important;
+            padding: 8px 12px !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            font-weight: 700;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            th, td {
+              display: block !important;
+              width: auto !important;
+              max-width: 100% !important;
+              padding: 0 !important;
+              border: 0 !important;
+              background: transparent !important;
+              box-shadow: none !important;   // Bootstrap tints table cells with an inset shadow
+              white-space: normal !important;
+              overflow-wrap: break-word !important;
+              &:empty { display: none !important; }
+            }
+            .o_group_name { font-size: .82rem; text-transform: uppercase; letter-spacing: .06em; color: var(--nm-text-muted);
+              flex: 1 1 auto; min-width: 0;
+              > div, .d-flex { flex-wrap: wrap !important; row-gap: 6px; max-width: 100% !important; }
+            }
+            // aggregates (sums per group) read as small muted figures after the name
+            td:not(:empty) { font-size: .78rem; font-weight: 600; color: var(--nm-text-muted); }
+            th:has(> .o_group_config), td:has(> .o_group_config) { flex: 0 0 auto; margin-left: auto; order: 99; }
+            .o_group_buttons { flex-wrap: wrap !important; }
+          }
+        }
+        // totals row is noisy stacked on a phone — hide it (the figures live on each card)
+        tfoot { display: none; }
+      }
+    }
+
+    // -- 3b. search / filter panel (Documents folders, Employees dept, Apps categories, …) ---
+    // On a phone Odoo renders the panel as a bar of dropdown chips above the view. Two fixes,
+    // both measured live: (1) the desktop theme gives the panel a left gutter margin while Odoo
+    // makes it w-100, so it spilled 12px past the right edge in EVERY app that has one (Apps,
+    // Employees, Recruitment, Lunch, Rental, POS, Data Cleaning …) — the "sideways wiggle";
+    // (2) the chip bar itself is a horizontal scroller (486px of chips in 370px on Employees) —
+    // let the chips wrap onto extra rows instead. The dropdowns behind the chips are untouched.
+    .o_search_panel {
+      width: auto !important;
+      max-width: none !important;
+      margin-left: var(--glass-gutter) !important;
+      margin-right: var(--glass-gutter) !important;
+      box-sizing: border-box !important;
+      overflow: visible !important;
+      > .d-flex.overflow-auto {
+        flex-wrap: wrap !important;
+        overflow: visible !important;
+      }
+      .text-nowrap { white-space: normal !important; }
+    }
+
+    // -- 3b1. graph toolbar (measure · Cumulative · Stacked · sort · chart types): Odoo 20 lets
+    // the row scroll sideways (`overflow-x-auto`, 480–670px of keys on a 358px row) — it wraps
+    .o_graph_renderer .d-flex.d-print-none.overflow-x-auto { flex-wrap: wrap; overflow-x: visible !important; row-gap: 8px;
+      // …and so does its right-hand group: Enterprise's segmented sort + chart-type controls
+      // alone measure 388px, 14px past the row
+      > .ms-auto.d-flex { flex-wrap: wrap; row-gap: 8px; min-width: 0; max-width: 100%; > .vr { display: none; } }
+    }
+
+    // -- 3b2. Purchase RFQ strip: Bootstrap's row (−16px margins) inside the theme's 12px
+    // gutter ran 4px past the screen on each side (QA regression) — gutter-sized row margins
+    .o_purchase_dashboard > .row { --gutter-x: calc(2 * var(--glass-gutter)); }   // Odoo's Bootstrap build names it --gutter-x
+
+    // -- 4. KANBAN: grouped stages stack top-to-bottom (no horizontal scroll) -
+    // The trick that keeps records visible: Odoo's columns carry `flex: 1 1 0` so they share
+    // WIDTH equally in a row. Flipping the container to a column makes that same flex share the
+    // HEIGHT equally — squashing each stage to a sliver and hiding its cards (the earlier bug).
+    // Forcing `flex: 0 0 auto` + `height:auto` lets every stage grow to fit its own cards, so
+    // the page scrolls vertically through the full pipeline.
+    .o_view_controller.o_kanban_view {
+      .o_kanban_renderer.o_kanban_grouped {
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+        overflow-x: hidden !important;
+        height: auto !important;
+        padding: 0 !important;              // no side padding on the renderer itself
+        gap: 14px;
+      }
+      .o_kanban_group {
+        flex: 0 0 auto !important;          // grow to content instead of splitting the height
+        // stretch to the full renderer width WITHOUT the stray 12px offset that was clipping the
+        // gear/＋ buttons on the right (measured live: group was left:12 right:402 on a 390 screen).
+        width: auto !important;
+        align-self: stretch !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        padding-left: 10px !important;      // small inner gutter so cards/buttons aren't flush to the edge
+        padding-right: 10px !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;       // show every card, let the page do the scrolling
+      }
+      // keep each stage's header tidy: title + config/add buttons never overflow the edge
+      .o_kanban_header { flex-wrap: wrap; row-gap: 4px; margin-left: -10px !important; margin-right: -10px !important; padding-left: 10px !important; padding-right: 10px !important; }   // bleed = the 10px phone gutter above
+      .o_kanban_record {
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        box-sizing: border-box !important;
+      }
+      // Cards read as cards (user request, Moves Analysis): Odoo's phone kanban glues the records
+      // together (1px borders, -1px margins) and pads them 8px. A gap between cards and more air
+      // inside — through Odoo's own padding variables, so the colour rail and the image cards keep
+      // their own geometry (Bootstrap `ps-0 / pe-0` cards, e.g. order lines, are left alone).
+      // …and a side gutter, so the rounded cards do not touch the screen edges
+      .o_kanban_renderer.o_kanban_ungrouped { padding-left: 10px !important; padding-right: 10px !important; }
+      .o_kanban_renderer .o_kanban_record:not(.o_kanban_ghost):not(.o-kanban-button-new) {
+        --KanbanRecord-padding-v: 10px;    // v2: a three-line card was 230 px tall at 12/14
+        --KanbanRecord-padding-h: 12px;
+        position: relative;
+        margin-top: 0 !important;
+        margin-bottom: 10px !important;
+        // an icon-only action drawn as a bare anchor among the card's lines (stock.move's "Show
+        // details" list icon) stretched to a full-width line of its own between the title and the
+        // quantity — a key at the top-right of the card instead, the title keeps clear of it
+        > a.oi.oe_kanban_action:empty, > a.o_icon_button:empty {
+          position: absolute; top: 10px; right: 10px; z-index: 1;
+          width: 36px; height: 36px; margin: 0; padding: 0;
+          display: inline-grid; place-items: center; font-size: 15px;
+          border-radius: var(--nm-radius-sm); background: var(--nm-surface); color: var(--nm-action);
+          box-shadow: var(--nm-raised-sm);
+          &:active { box-shadow: var(--nm-inset-sm); }
+        }
+        &:has(> a.oi.oe_kanban_action:empty) > :first-child:not(a),
+        &:has(> a.o_icon_button:empty) > :first-child:not(a) { padding-right: 48px; }
+      }
+
+      // "Add stage" is a vertical rail (a rotated .o_quick_create_title) at the END of the
+      // swimlane. On a stacked mobile pipeline that reads as broken sideways text, so we move it
+      // to the TOP (order:-1) and un-rotate every child into a normal horizontal "» Add Stage".
+      .o_column_quick_create {
+        order: -1 !important;                 // top of the pipeline, not the end
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        margin: 0 0 10px 0 !important;
+        box-sizing: border-box !important;
+        // un-rotate every child (the title carries a 90° transform on mobile)
+        &, * { writing-mode: horizontal-tb !important; transform: none !important; text-orientation: mixed !important; }
+        // render the folded control as one clean neumorphic "» Add Stage" button
+        > * {
+          position: static !important;
+          display: flex !important;
+          flex-direction: row !important;
+          align-items: center !important;
+          justify-content: flex-start !important;
+          gap: 10px !important;
+          width: 100% !important;
+          height: auto !important;
+          padding: 14px 16px !important;
+          white-space: nowrap !important;
+          background: var(--nm-surface) !important;
+          box-shadow: var(--nm-raised-sm) !important;
+          border-radius: var(--nm-radius) !important;
+        }
+        .o_quick_create_button { position: static !important; order: 1 !important; flex: none !important; color: var(--nm-action) !important; padding: 0 !important; }
+        .o_quick_create_title { position: static !important; order: 2 !important; flex: 0 1 auto !important; font-weight: 700 !important; color: var(--nm-text) !important; }
+      }
+    }
+    // Ungrouped, image-led kanbans (products, documents, employees) read best two-up — cosmetic
+    // (grid columns only), so safe. minmax(0,…) stops long content overflowing.
+    // libsass needs one argument per :has(), so list them separately.
+    .o_view_controller.o_kanban_view .o_kanban_renderer.o_kanban_ungrouped:has(.o_field_image),
+    .o_view_controller.o_kanban_view .o_kanban_renderer.o_kanban_ungrouped:has(.o_kanban_image),
+    .o_view_controller.o_kanban_view .o_kanban_renderer.o_kanban_ungrouped:has(.o_kanban_image_fill) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    // -- 5. FORM view: LIGHT touch only --------------------------------------
+    // Odoo already single-columns forms on a phone. Do NOT restructure its groups — that
+    // was dropping/overlapping fields (same mistake as the old kanban override). We only trim
+    // the sheet padding, stop fields overflowing, and let the statusbar scroll inside itself.
+    .o_view_controller.o_form_view {
+      .o_form_sheet_bg { padding: 0; }
+      .o_form_sheet {
+        min-width: 0;
+        max-width: 100%;
+        padding: 12px var(--glass-gutter);
+        margin: 8px 0;
+      }
+      // v2 — a record is the first thing on the screen, not the fourth:
+      //  • "New" leaves the record's control panel (it lives on the list);
+      //  • the status bar (Create Invoice · Send · pipeline) becomes a bottom action bar pinned
+      //    above the tab bar, where the thumb is — the desktop "header band" makes no sense on a
+      //    phone, and the pipeline pill scrolls inside the bar as before;
+      //  • the sheet gets its full radius back (no seam to hide).
+      // Dialog forms (no .o_view_controller) keep their inline status bar.
+      .o_control_panel .o_form_button_create, .o_control_panel .o_control_panel_main_buttons .btn-primary { display: none !important; }
+      .o_form_statusbar {
+        position: fixed; left: 0; right: 0; bottom: env(safe-area-inset-bottom, 0px); z-index: 1030;
+        margin: 0 !important; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important; border-radius: 14px 14px 0 0; border-bottom: 0 !important;
+        background: var(--nm-surface); box-shadow: 0 -8px 22px -10px var(--nm-shadow-dark);
+      }
+      .o_form_sheet_bg:has(> .o_form_statusbar) > .o_form_sheet { border-radius: var(--nm-radius-lg) !important; box-shadow: var(--nm-raised); }
+      // safety net only: never let a field push the page sideways (no layout restructuring)
+      .o_field_widget { max-width: 100%; }
+      // …but an inline numeric widget keeps a cap: the 100% above overrode Odoo's own `oe_inline`
+      // caps (7ch / 7rem), so the widget took the input's intrinsic 20-character width and two of
+      // them in a `d-flex` row pushed the sheet sideways (Shift template "Start & End Hours",
+      // 448 > 390). Same caps as the theme's inputs (A2), so widget = input box.
+      .o_field_widget.oe_inline {
+        &.o_field_float_time, &.o_field_percentage, &.o_field_integer { max-width: 7rem; }
+        &.o_field_float { max-width: 9rem; }
+        &.o_field_date { max-width: 10rem; }
+        &.o_field_monetary { max-width: 12rem; }
+      }
+      // an `oe_inline` field in the title (account code, journal short code) keeps Odoo's
+      // intrinsic 20-character input: at the h1 size that is ~390px, wider than a phone (native
+      // overflow of 17px; the theme's padding made it 45px — QA regression) — cap it to the title
+      :is(h1, h2, .oe_title) .o_field_widget.oe_inline, :is(h1, h2, .oe_title) .oe_inline .o_input { max-width: 100%; }
+      // Odoo bleeds x2many lists to the sheet edges on phones with a -16px margin (its own sheet
+      // padding); the theme's sheet is narrower, so the table ran 16px past the card on both sides
+      // (QA BUG-0009, attribute values) — keep the list inside its field box
+      .o_field_x2many .o_list_renderer { margin-left: 0 !important; margin-right: 0 !important; }
+      // statusbar: a contained horizontal scroller (allowed — it is not the page)
+      .o_form_statusbar { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      // Odoo folds the smart buttons into the ⚡ dropdown on phones; the theme's raised button box
+      // was still drawn around it as a 127px empty tray (QA BUG-0007) — just the ⚡ key
+      .o-form-buttonbox, .oe_button_box {
+        width: auto !important; flex: 0 0 auto !important; padding: 0 !important; gap: 0 !important;
+        background: transparent !important; box-shadow: none !important;
+      }
+      // rich-text content Odoo ships with `d-none d-sm-block` (To-do's welcome note pictures) is
+      // invisible below 576px by its own classes — show it, scaled to the sheet (QA BUG-0010, PDF-04)
+      .o_field_html img.d-sm-block { display: block !important; max-width: 100%; height: auto; }
+    }
+    // -- 5b. FORM fields: Odoo 20's outlined boxes, in clay -------------------
+    // Below md Odoo 20 draws every field of a form group as an outlined box with a floating label
+    // (web/views/form/form_controller_m3.scss), painted with the view background (white) — on the
+    // clay that read as white patches with the theme's own inset inputs nested inside them. The box
+    // becomes THE well (the inputs in it go flat), the label rides its top edge on a clay chip, a
+    // read-only value is a figure on a hairline (as on the desktop, A4).
+    $m3-box: ":is(.o_cell, .o_cell_custom):not(.o_wrap_label):not(.o_no_box):not(:has(.o_outlined))";
+    .o_form_view .o_inner_group:not(.oe_subtotal_footer) #{$m3-box},
+    .o_form_view .o_inner_group:not(.oe_subtotal_footer) .o_property_field_value,
+    .o_form_view .o_outlined {
+      --o-field-box-border-color: transparent;
+      border: 0 !important; border-radius: var(--nm-radius-sm) !important;
+      background-color: var(--nm-surface) !important; box-shadow: var(--nm-inset);
+      transition: box-shadow .15s;
+      &:focus-within { box-shadow: var(--nm-inset), var(--nm-focus); }
+      &:has(.o_field_invalid):not(:has(:focus-within)) { box-shadow: var(--nm-inset), 0 0 0 2px var(--nm-danger); }
+      &:has(.o_field_widget.o_readonly_modifier):not(:has(.o_field_widget:not(.o_readonly_modifier))) {
+        box-shadow: none; background: transparent !important; border-radius: 0 !important; border-bottom: 1px solid var(--nm-hairline) !important;
+      }
+      // the box is the well: what is inside it is flat
+      .o_input, .form-select, .o_field_tags.o_tags_input, .o_field_monetary > div.d-inline-flex, .o_required_modifier .o_input {
+        box-shadow: none !important; background: transparent !important; padding-left: 0; padding-right: 0;
+      }
+      // …and the currency overlay follows the flat wrapper (its 10px desktop inset put "$" over the value)
+      .o_field_monetary > div.d-inline-flex span.o_input.position-absolute { left: 0; width: 100%; }
+      .o_field_many2one_selection .o_input, .o-autocomplete .o_input { padding-right: 24px; }
+    }
+    .o_form_view .o_inner_group:not(.oe_subtotal_footer) .o_wrap_label:has(+ .o_cell:not(.o_no_box)) .o_form_label,
+    .o_form_view .o_inner_group:not(.oe_subtotal_footer) .o_property_field.o_wrap_label label,
+    .o_form_view .o_form_label:has(+ .o_outlined) {
+      background: var(--nm-surface) !important; color: var(--nm-text-muted); border-radius: var(--nm-radius-pill);
+    }
+
+    // the record form's control panel is tight on a phone: no minimum width on "New", small gaps,
+    // so the pager stays on the first row next to the buttons (QA BUG-0007)
+    .o_control_panel .o_control_panel_main_buttons { gap: 6px !important; .btn-primary { min-width: 0; } }
+    // the hidden save/discard indicator still reserved 52px on a clean record — the 17px that pushed
+    // the pager to a second row; collapse it while it is invisible (it reappears as soon as you edit)
+    .o_control_panel .o_form_status_indicator_buttons.invisible { display: none !important; }
+
+    // gantt: Odoo breaks its toolbar into two lines on phones (a w-100 spacer) — arrows, scale,
+    // Today and the cog fit on one line at 390px, so remove the break (QA BUG-0012)
+    .o_gantt_view .o_gantt_renderer_controls {
+      > .w-100 { display: none !important; }
+      row-gap: 6px; padding-bottom: 6px;
+      .o_gantt_button_today { margin-left: 6px !important; }
+    }
+
+    // -- 6. dialogs: full-screen sheets --------------------------------------
+    .modal:not(.o_technical_modal) .modal-dialog {
+      margin: 0;
+      max-width: 100%;
+      width: 100%;
+      min-height: 100%;
+      .modal-content { min-height: 100vh; border-radius: 0; border: 0; }
+    }
+    // the raised back/close button was touching the title ("Oops!") — a little air
+    .modal .modal-header { gap: 10px; }
+
+    // -- 6a. map view: the pin list is a collapsible strip above the map on phones (Odoo's
+    // o-sm-pin-list-container); its header looked like a plain caption, so nobody knew the
+    // pipeline list was one tap away (user report) — make it a key with the caret
+    .o_map_view .o-sm-pin-list-container {
+      .o-map-view--buttons { padding: 8px var(--glass-gutter) 0; .btn { width: 100%; border-radius: var(--nm-radius-sm); } }
+      .o-map-renderer--pin-list-header {
+        margin: 8px var(--glass-gutter) 6px !important; padding: 9px 12px !important; border-radius: var(--nm-radius-sm);
+        background: var(--nm-surface); box-shadow: var(--nm-raised-sm); color: var(--nm-text); cursor: pointer;
+        > i.fa.float-end { margin-left: auto; color: var(--nm-action); }
+        > span { flex: 1 1 auto; }
+      }
+      .o-map-renderer--pin-list-container { padding: 0 !important; }
+      .o-map-renderer--pin-list-details { padding: 0 var(--glass-gutter) !important; }
+    }
+
+    // -- 6b. one-off native screens that are laid out for a desktop ------------
+    // Knowledge's template picker is a two-pane dialog — the templates at the left, a preview
+    // of the chosen one at the right. Below `sm` Odoo stacks the panes and manages no height,
+    // so the list ran to its full 693px and the preview began a screen and a half down: on a
+    // phone you picked a template and never saw it (user report). The two panes now split the
+    // sheet — the list scrolls in the top 38%, the preview takes the rest.
+    .o_knowledge_article_template_picker_dialog {
+      display: flex !important; flex-direction: column; min-height: 0;
+      > div { display: flex !important; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+      .o_knowledge_template_selector { flex: 0 0 auto; max-height: 38vh; overflow-y: auto; }
+      .o_knowledge_template_preview {
+        flex: 1 1 auto; min-height: 180px; overflow-y: auto;
+        // Odoo fades the bottom of the preview out — a mask drawn for a 750px pane
+        mask-image: none !important; -webkit-mask-image: none !important;
+        .o_article_template_cover { height: 90px !important; }
+        .o_article_template_emoji { font-size: 34px !important; }
+        .o_article_template_cover + .o_article_template_container .o_article_template_emoji { margin-top: -30px !important; }
+      }
+    }
+
+    // Shop Floor's onboarding illustration is a fixed 1920×1080 composition (annotations are
+    // absolutely positioned inside it, plus Odoo's own 22rem left margin below md) — on the
+    // user's iPhone only its right part showed (`zoom` behaves differently in Safari). Scale the
+    // composition with a transform instead, centred, and give the parent the scaled height.
+    .o_mrp_display > div:has(> .o_mrp_display_onboarding_image) { display: block !important; height: 240px; overflow: hidden !important; }
+    .o_mrp_display_onboarding_image {
+      zoom: 1; transform: scale(.2); transform-origin: top left;
+      margin: 12px 0 0 calc((100vw - 384px) / 2) !important;
+    }
+    // safety net: a view container never scrolls sideways (tiny gutter/gap overflows only)
+    .o_view_controller.o_kanban_view { overflow-x: hidden !important; }
+
+    // -- 7. home / apps menu (Enterprise): centred neumorphic tiles ----------
+    .o_home_menu {
+      .o_apps {
+        gap: 18px 12px;
+        padding: var(--glass-gutter);
+        justify-content: center;           // centre the grid instead of hugging the left edge
+        justify-items: center;
+        align-content: start;
+      }
+      .o_app {
+        border-radius: var(--nm-radius-lg);
+        // v3: the key is the ::before (theme.scss §8), sized to the tile as rendered on a phone
+        // (70 px, .25rem from the top of the .p-1 tile); the image only carries the mono filter, so
+        // dark mode never inverts a shadow
+        position: relative;
+        &::before { display: block; top: .25rem; width: 70px; height: 70px; margin-left: -35px; border-radius: var(--nm-radius); box-shadow: var(--nm-raised-sm); transform: none; }
+        .o_app_icon,
+        img { border-radius: var(--nm-radius); box-shadow: none; filter: var(--nm-icon-rest); transform: none; }
+        // an app's name reads in full on two lines instead of ending in "…" after one
+        // ("Meeting R…", "Appointm…", "Subscripti…" on the client's home screen)
+        // Odoo sizes a tile to its icon, which leaves a name 76px: it read on one line and
+        // ended in "…" ("Meeting R…", "Appointm…", "Subscripti…" on the client's home screen).
+        // Two lines and a size that fits a twelve-letter name in that width, so a word is
+        // never broken across lines.
+        .o_caption {
+          display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+          white-space: normal !important; overflow: hidden; text-overflow: clip;
+          overflow-wrap: break-word; line-height: 1.25; max-width: 100%;
+          font-size: .66rem; letter-spacing: -.01em;
+        }
+      }
+    }
+
+    // -- 8. SETTINGS: Odoo 20 puts the section picker in a full-width strip (`.settings_tab.w-100`);
+    // the theme's desktop rail well keeps its side margins, so the strip ran past the screen edge
+    .o_setting_container .settings_tab.w-100 { width: auto !important; margin: 6px var(--glass-gutter) 12px !important; padding: 6px 8px !important; }
+
+    // -- 9. keep the desktop-only helpers out of the way on a phone ----------
+    // The Glass left pane and split panel are desktop features; on a phone the shell
+    // takes over. Both already self-disable via `!ui.isSmall`, this is belt-and-braces.
+    .o_glass_pane,
+    .o_glass_split_divider { display: none !important; }
+  }
+}

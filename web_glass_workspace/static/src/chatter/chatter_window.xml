@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="web_glass_workspace.ChatterWindow">
+        <t t-if="this.active">
+
+            <!-- ============ PHONE: bubble ============ -->
+            <button t-if="this.isPhone and this.store.mode === 'bubble'"
+                    class="o_glass_chatter_bubble" t-att-style="this.winStyle"
+                    t-on-pointerdown="this.onBubblePointerDown" title="Open the chatter">
+                <i class="oi" data-icon="forum"/>
+                <span class="o_glass_chatter_bubble_lb" t-out="this.title"/>
+            </button>
+
+            <!-- ============ window (desktop) / mini window + full sheet (phone) ============ -->
+            <section t-else="" class="o_glass_chatter_win"
+                     t-att-class="{
+                        o_desktop: !this.isPhone,
+                        o_phone: this.isPhone,
+                        o_full: this.isPhone and this.store.mode === 'full',
+                        o_minimized: !this.isPhone and this.store.minimized,
+                        o_dragging: this.local.dragging,
+                     }"
+                     t-att-style="this.winStyle" role="dialog" t-att-aria-label="'Chatter ' + this.title">
+
+                <div class="o_glass_chatter_hd" t-on-pointerdown="this.onHeaderPointerDown"
+                     t-on-dblclick="() => !this.isPhone and this.toggleMinimize()">
+                    <span t-if="!this.isPhone" class="o_glass_chatter_grip" aria-hidden="true"><i/><i/><i/></span>
+                    <span t-if="!this.isPhone" class="o_glass_chatter_ic"><i class="oi" data-icon="forum"/></span>
+                    <div class="o_glass_chatter_ttl">
+                        <small>
+                            Chatter
+                            <t t-if="!this.isPhone and this.fromSplit">
+                                <span t-if="this.store.follow" class="o_glass_chatter_live" title="Follows the record selected in the list"/>
+                                <span t-else="" class="o_glass_chatter_pin"><i class="oi" data-icon="push_pin"/> pinned</span>
+                            </t>
+                        </small>
+                        <b t-out="this.title"/>
+                    </div>
+
+                    <!-- desktop, split source: follow / pin -->
+                    <button t-if="!this.isPhone and this.fromSplit" type="button" class="btn btn-link"
+                            t-att-class="{ o_on: !this.store.follow }"
+                            t-att-title="this.store.follow ? 'Following the list selection — click to pin this record' : 'Pinned — click to follow the list selection again'"
+                            t-on-click="this.toggleFollow"><i class="oi" data-icon="push_pin"/></button>
+                    <!-- phone, from a card / row: open the record -->
+                    <button t-if="this.isPhone and this.store.onOpenRecord" type="button" class="btn btn-link"
+                            t-att-title="'Open ' + this.title" t-on-click="this.openRecord"><i class="oi" data-icon="open_in_new"/></button>
+                    <!-- phone: mini <-> full -->
+                    <button t-if="this.isPhone" type="button" class="btn btn-link"
+                            t-att-title="this.store.mode === 'full' ? 'Back to the small window' : 'Full screen'"
+                            t-on-click="() => this.setMode(this.store.mode === 'full' ? 'mini' : 'full')">
+                        <i class="oi" t-att-data-icon="this.store.mode === 'full' ? 'keyboard_arrow_down' : 'keyboard_arrow_up'"/>
+                    </button>
+                    <!-- minimise: desktop bar / phone bubble -->
+                    <button t-if="!this.isPhone" type="button" class="btn btn-link" t-att-title="this.store.minimized ? 'Restore' : 'Minimise'"
+                            t-on-click="this.toggleMinimize"><i class="oi" t-att-data-icon="this.store.minimized ? 'expand_content' : 'remove'"/></button>
+                    <button t-else="" type="button" class="btn btn-link" title="Minimise to a bubble"
+                            t-on-click="() => this.setMode('bubble')"><i class="oi" data-icon="remove"/></button>
+                    <!-- dock (split) / close -->
+                    <button t-if="!this.isPhone and this.fromSplit" type="button" class="btn btn-link" title="Dock back into the form"
+                            t-on-click="this.dock"><i class="oi" data-icon="login"/></button>
+                    <button t-else="" type="button" class="btn btn-link" title="Close" t-on-click="this.close"><i class="oi" data-icon="close"/></button>
+                </div>
+
+                <div class="o_glass_chatter_body" t-if="!(!this.isPhone and this.store.minimized)">
+                    <!-- Odoo's own chatter, keyed on the record so it remounts cleanly on switch -->
+                    <Chatter t-key="this.chatterKey" t-props="this.chatterProps"/>
+                </div>
+
+                <!-- resize handles (not on the full-screen sheet) -->
+                <t t-if="!(this.isPhone and this.store.mode === 'full') and !(!this.isPhone and this.store.minimized)">
+                    <span class="o_glass_chatter_rs n"  data-dir="n"  t-on-pointerdown="this.onResizePointerDown"/>
+                    <span class="o_glass_chatter_rs s"  data-dir="s"  t-on-pointerdown="this.onResizePointerDown"/>
+                    <span class="o_glass_chatter_rs e"  data-dir="e"  t-on-pointerdown="this.onResizePointerDown"/>
+                    <span class="o_glass_chatter_rs w"  data-dir="w"  t-on-pointerdown="this.onResizePointerDown"/>
+                    <span class="o_glass_chatter_rs ne" data-dir="ne" t-on-pointerdown="this.onResizePointerDown"/>
+                    <span class="o_glass_chatter_rs nw" data-dir="nw" t-on-pointerdown="this.onResizePointerDown"/>
+                    <span class="o_glass_chatter_rs se" data-dir="se" t-on-pointerdown="this.onResizePointerDown"/>
+                    <span class="o_glass_chatter_rs sw" data-dir="sw" t-on-pointerdown="this.onResizePointerDown"/>
+                </t>
+            </section>
+        </t>
+    </t>
+
+</templates>

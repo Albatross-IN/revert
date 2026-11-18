@@ -191,7 +191,7 @@ class ProjectProject(models.Model):
             stale.unlink()
         project._rvt_onboard_extra(vals, result)
         if not project.rvt_onboarded:
-            project.write({"rvt_onboarded": True, "rvt_onboarded_on": fields.Date.context_today(self)})
+            project.write({"rvt_onboarded": True, "rvt_onboarded_on": self.env["rvt.config"].today()})
         return result
 
     @api.model
@@ -206,12 +206,18 @@ class ProjectProject(models.Model):
             if key in vals:
                 value = vals[key]
                 out[field] = value.strip() if isinstance(value, str) else (value or False)
+        staff = self.env.ref("rvt_base.group_rvt_staff").sudo().all_user_ids
+        principals = self.env.ref("rvt_base.group_rvt_principal").sudo().all_user_ids
         for key, field in (("designer_ids", "rvt_designer_ids"), ("coordinator_ids", "rvt_coordinator_ids")):
             if key in vals:
-                out[field] = [(6, 0, list(vals[key] or []))]
-        if not project and "rvt_principal_id" not in out:
-            principal = self.env.ref("rvt_base.group_rvt_principal").sudo().user_ids.filtered(
-                lambda u: "principal" in u.rvt_roles())[:1]
+                # only Revert staff can be on a team
+                out[field] = [(6, 0, [uid for uid in (vals[key] or []) if uid in staff.ids])]
+        if out.get("rvt_principal_id") and out["rvt_principal_id"] not in principals.ids:
+            out.pop("rvt_principal_id")
+        if "rvt_principal_id" in out and not out["rvt_principal_id"]:
+            out.pop("rvt_principal_id")
+        if not (project and project.rvt_principal_id) and "rvt_principal_id" not in out:
+            principal = principals.filtered(lambda u: "principal" in u.rvt_roles())[:1] or principals[:1]
             out["rvt_principal_id"] = principal.id
         if not project:
             out.setdefault("rvt_site_kind", "home")
@@ -316,7 +322,7 @@ class ProjectProject(models.Model):
         Plan = self.env["rvt.project.trade"].sudo()
         Partner = self.env["res.partner"].sudo()
         plans = {p.trade_id.id: p for p in self.rvt_trade_plan_ids}
-        today = fields.Date.context_today(self)
+        today = self.env["rvt.config"].today()
         for row in rows:
             trade_id = row.get("trade_id")
             if not trade_id:

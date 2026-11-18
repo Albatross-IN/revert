@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Desktop (and tablet): Odoo's path + last item become Back key · page button (drops the
+         trail down). Phones keep Odoo 20's own compact breadcrumb — back arrow + page name, which
+         it portals into the top bar next to the systray — restyled by the theme. The original
+         blocks are switched off (not hidden) on the desktop, so the additional-actions slot renders
+         once. -->
+    <t t-name="web_glass_workspace.Breadcrumbs" t-inherit="web.Breadcrumbs" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_breadcrumb')][1]" position="attributes">
+            <attribute name="t-if">this.uiService.isSmall and (collapsedBreadcrumbs.length || previousBreadcrumb)</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('o_breadcrumb')][2]" position="attributes">
+            <attribute name="t-else"/>
+            <attribute name="t-elif">this.uiService.isSmall</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('o_breadcrumb')][1]" position="before">
+            <div t-if="!this.uiService.isSmall" class="o_breadcrumb o_glass_crumbs d-flex align-items-center min-w-0">
+                <button t-if="this.glassPrev" type="button" class="o_back_button o_glass_crumb_back btn d-print-none" data-hotkey="b" data-available-offline=""
+                        t-att-data-tooltip="'Back to “' + this.glassName(this.glassPrev) + '”'" t-att-aria-label="'Back to ' + this.glassName(this.glassPrev)"
+                        t-on-click.prevent="this.glassPrev.onSelected">
+                    <i class="oi" data-icon="arrow_back"/>
+                </button>
+                <Dropdown t-if="this.props.breadcrumbs.length > 1" position="'bottom-start'" menuClass="'o_glass_crumb_menu'">
+                    <button type="button" class="o_glass_crumb_btn o_last_breadcrumb_item btn o-dropdown-toggle-custo" aria-label="Navigation path" data-available-offline="">
+                        <span class="o_glass_crumb_name"><span class="text-truncate" t-out="this.glassName(this.glassCurrent)"/><i class="oi" data-icon="keyboard_arrow_down"/></span>
+                        <small t-if="this.glassSub" class="o_glass_crumb_sub text-truncate" t-out="this.glassSub"/>
+                    </button>
+                    <t t-set-slot="content">
+                        <div class="o_glass_crumb_head">Where you are</div>
+                        <t t-foreach="this.props.breadcrumbs" t-as="crumb" t-key="crumb.jsId">
+                            <DropdownItem class="'o_glass_crumb_item' + (crumb_last ? ' o_current' : '')" onSelected="crumb.onSelected"
+                                          attrs="{ href: crumb.url, style: '--lvl:' + crumb_index }">
+                                <i class="oi oi-fw" t-att-data-icon="crumb.isFormView ? 'description' : 'format_list_bulleted'"/>
+                                <span class="text-truncate" t-out="this.glassName(crumb)"/>
+                                <i t-if="crumb_last" class="oi ms-auto" data-icon="check"/>
+                            </DropdownItem>
+                        </t>
+                    </t>
+                </Dropdown>
+                <div t-else="" class="o_glass_crumb_btn o_last_breadcrumb_item o_static">
+                    <span class="o_glass_crumb_name"><span class="text-truncate" t-out="this.glassName(this.glassCurrent)"/></span>
+                    <small t-if="this.glassSub" class="o_glass_crumb_sub text-truncate" t-out="this.glassSub"/>
+                </div>
+                <t t-call="web.Breadcrumb.Actions"/>
+            </div>
+        </xpath>
+    </t>
+
+</templates>

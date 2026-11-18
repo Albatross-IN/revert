@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- hide the link entirely when there is no documentation URL -->
+    <t t-inherit="web.DocumentationLink" t-inherit-mode="extension">
+        <xpath expr="//a" position="attributes">
+            <attribute name="t-if">this.url</attribute>
+        </xpath>
+    </t>
+</templates>

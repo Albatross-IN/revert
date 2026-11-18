@@ -125,7 +125,7 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 
 ### Update 2026-11-19
 - Preview v4 approved by the project owner; development started. Phase log in implementation_plan_r1.md §6; additions of the day in its §8.
-- P1 `rvt_base` and P2 `rvt_project` done.
+- P1 `rvt_base`, P2 `rvt_project` and P3 `rvt_desk` done. Local test logins on the dev copy (never on production): `meera` (coordinator), plus local passwords on two existing users for browser checks.
 
 ### Traps found while building Release 1
 - Odoo 20: an `ir.actions.act_window` has no `target="inline"` any more (current / new / fullscreen / main).
@@ -138,6 +138,13 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 - Access rules are evaluated once per user and cached: in tests, give a user its partner at creation, do not swap it afterwards.
 - Never type a `pkill -f <pattern>` whose pattern also appears in the command line that runs it: it kills its own shell.
 - Tasks created in code take the current user as assignee unless `user_ids` is passed as False.
+
+- Odoo 20: `/web/session/logout` accepts POST only, with the security token. A page of our own logs out by posting a form.
+- `HttpCase.browser_js(ready=...)`: the expression must give `true`, not an element (`!!document.querySelector(...)`).
+- A private to-do ("Welcome <name>!") is created for every new internal user; it has no project and even the administrator cannot read it. Pick test tasks with `project_id` set.
+- With `identity` installed the standard back office is at `/app` by default; `/office` needs `identity_web_prefix = office` in the server config file. Build links from `rvt.desk._web_prefix()`, never from a literal `/odoo`.
+- The preview's screen code hard-codes a few invented ids (`s1` as principal, `s4` as designer). `_num('s1')` is 1, the system user: the adapter must replace such defaults (see `obStart` in live.js) and the server must refuse non-staff on a team (`_rvt_onboard_project_vals`).
+- Dates: use `env['rvt.config'].today()`, not `fields.Date.context_today`: people outside the office have no time zone set, and UTC is yesterday until 05:30 in India.
 
 ## 7. Glossary
 | Term | Meaning |

@@ -1,0 +1,179 @@
+// =============================================================================
+// Glass — the pane grammar (desktop and tablet, ≥ 768 px)
+//
+// Everything on a screen is one of four things:
+//   pane   a frosted slab that holds content you act on — a field group, the status bar,
+//          a kanban card, a list row, the chatter                      `--nm-raised` (+ blur on containers)
+//   seat   a place you type into or a strip that frames panes — inputs, the search well,
+//          the list header, group rows, totals                         `--nm-inset`
+//   well   a place that holds panes — a kanban lane                    `--gl-well` + `--nm-well`
+//   key    a button                                                    `--nm-raised-sm`
+//
+// The rules below turn Odoo's ONE form sheet into a bento of panes, every main-list row into
+// a slim pane, and make the kanban lanes faint glass. They are desktop-only: below 768 px the
+// phone adaptation (mobile.scss) keeps its own single-sheet layout, which was tuned separately.
+// Nothing here touches the DOM, the tab order or behaviour.
+//
+// Blur budget: a blurred element is a compositing layer of its own. The form tiles (≤ 8), the
+// lanes (≤ 10) and the chatter blur; list rows and kanban cards are tint-only panes.
+// =============================================================================
+
+@mixin gl-pane {
+    border-radius: var(--gl-tile-radius);
+    background-color: var(--nm-surface);
+    box-shadow: var(--nm-raised);
+    @include gl-blur;
+}
+
+.o_theme_glass {
+    --gl-tile-gap: 16px;            // the gap between panes
+    --gl-tile-radius: 16px;         // a pane's corner
+    --gl-row-radius: 12px;          // a list row's corner
+    --gl-tile-pad: 14px 18px 16px;
+
+    @media (min-width: 768px) {
+
+        // ------------------------------------------------------------ 1. Form: a bento of panes
+        // Scope: forms in the action stack (full page and the workspace's split panel). Dialog
+        // forms live in `.o_dialog_container`, outside `.o_action_manager`, and keep the plain
+        // sheet — the modal already floats.
+        .o_action_manager .o_form_view {
+            .o_form_sheet_bg { padding: 8px var(--glass-gutter) 12px !important; }
+
+            // the status pane: actions on the left, the pipeline on the right; sticky like Odoo's,
+            // so the record frosts behind it while it scrolls
+            .o_form_statusbar {
+                border: 0 !important; border-radius: var(--gl-tile-radius); margin: 0 0 var(--gl-tile-gap) !important; padding: 10px 16px !important;
+                background-color: var(--nm-surface); box-shadow: var(--nm-raised); z-index: 3; @include gl-blur;
+            }
+
+            // the sheet itself dissolves: the colour field shows between the panes
+            .o_form_sheet {
+                background: transparent !important; box-shadow: none !important; border: 0 !important; border-radius: 0 !important;
+                padding: 0 !important; margin: 0 !important; max-width: none;
+                > * { margin-bottom: var(--gl-tile-gap); }
+                > *:last-child { margin-bottom: 0; }
+                > .clearfix, > .o_newline { margin: 0; }
+            }
+            .o_form_sheet_bg:has(> .o_form_statusbar) > .o_form_sheet { border-radius: 0 !important; box-shadow: none !important; }
+
+            // identity pane: the title block (h1 + the fields under it); an avatar that floats
+            // beside it in Odoo's markup sits inside the pane's right edge
+            .o_form_sheet > .oe_title {
+                @include gl-pane; padding: 18px 22px 14px; max-width: none;
+                > h1, > h2, > h3 { margin-bottom: 6px; }
+            }
+            .o_form_sheet:has(> .oe_avatar) > .oe_title { min-height: 118px; padding-right: 130px; }
+            .o_form_sheet > .oe_avatar { position: relative; z-index: 1; margin: 14px 22px 0 0; }
+
+            // groups: Bootstrap's row of `col-lg-*` columns becomes a 12-column grid with a real
+            // gap, so each inner group is its own pane with nothing but the field between them
+            .o_form_sheet > .o_group.row {
+                display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--gl-tile-gap);
+                margin: 0 0 var(--gl-tile-gap); width: auto; max-width: none;
+                > * { width: auto; max-width: none; min-width: 0; padding: 0; margin: 0; grid-column: 1 / -1; }
+                @for $i from 1 through 12 { > .col-lg-#{$i} { grid-column: span #{$i}; } }
+                > .o_newline { display: block; height: 0; margin-top: calc(var(--gl-tile-gap) * -1); }
+                > .o_horizontal_separator { padding-top: 0; border-top: 0; color: var(--nm-text); }
+            }
+            @media (max-width: 991.98px) {
+                .o_form_sheet > .o_group.row > [class*="col-lg-"] { grid-column: 1 / -1; }
+            }
+            .o_form_sheet > .o_group.row > .o_inner_group,
+            .o_form_sheet > .o_group.row > .o_field_widget,
+            .o_form_sheet > .o_inner_group:not(.oe_subtotal_footer),
+            .o_form_sheet > .o_field_widget {
+                @include gl-pane; padding: var(--gl-tile-pad); box-sizing: border-box; min-width: 0;
+            }
+            // a wrapper <div> at the sheet root (Odoo 20's contact / employee / product headers put
+            // the avatar, the title and a few contact fields in one flex row) is one identity tile
+            .o_form_sheet > div:not(.o_group):not(.o_inner_group):not(.o_notebook):not(.oe_title):not(.oe_avatar):not(.alert):not(.clearfix):not(.o_newline):not(.o_widget):not(.o_field_widget):not(.oe_button_box):not(.o_attachment_preview) {
+                @include gl-pane; padding: var(--gl-tile-pad); box-sizing: border-box; margin-left: 0; margin-right: 0; width: auto; max-width: none;
+            }
+            // an empty group (every field hidden) leaves no empty tile behind
+            .o_form_sheet > .o_group.row > .o_inner_group:not(:has(*)) { display: none !important; }
+            .o_form_sheet > .o_group.row:not(:has(.o_cell)):not(:has(.o_field_widget)):not(:has(.o_horizontal_separator)) { display: none !important; }
+            .o_form_sheet > .o_inner_group:not(:has(*)) { display: none !important; }
+            // an empty properties widget (Odoo renders it as a bare block; properties are added
+            // from the cog menu) leaves no empty tile behind either
+            .o_form_sheet > .o_field_properties:not(:has(.o_property_field)) { display: none !important; }
+            .o_form_sheet > div:has(> .o_field_properties:only-child):not(:has(.o_property_field)) { display: none !important; }
+            // a group's title is the pane's header, not a ruled section label
+            .o_form_sheet > .o_group.row > .o_inner_group, .o_form_sheet > .o_inner_group {
+                > div:first-child > .o_horizontal_separator, > .o_horizontal_separator:first-child {
+                    border-top: 0; padding-top: 0; margin-top: 0; margin-bottom: 6px; color: var(--nm-text);
+                }
+            }
+
+            // the notebook pane (order lines, other info…): tabs as a rail inside the pane, and
+            // the x2many list bleeds to the pane's edge (Odoo sizes that bleed from this variable)
+            .o_form_sheet > .o_notebook {
+                @include gl-pane; padding: 10px 18px 16px; margin-top: 0;
+                --formView-sheet-padding-x: 18px;
+                > .tab-content { border-bottom: 0; }
+                > .tab-content > .tab-pane { padding-top: 14px; padding-bottom: 0; }
+            }
+
+            // the chatter beside the sheet is a pane of its own (form_view.scss A10 sets the surface)
+            .o-mail-Form-chatter.o-aside, .o-mail-ChatterContainer.o-aside {
+                background: transparent !important; padding: 8px var(--glass-gutter) 12px 0; box-sizing: border-box;
+                display: flex; flex-direction: column;
+                .o-mail-Chatter { flex: 1 1 auto; min-height: 0; height: auto !important; border-radius: var(--gl-tile-radius); box-shadow: var(--nm-raised); margin: 0; @include gl-blur; }
+            }
+            .o-mail-Form-chatter:not(.o-aside), .o-mail-ChatterContainer:not(.o-aside) {
+                background: transparent !important; padding: 0 var(--glass-gutter) 12px;
+                .o-mail-Chatter { border-radius: var(--gl-tile-radius); box-shadow: var(--nm-raised); margin: 0; @include gl-blur; }
+            }
+        }
+
+        // ------------------------------------------------------------ 2. List: every row is a pane
+        // Main lists only (x2many lists inside a form pane stay flat, form_view.scss A6). The table
+        // keeps Odoo's markup and column sizing; the pane is a pseudo-element behind each row, so
+        // the row's rounded corners and its edge are one object, not per-cell seams. Rows do not
+        // blur (a list is 80 of them); the header strip does.
+        .o_view_controller.o_list_view .o_list_renderer .o_list_table {
+            background: transparent !important; box-shadow: none; border-radius: 0; overflow: visible; margin: 4px 0 12px;
+            border-collapse: separate; border-spacing: 0 6px;
+            --table-bg: transparent; --table-striped-bg: transparent; --table-accent-bg: transparent; --table-hover-bg: var(--nm-active-tint);
+
+            thead {
+                position: sticky; top: 0; z-index: 2; background: transparent; box-shadow: none;
+                tr { position: relative; isolation: isolate; }
+                tr::after { content: ""; position: absolute; inset: 0; border-radius: var(--gl-row-radius); background-color: var(--nm-surface); box-shadow: var(--nm-raised-sm); z-index: -1; pointer-events: none; @include gl-blur(var(--gl-blur-sm)); }
+                th { background: transparent !important; border: 0 !important; box-shadow: none !important; height: 40px; padding-top: 8px !important; padding-bottom: 8px !important; vertical-align: middle; }
+            }
+            tbody, tfoot { background: transparent; }
+
+            tbody > tr.o_data_row, tbody > tr.o_group_header, tfoot > tr {
+                position: relative; isolation: isolate;
+                > td, > th { background-color: transparent !important; border: 0 !important; }
+                > td:first-child, > th:first-child { border-radius: var(--gl-row-radius) 0 0 var(--gl-row-radius); }
+                > td:last-child, > th:last-child { border-radius: 0 var(--gl-row-radius) var(--gl-row-radius) 0; }
+                &::after {
+                    content: ""; position: absolute; inset: 0; border-radius: var(--gl-row-radius); background-color: var(--nm-surface); z-index: -1; pointer-events: none;
+                    transition: box-shadow .15s var(--nm-ease-enter), background-color .15s;
+                }
+            }
+            // rows: a pane at rest; Bootstrap's hover tint is painted per cell and clipped by the
+            // rounded end cells, so it stays inside the pane
+            tbody > tr.o_data_row {
+                > td { height: 44px; padding-top: 4px; padding-bottom: 4px; vertical-align: middle; }
+                &::after { box-shadow: var(--nm-raised-sm); }
+                // selected (checkbox): the accent tint and a 1 px accent edge; editing: the accent ring
+                &.o_data_row_selected { > td { box-shadow: none !important; } &::after { background-color: var(--nm-active-tint); box-shadow: inset 0 0 0 1px rgba(var(--nm-brand-rgb), .4); } }
+                &.o_selected_row { > td, > td:first-child, > td:last-child { box-shadow: none !important; background-color: transparent !important; } &::after { box-shadow: var(--nm-raised-sm), 0 0 0 1.5px var(--nm-action); } }
+                &.o_dragged { &::after { box-shadow: var(--nm-raised-lg); } }
+            }
+            // group rows and totals: seated strips
+            tbody > tr.o_group_header { > td, > th { box-shadow: none !important; height: 44px; font-weight: 500; vertical-align: middle; } &::after { background-color: var(--gl-well); box-shadow: var(--nm-inset-sm); } }
+            tfoot > tr { > td { box-shadow: none !important; border-top: 0 !important; height: 44px; font-weight: 500; vertical-align: middle; } &::after { background-color: var(--gl-well); box-shadow: var(--nm-inset-sm); } }
+        }
+        // the selection bar stays a floating pane above the rows
+        .o_list_selection_box, .o_selection_container { box-shadow: var(--nm-floating); @include gl-blur; }
+
+        // ------------------------------------------------------------ 3. Kanban: lanes are faint glass, cards are panes
+        .o_kanban_renderer.o_kanban_grouped .o_kanban_group { border-radius: 20px; margin: 8px 8px 8px var(--glass-gutter); }
+        .o_kanban_record { border-radius: 14px; }
+        .o_kanban_record.o_dragged { box-shadow: var(--nm-raised-lg) !important; transform: rotate(-1.5deg); background-color: var(--nm-surface-high); }
+    }
+}

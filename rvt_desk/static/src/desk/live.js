@@ -1,0 +1,110 @@
+/* The adapter between the preview's screens and the server.
+   - One snapshot fills DB and the master lists; the project picture and Today come ready-made from the server.
+   - Every operation still runs locally first, exactly as in the preview, so the screen answers at once;
+     it is then sent to the server, and the next snapshot is the truth.
+   - The desk comes back where it was closed: section, project, tab, scroll and drafts (not the records). */
+const LIVE={queue:[],busy:false,ids:{},saving:false,depth:0},LKEY='rvt_desk_ui_v1';
+const EMPTY_PIC={status:'ok',progress:{ag:[0,0],dr:[0,0],wk:[0,0,0,0],pt:[0,0,0,0]},week:{rel:0,started:0,done:0,closed:0},blockers:[],next:{revert:[],agencies:[],client:[]},noDwg:[]};
+
+async function rpc(method,args){
+ const r=await fetch('/web/dataset/call_kw/rvt.desk/'+method,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({jsonrpc:'2.0',method:'call',id:Date.now(),params:{model:'rvt.desk',method,args:args||[],kwargs:{}}})});
+ let j=null;try{j=await r.json()}catch(e){}
+ if(!j)throw new Error('The server did not answer. Check the connection and try again.');
+ if(j.error){const d=j.error.data||{};if(j.error.code===100||/SessionExpired/.test(d.name||'')){location.href='/web/login?redirect='+encodeURIComponent('/rvt/desk');throw new Error('session')}
+  throw new Error(d.message||j.error.message||'Something went wrong.')}
+ return j.result}
+
+function applySnapshot(s){const m=s.masters,fill=(a,b)=>{a.length=0;b.forEach(x=>a.push(x))},clear=o=>Object.keys(o).forEach(k=>delete o[k]);
+ fill(TRADES,m.trades);clear(TX);TRADES.forEach(t=>TX[t.id]=t);fill(ETYPES,m.etypes);clear(ETX);ETYPES.forEach(e=>ETX[e.n]=e);
+ fill(PRESETS,m.presets);fill(EXTRAS,m.extras);fill(DEFAULT_TRADES,m.default_trades);fill(DTYPES,m.dtypes);
+ const [y,mo,d]=s.today_date.split('-').map(Number);BASE=Date.UTC(y,mo-1,d);
+ const t=new Date(),h=t.getHours();NOW=((h%12)||12)+':'+String(t.getMinutes()).padStart(2,'0')+(h<12?' am':' pm');
+ DB=Object.assign(seed(),{set:s.set,staff:s.staff,agencies:s.agencies,projects:s.projects,drawings:s.drawings,visits:s.visits,points:s.points,bills:s.bills,wa:s.wa,
+  features:s.features,mytasks:s.mytasks,today:s.today,company:s.company,prefix:s.prefix,admin:s.admin});
+ DB.projects.forEach(p=>{if(p.pic)p.pic.noDwg=p.pic.noDwg.map(x=>p.lines.find(l=>l.id===x.id)).filter(Boolean)});
+ UI.user=s.me;document.documentElement.dataset.nof=Object.keys(s.features).filter(k=>!s.features[k]).join(' ')}
+
+/* the picture and Today are the server's: one source for the desk, the app and Review */
+picture=function(p){return p.pic||EMPTY_PIC};
+todayFor=function(){return DB.today.map(n=>Object.assign({p:pOf(n.pid)},n)).filter(n=>n.p)};
+canSee=function(){return true};
+
+/* ---------- sending: in order, one at a time; then a fresh snapshot ---------- */
+const mapIds=v=>typeof v==='string'?(LIVE.ids[v]||v):Array.isArray(v)?v.map(mapIds):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).map(([k,x])=>[k,mapIds(x)])):v;
+function remapUI(){const d=UI.devs.desk;['drawer','vid'].forEach(k=>{if(LIVE.ids[d[k]])d[k]=LIVE.ids[d[k]]});if(d.sheet)Object.keys(d.sheet).forEach(k=>{if(LIVE.ids[d.sheet[k]])d.sheet[k]=LIVE.ids[d.sheet[k]]})}
+function sync(name,args,tmp){LIVE.queue.push({name,args,tmp});pump()}
+async function pump(){if(LIVE.busy)return;LIVE.busy=true;document.documentElement.dataset.sync='1';let failed=null;
+ while(LIVE.queue.length){const o=LIVE.queue.shift();try{const r=await rpc('op',[o.name,mapIds(o.args)]);if(o.tmp&&r&&r.id)LIVE.ids[o.tmp]=r.id}catch(e){failed=e;LIVE.queue.length=0}}
+ try{applySnapshot(await rpc('snapshot'));remapUI()}catch(e){failed=failed||e}
+ LIVE.busy=false;delete document.documentElement.dataset.sync;
+ if(failed&&failed.message!=='session')toast(failed.message,'bad');
+ if(LIVE.queue.length)return pump();
+ render()}
+async function reload(){try{applySnapshot(await rpc('snapshot'));render()}catch(e){if(e.message!=='session')toast(e.message,'bad')}}
+
+/* an operation called inside another one (a release that frees waiting lines) is the server's work, not a second request */
+function wrapOP(name,send){const orig=OP[name];if(!orig)return;OP[name]=function(){LIVE.depth++;let r;try{r=orig.apply(OP,arguments)}finally{LIVE.depth--}if(!LIVE.depth)send.apply(null,[r].concat(Array.prototype.slice.call(arguments)));return r}}
+wrapOP('setLine',(r,p,l,st,x)=>sync('set_line',{line:l.id,state:st,cause:(x||{}).cause||'',ref:(x||{}).ref||'',note:(x||{}).note||'',agency:l.ag||''}));
+wrapOP('assign',(r,p,t,ag,by)=>sync('assign',{project:p.id,trade:t,agency:ag||'',by:by==null||isNaN(by)?7:by}));
+
+/* ---------- actions that differ from the preview: they talk to the server or leave the desk ---------- */
+const wrapA=(name,after)=>{const o=A[name];A[name]=function(v,el,dev){const r=o.apply(A,arguments);after(v,el,dev);return r}};
+A.signin=function(){};A.asuser=function(){};A.reset=function(){};A.scen=function(){};A.setview=function(){};A.jump=function(){};A.guide=function(){};A.wapanel=function(){};A.replay=function(){intro()};
+A.signout=function(){try{localStorage.removeItem(LKEY)}catch(e){}const f=document.createElement('form'),add=(k,v)=>{const i=document.createElement('input');i.type='hidden';i.name=k;i.value=v;f.appendChild(i)};
+ f.method='post';f.action='/web/session/logout';add('csrf_token',(document.querySelector('meta[name="csrf-token"]')||{}).content||'');add('redirect','/web/login');document.body.appendChild(f);f.submit()};
+A.backoffice=function(){save();location.href=DB.prefix};
+A.opentask=function(v){window.open(DB.prefix+'/m-project.task/'+v,'_blank','noopener')};
+A.taskboard=function(v){window.open(DB.prefix+'/project/'+v+'/tasks','_blank','noopener')};
+A.refresh=function(){reload()};
+A.taskent=function(v,el,dev){const [pid,tid]=v.split('|'),p=pOf(pid),t=p.tasks.find(x=>String(x.id)===tid);if(!t)return;const ty=guessType(t.n);
+ p.ents.push({id:'e'+t.id,n:t.n,ty});p.tasks=p.tasks.filter(x=>x!==t);sync('task_entity',{task:t.id,type:ty});toast(`“${t.n}” is now a room of ${p.name}. Tick its trades in Project configuration.`)};
+
+/* onboarding: the wizard is the preview's; the result is written by the server in one go.
+   A new project starts with the real principal, and with the person who sets it up on its team. */
+const obStart0=obStart;obStart=function(dev,pid){const ob=obStart0(dev,pid),u=me();
+ if(!DB.staff.some(x=>x.id===ob.principal&&has(x,'principal'))){const pr=DB.staff.find(x=>has(x,'principal'))||DB.staff.find(x=>has(x,'owner'));ob.principal=pr?pr.id:''}
+ if(!pid){if(has(u,'coordinator')&&!ob.coords.length)ob.coords=[u.id];if(has(u,'designer')&&!ob.designers.length)ob.designers=[u.id]}return ob};
+function obPayload(ob){const p=ob.pid?pOf(ob.pid):null,on=obTrades(ob),ticks=[];ob.ents.forEach(e=>on.forEach(t=>{if(obTick(ob,e,t))ticks.push([String(e.u),t])}));
+ return {pid:ob.pid||'',name:ob.name.trim(),client:ob.client.trim(),cphone:(ob.cphone||'').trim(),address:ob.address||'',area:ob.area||'',kind:ob.kind,label:ob.label||'',billedTo:ob.billedTo,
+  principal:ob.principal||'',designers:ob.designers,coords:ob.coords,
+  ents:ob.ents.map(e=>{const t=e.task&&p?p.tasks.find(x=>x.n===e.task):null;return {u:e.u,n:e.n,ty:e.ty,id:e.id||'',taskId:t?t.id:''}}),
+  tr:ob.tr,ticks,dr:DB.features.drawings?ob.dr.filter(d=>d.on&&!d.exists):[],inv:DB.features.wa?Object.keys(ob.inv).filter(k=>ob.inv[k]):[]}}
+A.obfinish=function(v,el,dev){const ob=dev.ob;if(!ob||LIVE.saving)return;if(!ob.name.trim())return toast('Give the project a name first.','wait');
+ const was=!!(ob.pid&&pOf(ob.pid)&&pOf(ob.pid).onb);LIVE.saving=true;document.documentElement.dataset.sync='1';
+ rpc('op',['onboard',obPayload(ob)]).then(async r=>{applySnapshot(await rpc('snapshot'));dev.ob=null;openProj(dev,r.pid,'picture');dev.sec='projects';flash(dev,was?'Saved':'Project started','check',!was);
+   const p=pOf(r.pid);toast(`${p?p.name:'Project'}: ${plural(r.nl,'work line')}${DB.features.drawings?' and '+plural(r.nd,'drawing'):''} added${r.inv?' · '+plural(r.inv,'invitation')+' '+sent():''}.`)})
+  .catch(e=>{if(e.message!=='session')toast(e.message,'bad')}).finally(()=>{LIVE.saving=false;if(!LIVE.busy)delete document.documentElement.dataset.sync;render()})};
+/* until drawings have their back end the wizard has five steps: 4 leads to the review */
+const obgo0=A.obgo;A.obgo=function(v,el,dev){if(!DB.features.drawings&&+v===5)v=dev.ob.step>5?4:6;return obgo0.call(A,v,el,dev)};
+
+/* setup: the preview changes the list on the screen; the server keeps it */
+wrapA('setting',v=>sync('setting',{key:v,value:DB.set[v]}));
+wrapA('limit',v=>{const k=v.split('|')[0];sync('limit',{key:k,value:DB.set.lim[k]})});
+wrapA('ettoggle',v=>{const [n,t]=v.split('|');sync('etype_trade',{type:n,trade:t})});
+wrapA('dtflag',v=>{const [i,k]=v.split('|');sync('dtype_flag',{id:DTYPES[+i].id,flag:k})});
+const roletog0=A.roletog;A.roletog=function(v){const [s,r]=v.split('|'),u=stf(s),had=u.roles.includes(r);roletog0.apply(A,arguments);if(u.roles.includes(r)!==had)sync('role',{user:s,role:r})};
+const addtrade0=A.doaddtrade;A.doaddtrade=function(v,el,dev){const f=dev.f,a={name:(f.nt_n||'').trim(),gu:f.nt_gu||'',hi:f.nt_hi||''},n=TRADES.length;addtrade0.apply(A,arguments);if(TRADES.length>n)sync('add_trade',a,TRADES[TRADES.length-1].id)};
+const addagency0=A.doaddagency;A.doaddagency=function(v,el,dev){const f=dev.f,a={name:(f.na_n||'').trim(),trades:f.na_t?[f.na_t]:[],lang:f.na_l||'gu',person:f.na_p||'',phone:f.na_ph||''},n=DB.agencies.length;addagency0.apply(A,arguments);
+ if(DB.agencies.length>n){const g=DB.agencies[DB.agencies.length-1];g.id='anew'+Date.now();sync('add_agency',a,g.id)}};
+
+/* ---------- the window: the desk alone, at the size of the browser ---------- */
+shellHTML=function(){const d=UI.devs.desk;d.signed=true;
+ const extra=`<button type="button" class="ib" data-a="theme" aria-label="Light or dark" title="Light or dark">${ic(UI.theme==='dark'?'sun':'moon')}</button>${DB.admin?`<button type="button" class="ib" data-a="backoffice" aria-label="Back office" title="Back office">${ic('grid')}</button>`:''}`;
+ const h=deskHTML(d).replace('<button type="button" class="ib gn-out"',extra+'<button type="button" class="ib gn-out"');
+ return `<div class="stage v-desk"><div class="dv dv-desk" data-dev="desk">${h}</div></div><div id="toast" aria-live="polite">${UI.toast?`<div class="toast ${UI.toast.k}">${ic(UI.toast.k==='ok'?'check':'alert')}<span>${esc(UI.toast.t)}</span></div>`:''}</div>`};
+
+/* ---------- the session: where the desk was closed (never the records) ---------- */
+save=function(){try{document.querySelectorAll('#app [data-sc]').forEach(el=>{SCROLL['desk:'+el.dataset.sc]=[el.scrollTop,el.scrollLeft]});
+  const d=UI.devs.desk,o={};Object.keys(d).forEach(k=>{if(!TRANSIENT.includes(k))o[k]=d[k]});
+  localStorage.setItem(LKEY,JSON.stringify({v:1,user:UI.user,theme:UI.theme,pal:UI.pal,motion:UI.motion,desk:o,sc:SCROLL}))}catch(e){}};
+restore=function(){try{const s=JSON.parse(localStorage.getItem(LKEY)||'null');if(!s||s.v!==1)return false;UI.theme=s.theme||'light';UI.pal=s.pal||'emerald';UI.motion=s.motion||'';
+  if(s.user!==UI.user)return false;const d=UI.devs.desk;Object.assign(d,s.desk);d.sheet=null;if(d.sec==='onboard'&&!d.ob)d.sec='projects';if(d.pid&&!pOf(d.pid))d.pid=null;
+  SCROLL=s.sc||{};OBU=Math.max(0,...(d.ob?d.ob.ents.map(e=>e.u||0):[]));UI.toast=null;return true}catch(e){return false}};
+
+/* ---------- start ---------- */
+async function liveBoot(){const first=(()=>{try{return !sessionStorage.getItem('rvt_desk_open')}catch(e){return false}})();UI.view='desk';UI.devs.desk.signed=true;
+ try{applySnapshot(await rpc('snapshot'))}catch(e){if(e.message==='session')return;document.getElementById('app').innerHTML=`<div class="livefail"><h1>The desk could not load</h1><p>${esc(e.message)}</p><button type="button" class="btn gold" onclick="location.reload()">Try again</button></div>`;return}
+ const intro0=intro;if(!first)intro=function(){};boot();intro=intro0;if(first&&UI.restored)intro();
+ try{sessionStorage.setItem('rvt_desk_open','1')}catch(e){}
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!LIVE.busy&&!LIVE.saving&&Date.now()-(LIVE.at||0)>60000){LIVE.at=Date.now();reload()}});LIVE.at=Date.now()}

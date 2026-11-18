@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The sign-in page (and the database selector, which shares the layout)
+         gets the theme scope while the theme is enabled: the login page is a
+         frontend page, so the flag is read here rather than from the backend's
+         rendering context. Styling lives in static/src/scss/login.scss. -->
+    <template id="login_layout_glass" inherit_id="web.login_layout" name="Glass login layout">
+        <xpath expr="//t[@t-call='web.frontend_layout']" position="attributes">
+            <attribute name="body_classname.f">bg-100{{ ' o_theme_glass o_glass_login' if env['res.config.settings']._glass_theme_enabled() else '' }}</attribute>
+        </xpath>
+    </template>
+</odoo>

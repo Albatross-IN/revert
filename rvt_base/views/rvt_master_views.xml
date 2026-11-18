@@ -147,6 +147,7 @@
                                 <field name="sequence" widget="handle"/>
                                 <field name="entity_type_id"/>
                                 <field name="count"/>
+                                <field name="number_from" optional="show"/>
                             </list>
                         </field>
                     </group>

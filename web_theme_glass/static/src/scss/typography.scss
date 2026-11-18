@@ -1,0 +1,69 @@
+// =============================================================================
+// Glass — typography (v2, 2026-09-27)
+//
+// One typeface, shipped with the module: Inter (variable, OFL — static/src/fonts/LICENSE-Inter.txt),
+// so the backend renders the same on Windows, macOS, Linux and Android instead of falling to
+// each platform's system face. One scale of seven sizes (11 · 12 · 13 · 14 · 16 · 20 · 28) and
+// three weights (400 · 500 · 600); v1 declared 25 sizes and five weights. Uppercase, letter-
+// spaced micro labels stay only on list column headers; everything else is sentence case at
+// 12 px or more. Phones read at 15 px with 16 px inputs (iOS zooms into anything smaller).
+// =============================================================================
+
+@font-face {
+    font-family: "Inter";
+    src: url("/web_theme_glass/static/src/fonts/InterVariable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Inter";
+    src: url("/web_theme_glass/static/src/fonts/InterVariable-Italic.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: italic;
+    font-display: swap;
+}
+
+body.o_theme_glass {
+    font-family: var(--glass-font);
+    font-size: 14px;
+    --font-sans-serif: var(--glass-font);           // Bootstrap 5.3 body-font variables (Odoo uses an empty prefix)
+    --body-font-family: var(--glass-font);
+    font-feature-settings: "cv11", "ss01";          // Inter: single-storey a, open digits — closer to the system faces users know
+}
+
+.o_theme_glass {
+    // ---- weights: three, no more (Bootstrap's .fw-bold is !important) --------------------
+    :is(h1, h2, h3, h4, h5, h6, strong, b, .fw-bold, .fw-bolder, .o_glass_m_sheet_head, .o_glass_crumb_name, .o_glass_pane_name) { font-weight: 600 !important; }
+    .oe_title h1, .oe_title h1 .o_input { font-size: 28px; font-weight: 600; letter-spacing: -.01em; }
+    h2, .h2 { font-size: 20px; }
+    h3, .h3, h4, .h4 { font-size: 16px; }
+
+    // ---- reading text --------------------------------------------------------------------
+    .o_form_label { font-size: 13px; font-weight: 500; }
+    .o_form_sheet, .o_kanban_record, .o-mail-Message, .o_setting_box { line-height: 1.45; }
+    .o_list_table th { font-size: 12px; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+
+    // ---- micro labels: sentence case, 12–13 px ------------------------------------------
+    .o_horizontal_separator, .dropdown-header, .o_search_panel .o_search_panel_section_header, .o_glass_pane .o_glass_pane_label,
+    .o_glass_crumb_head, .o_glass_fly_title, .o_calendar_widget .fc-col-header-cell, .o_calendar_widget .fc-day-header {
+        text-transform: none !important; letter-spacing: 0 !important; font-size: 13px !important; font-weight: 600 !important;
+    }
+
+    // ---- figures line up ---------------------------------------------------------------
+    .o_field_date, .o_field_datetime, .o_pager_counter, .o_kanban_counter_side, .o_stat_value { font-variant-numeric: tabular-nums; }
+
+    // ---- phone: 15 px body, 16 px inputs ------------------------------------------------
+    @media (max-width: 767.98px) {
+        &, &.o_web_client { font-size: 15px; }
+        .o_input, .form-select, .form-control, .o_field_widget input, textarea.o_input { font-size: 16px; }
+        .o_form_view .o_form_label { font-size: 13px; }
+        .o_kanban_record { font-size: 15px; }
+        .o_kanban_record :is(strong, .o_kanban_record_title, .fw-bold, .fw-bolder) { font-size: 16px; font-weight: 600; }
+        .o_navbar_breadcrumbs .o_last_breadcrumb_item, .o_fallback_breadcrumbs .o_last_breadcrumb_item, .o_main_navbar .o_menu_brand { font-size: 17px; font-weight: 600; }
+        td.o_data_cell[data-glass-label]::before { font-size: 11px !important; text-transform: none !important; letter-spacing: 0 !important; font-weight: 500 !important; }
+        tr.o_group_header .o_group_name { text-transform: none; letter-spacing: 0; font-size: 14px; }
+        .o_glass_m_tab { font-size: 11px !important; font-weight: 500 !important; letter-spacing: 0; }
+        .o_glass_m_tab.o_active { font-weight: 600 !important; }
+    }
+}

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The desk is a page of its own: the approved preview's screens on live data. -->
+    <template id="desk_page" name="Revert Desk">&lt;!DOCTYPE html&gt;
+<html lang="en" class="live" data-rv="light" data-pal="emerald">
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+        <meta name="robots" content="noindex"/>
+        <meta name="csrf-token" t-att-content="request.csrf_token()"/>
+        <title>Revert Desk</title>
+        <link rel="icon" type="image/png" href="/rvt_desk/static/description/icon.png"/>
+        <link rel="stylesheet" href="/rvt_desk/static/fonts/fonts.css"/>
+        <link rel="stylesheet" t-attf-href="/rvt_desk/static/src/desk/styles.css?v=#{stamp}"/>
+        <link rel="stylesheet" t-attf-href="/rvt_desk/static/src/desk/live.css?v=#{stamp}"/>
+    </head>
+    <body>
+        <div id="app"></div>
+        <script t-attf-src="/rvt/desk/app.js?v=#{stamp}"></script>
+    </body>
+</html>
+    </template>
+</odoo>

@@ -12,7 +12,7 @@ class RvtCommon(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         env = cls.env
-        cls.today = fields.Date.context_today(env.user)
+        cls.today = env["rvt.config"].today()
         cls.days = staticmethod(lambda n: cls.today + timedelta(days=n))
         user = lambda login, groups, name: new_test_user(env, login, groups=groups, name=name)
         cls.owner = user("t_owner", "rvt_base.group_rvt_owner", "Parul Vora")

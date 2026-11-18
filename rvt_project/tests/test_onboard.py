@@ -202,6 +202,19 @@ class TestOnboard(RvtCommon):
             "client_contacts": [{"id": contact.id}, {"name": "Hetal Shah", "phone": "+91 98250 70012"}]})
         self.assertEqual(project.rvt_client_contact_ids.mapped("name"), ["Nirav Shah", "Hetal Shah"])
 
+    def test_team_is_revert_staff_only(self):
+        """A stray id from a client (the system user, an agency person) never lands on a team."""
+        system = self.env.ref("base.user_root")
+        project, _ = self.onboard(
+            name="Team check", principal_id=system.id,
+            designer_ids=[self.designer.id, self.agency_user.id], coordinator_ids=[system.id, self.coordinator.id])
+        self.assertEqual(project.rvt_principal_id, self.principal, "falls back to the person who holds the principal role")
+        self.assertEqual(project.rvt_designer_ids, self.designer)
+        self.assertEqual(project.rvt_coordinator_ids, self.coordinator)
+        # an owner may be named principal of a project: the owner role may approve
+        self.Project.with_user(self.coordinator).rvt_onboard({"project_id": project.id, "principal_id": self.owner.id})
+        self.assertEqual(project.rvt_principal_id, self.owner)
+
     def test_who_may_onboard(self):
         with self.assertRaises(UserError):
             self.Project.with_user(self.coordinator).rvt_onboard({"name": "  "})

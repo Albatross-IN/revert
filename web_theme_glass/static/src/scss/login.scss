@@ -1,0 +1,173 @@
+// =============================================================================
+// Glass — the sign-in page
+//
+// The login page is a frontend page (web.assets_frontend), rendered without the backend
+// bundle and without the colour-scheme switch, so it carries its own small token set: the
+// same ground, blobs, pane, well and accent as tokens.scss, light by default and charcoal
+// under `prefers-color-scheme: dark`. Every value is `!default`, so a brand module can set its
+// own accent and blobs by loading a file before this one in the bundle.
+//
+// Scope: `body.o_theme_glass.o_glass_login`, put there by views/login_templates.xml while the
+// theme is enabled. Markup untouched: the selectors are Odoo 20's login card classes.
+// =============================================================================
+
+$gl-login-ink:        #1F2937 !default;
+$gl-login-brand:      #3F54AD !default;
+$gl-login-brand-dark: #6F84D9 !default;
+
+$gl-login-ground:      #EDF0F6 !default;
+$gl-login-ground-dark: #12161E !default;
+$gl-login-blob-a:      rgba(#3F54AD, .58) !default;
+$gl-login-blob-b:      rgba(#7DA8E8, .70) !default;
+$gl-login-blob-c:      rgba(#B4A4FF, .62) !default;
+$gl-login-blob-a-dark: rgba(#6F84D9, .32) !default;
+$gl-login-blob-b-dark: rgba(#7DA8E8, .20) !default;
+$gl-login-blob-c-dark: rgba(#B4A4FF, .24) !default;
+
+@mixin gl-login-tokens($dark) {
+    --gl-ground: #{if($dark, $gl-login-ground-dark, $gl-login-ground)};
+    --gl-field: radial-gradient(1100px 760px at 8% -8%, #{if($dark, $gl-login-blob-a-dark, $gl-login-blob-a)}, transparent 64%),
+                radial-gradient(1000px 640px at 100% 22%, #{if($dark, $gl-login-blob-b-dark, $gl-login-blob-b)}, transparent 62%),
+                radial-gradient(900px 700px at 55% 112%, #{if($dark, $gl-login-blob-c-dark, $gl-login-blob-c)}, transparent 64%);
+    --nm-surface: #{if($dark, rgba(#fff, .08), rgba(#fff, .52))};
+    --nm-surface-high: #{if($dark, rgba(#1A1F29, .90), rgba(#fff, .86))};
+    --gl-well: #{if($dark, rgba(#fff, .05), rgba(#fff, .40))};
+    --gl-edge: #{if($dark, rgba(#fff, .10), rgba(#fff, .78))};
+    --gl-edge-top: #{if($dark, rgba(#fff, .14), rgba(#fff, .95))};
+    --gl-hair: #{if($dark, rgba(#fff, .10), rgba($gl-login-ink, .10))};
+    --gl-cast: #{if($dark, rgba(#000, .45), rgba($gl-login-ink, .10))};
+    --gl-cast-strong: #{if($dark, rgba(#000, .60), rgba($gl-login-ink, .18))};
+    --nm-text: #{if($dark, #E5E7EB, $gl-login-ink)};
+    --nm-text-muted: #{if($dark, #9CA3AF, #4B5563)};
+    $brand: if($dark, $gl-login-brand-dark, $gl-login-brand);
+    --nm-brand: #{$brand};
+    --nm-brand-rgb: #{red($brand)}, #{green($brand)}, #{blue($brand)};
+    --nm-brand-hover: #{if($dark, lighten($brand, 6%), darken($brand, 8%))};
+    --nm-brand-contrast: #{if(lightness($brand) > 60%, $gl-login-ink, #fff)};
+    --nm-brand-shadow: #{rgba($brand, if($dark, .5, .35))};
+}
+
+@font-face {
+    font-family: "Inter";
+    src: url("/web_theme_glass/static/src/fonts/InterVariable.woff2") format("woff2");
+    font-weight: 100 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+body.o_theme_glass.o_glass_login {
+    @include gl-login-tokens(false);
+    @media (prefers-color-scheme: dark) { @include gl-login-tokens(true); }
+    --nm-radius-sm: 8px;
+    --nm-radius: 12px;
+    --nm-radius-lg: 20px;
+    --gl-blur: 18px;
+
+    // The colour field, fixed to the viewport
+    min-height: 100%;
+    background-color: var(--gl-ground) !important;
+    background-image: var(--gl-field);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    color: var(--nm-text);
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --bs-primary: var(--nm-brand);
+    --bs-primary-rgb: var(--nm-brand-rgb);
+    --bs-link-color: var(--nm-brand);
+    --bs-link-hover-color: var(--nm-brand-hover);
+    // portal_templates.xml paints `.btn-primary` and links with the company's e-mail colours
+    // through these two variables (set inline on :root, with !important on the rule): the
+    // pane's accent takes their place.
+    --portal-primary-color: var(--nm-brand);
+    --portal-text-color: var(--nm-brand-contrast);
+
+    // The card: one pane of glass
+    .card.o_database_list {
+        max-width: 380px !important;
+        margin-top: 4vh;
+        border: 0;
+        border-radius: var(--nm-radius-lg);
+        background-color: var(--nm-surface) !important;
+        box-shadow: 0 18px 44px var(--gl-cast-strong), inset 0 0 0 1px var(--gl-edge), inset 0 1px 0 var(--gl-edge-top);
+        -webkit-backdrop-filter: blur(var(--gl-blur)) saturate(1.6);
+        backdrop-filter: blur(var(--gl-blur)) saturate(1.6);
+        color: var(--nm-text);
+
+        .card-body { padding: 2rem 1.75rem 1.5rem; background: transparent; }  // the login page tints it white
+        .border-bottom, .border-top { border-color: var(--gl-hair) !important; }
+        .text-center > img { filter: drop-shadow(0 6px 14px var(--gl-cast)); }
+        // The footer line is empty once the database manager and "Powered by" are off
+        .card-body > .text-center.border-top:not(:has(a, span)) { display: none; }
+    }
+
+    label, .form-label, .col-form-label { color: var(--nm-text-muted); font-weight: 500; font-size: .8125rem; letter-spacing: .01em; }
+
+    // Fields: seated wells
+    .form-control, .input-group > .btn {
+        border: 0;
+        background-color: var(--gl-well);
+        color: var(--nm-text);
+        box-shadow: inset 0 0 0 1px var(--gl-hair);
+        min-height: 44px;
+        transition: box-shadow .15s ease, background-color .15s ease;
+        &::placeholder { color: var(--nm-text-muted); opacity: .8; }
+    }
+    .form-control { border-radius: var(--nm-radius); }
+    .form-control:focus {
+        background-color: var(--nm-surface-high);
+        box-shadow: inset 0 0 0 1px var(--nm-brand), 0 0 0 4px rgba(var(--nm-brand-rgb), .18);
+        color: var(--nm-text);
+    }
+    .input-group {
+        > .form-control { border-top-left-radius: var(--nm-radius); border-bottom-left-radius: var(--nm-radius); }
+        > .btn { border-top-right-radius: var(--nm-radius) !important; border-bottom-right-radius: var(--nm-radius) !important; color: var(--nm-text-muted); }
+        > .btn:hover { color: var(--nm-brand); background-color: var(--nm-surface-high); }
+        > .form-control:focus + .btn { box-shadow: inset 0 0 0 1px var(--nm-brand); }
+    }
+    .form-control:-webkit-autofill { -webkit-box-shadow: inset 0 0 0 1px var(--gl-hair), inset 0 0 0 1000px var(--nm-surface-high); -webkit-text-fill-color: var(--nm-text); }
+
+    // ONE primary action
+    .btn-primary {
+        --bs-btn-bg: var(--nm-brand);
+        --bs-btn-border-color: transparent;
+        --bs-btn-hover-bg: var(--nm-brand-hover);
+        --bs-btn-hover-border-color: transparent;
+        --bs-btn-active-bg: var(--nm-brand-hover);
+        --bs-btn-active-border-color: transparent;
+        --bs-btn-color: var(--nm-brand-contrast);
+        --bs-btn-hover-color: var(--nm-brand-contrast);
+        --bs-btn-active-color: var(--nm-brand-contrast);
+        --bs-btn-focus-shadow-rgb: var(--nm-brand-rgb);
+        min-height: 46px;
+        border-radius: var(--nm-radius);
+        font-weight: 600;
+        letter-spacing: .01em;
+        box-shadow: 0 10px 24px var(--nm-brand-shadow), inset 0 1px 0 rgba(#fff, .25);
+        transition: transform .12s ease, box-shadow .15s ease, background-color .15s ease;
+        &:hover { transform: translateY(-1px); box-shadow: 0 14px 28px var(--nm-brand-shadow), inset 0 1px 0 rgba(#fff, .25); }
+        &:active { transform: translateY(0); box-shadow: 0 6px 16px var(--nm-brand-shadow); }
+    }
+    .btn-link, .btn-link:hover { color: var(--nm-brand); text-decoration: none; }
+    .btn-link:hover { color: var(--nm-brand-hover); }
+    a { color: var(--nm-brand); text-decoration: none; &:hover { color: var(--nm-brand-hover); text-decoration: underline; } }
+
+    // Other sign-in choices (OAuth, passkey): keys on the pane
+    .o_login_auth .list-group-item, .list-group-item {
+        border: 0;
+        margin-bottom: .5rem;
+        border-radius: var(--nm-radius);
+        background-color: var(--nm-surface);
+        box-shadow: 0 2px 6px var(--gl-cast), inset 0 0 0 1px var(--gl-edge);
+        color: var(--nm-text);
+        &:hover { background-color: var(--nm-surface-high); color: var(--nm-brand); }
+    }
+    .alert { border: 0; border-radius: var(--nm-radius); box-shadow: inset 0 0 0 1px var(--gl-hair); }
+    .alert-danger { background-color: rgba(#DC2626, .12); color: #991B1B; }
+    .alert-success { background-color: rgba(#059669, .12); color: #065F46; }
+    .text-muted { color: var(--nm-text-muted) !important; }
+
+    // Remembered accounts (web.user_switch)
+    .o_user_switch .o_user_item, .o_user_switch .btn { border-radius: var(--nm-radius); }
+
+    @media (prefers-reduced-motion: reduce) { .btn-primary, .form-control { transition: none; } }
+}

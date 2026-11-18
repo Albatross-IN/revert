@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="identity.Edition">
+        <Setting addLabel="false">
+            <div class="user-heading">
+                <h3 class="px-0">
+                    <t t-out="this.identity.name"/>
+                    <span class="text-muted fw-normal fs-5 ms-1">v<t t-out="this.serverVersion"/></span>
+                </h3>
+            </div>
+            <div class="text-muted o_web_settings_compact_subtitle">
+                <a t-if="this.identity.url" t-att-href="this.identity.url" target="_blank" class="text-decoration-underline"><t t-out="this.identity.url"/></a>
+                <div t-if="this.expirationDate" class="mt-1">Database expiration: <t t-out="this.expirationDate"/></div>
+            </div>
+        </Setting>
+    </t>
+</templates>

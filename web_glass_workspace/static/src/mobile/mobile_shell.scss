@@ -1,0 +1,223 @@
+// =============================================================================
+// Glass Workspace — mobile shell styling  (bottom tab bar, stage picker sheet)
+//
+// Wrapped in the same < 768px query as web_theme_glass/scss/mobile.scss AND scoped to
+// `.o_theme_glass`, so it is inert on desktop and when the theme is off. Colours come only
+// from the Glass `--nm-*` tokens (no new palette) so it tracks light / dark automatically.
+// =============================================================================
+
+$glass-m-tabbar-h: 58px;
+
+@media (max-width: 767.98px) {
+  .o_theme_glass {
+
+    // ---- scrim -----------------------------------------------------------
+    .o_glass_m_scrim {
+      position: fixed; inset: 0;
+      z-index: 1039;
+      background: rgba(0, 0, 0, .34);
+      animation: o_glass_m_fade .18s var(--nm-ease-enter);
+    }
+
+    // ---- bottom tab bar --------------------------------------------------
+    .o_glass_m_tabbar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      z-index: 1041;
+      display: flex;
+      align-items: stretch;
+      height: calc(#{$glass-m-tabbar-h} + env(safe-area-inset-bottom, 0px));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      background: var(--nm-surface);
+      box-shadow: 0 -6px 18px -10px var(--nm-shadow-dark);
+      border-top: 1px solid var(--nm-hairline);
+
+      .o_glass_m_tab {
+        flex: 1 1 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        border: 0;
+        background: transparent;
+        color: var(--nm-text-muted);      // v2: 11 px in the muted ink (was 10.5 px faint, 3.75:1)
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+
+        i { font-size: 1.18rem; line-height: 1; }
+
+        &:active { transform: scale(.94); }
+
+        &.o_active {
+          color: var(--nm-brand);
+          i {
+            padding: 5px 14px;
+            border-radius: var(--nm-radius-pill);
+            background: rgba(var(--nm-brand-rgb), .12);
+          }
+        }
+      }
+    }
+
+    // v2: while the shell is on screen the tab bar is the ONE navigator — Odoo's ☰ (the
+    // `.o_menu_toggle` that opens the app sidebar on phones) duplicated the Apps and Menu tabs
+    &.o_glass_mobile .o_main_navbar .o_menu_toggle { display: none !important; }
+
+    // "Tab bar on a record: hidden" (Theme preferences › Phone): a record's form gets the whole
+    // screen, Back returns to the list (body classes: glass_prefs + mobile_shell.js)
+    &.o_glass_m_notab.o_glass_m_form {
+      .o_glass_m_tabbar { display: none !important; }
+      .o_action_manager { padding-bottom: env(safe-area-inset-bottom, 0px) !important; }
+    }
+
+    // never let the stage button float over a Discuss chat window (it isn't a kanban)
+    &:has(.o-mail-ChatWindow) .o_glass_m_stagefab { display: none !important; }
+    // v2: the last card's keys were hidden under the floating stage button — room below the pipeline
+    // (specificity: mobile.scss zeroes the grouped renderer's padding with `!important`, so this
+    // rule names the same classes plus `body`)
+    &:has(.o_glass_m_stagefab) .o_view_controller.o_kanban_view .o_kanban_renderer.o_kanban_grouped,
+    body#{&}:has(.o_glass_m_stagefab) .o_view_controller.o_kanban_view .o_kanban_renderer.o_kanban_grouped { padding-bottom: 76px !important; }
+
+    // ---- grouped kanban "Show more" per stage (kanban_more.js) -----------
+    .o_glass_m_more {
+      margin: 4px 0 10px; height: 36px; border-radius: 999px; border: 0;
+      background: var(--nm-surface); box-shadow: var(--nm-raised-sm); color: var(--nm-action); font-weight: 600; font-size: 13px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      &:active { box-shadow: var(--nm-inset-sm); }
+      .o_glass_m_more_cnt { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; display: inline-grid; place-items: center; font-size: 11px; box-shadow: var(--nm-inset-sm); color: var(--nm-text-muted); }
+    }
+    // ---- calendar previous / next + month picker on phones (calendar_nav.xml) -----------
+    .o_calendar_header .o_glass_m_calnav .btn { width: 36px; height: 32px; padding: 0; display: inline-grid; place-items: center; }
+    // the period title is a control: tap → the phone's own month picker (an invisible
+    // <input type="month"> sits over it); a caret says so
+    .o_calendar_header h5.o_glass_m_caltitle {
+      position: relative; cursor: pointer; padding-right: 18px;
+      // the one header item allowed to shrink: a long period ("Sep - Oct 2026 Week 40") wraps its
+      // week badge to a second line instead of pushing Today / the scale off the screen
+      display: block !important; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; line-height: 1.25;
+      &::after { content: ""; position: absolute; right: 2px; top: 50%; width: 7px; height: 7px; margin-top: -5px; border: solid var(--nm-action); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+      .o_glass_m_monthpick { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; margin: 0; font-size: 16px; }   // 16px: iOS does not zoom
+    }
+
+    // ---- stage picker floating button -----------------------------------
+    .o_glass_m_stagefab {
+      position: fixed;
+      right: 14px;
+      bottom: calc(#{$glass-m-tabbar-h} + 14px + env(safe-area-inset-bottom, 0px));
+      z-index: 1038;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 70vw;
+      padding: 10px 16px;
+      border: 0;
+      border-radius: var(--nm-radius-pill);
+      background: var(--nm-surface);
+      box-shadow: var(--nm-raised);
+      color: var(--nm-text);
+      font-size: .82rem;
+      font-weight: 700;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+
+      i { color: var(--nm-action); }
+      span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      &:active { box-shadow: var(--nm-inset-sm); }
+      // highlighted while a single stage is being shown
+      &.o_filtered { background: var(--nm-action); color: var(--nm-action-contrast); i { color: inherit; } }
+    }
+
+    // ---- stage count pill in the picker sheet ---------------------------
+    .o_glass_m_stage_count {
+      flex: none;
+      min-width: 26px;
+      padding: 2px 8px;
+      border-radius: var(--nm-radius-pill);
+      background: var(--nm-surface);
+      box-shadow: var(--nm-inset-sm);
+      color: var(--nm-text-muted);
+      font-size: .75rem;
+      font-weight: 700;
+      text-align: center;
+    }
+    .o_glass_m_stages .o_glass_m_sec.o_active { color: var(--nm-brand); box-shadow: var(--nm-inset-sm); }
+
+    // ---- shared sheet chrome --------------------------------------------
+    .o_glass_m_sheet {
+      position: fixed;
+      left: 0; right: 0;
+      bottom: 0;
+      z-index: 1040;
+      max-height: 82vh;
+      padding: 8px 18px calc(#{$glass-m-tabbar-h} + 18px + env(safe-area-inset-bottom, 0px));
+      background: var(--nm-surface);
+      border-radius: var(--nm-radius-lg) var(--nm-radius-lg) 0 0;
+      box-shadow: 0 -14px 34px -12px var(--nm-shadow-dark);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      animation: o_glass_m_rise .22s var(--nm-ease-enter);
+    }
+    .o_glass_m_grab {
+      width: 40px; height: 5px;
+      margin: 4px auto 12px;
+      border-radius: 5px;
+      background: var(--nm-text-faint);
+      opacity: .4;
+    }
+    .o_glass_m_sheet_head {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--nm-text);
+      margin: 0 0 14px 2px;
+      letter-spacing: -.01em;
+    }
+
+    // ---- sheet rows (stage picker) -----------------------------------------
+    .o_glass_m_seclist {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+
+      .o_glass_m_sec {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 14px 16px;
+        border: 0;
+        border-radius: var(--nm-radius);
+        background: var(--nm-surface);
+        box-shadow: var(--nm-raised-sm);
+        color: var(--nm-text);
+        font-size: .95rem;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+        i { color: var(--nm-text-faint); flex: none; }
+        .o_glass_m_sec_name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        &:active { box-shadow: var(--nm-inset-sm); }
+        // leaf items (actual navigable pages) read a touch stronger than category parents
+        &.o_glass_m_sec_leaf { font-weight: 500; color: var(--nm-text); }
+      }
+      .o_glass_m_empty {
+        padding: 24px 8px;
+        text-align: center;
+        color: var(--nm-text-faint);
+        font-size: .9rem;
+      }
+    }
+
+  }
+}
+
+@keyframes o_glass_m_fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes o_glass_m_rise { from { transform: translateY(14px); opacity: .4; } to { transform: none; opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .o_theme_glass .o_glass_m_sheet,
+  .o_theme_glass .o_glass_m_scrim { animation: none; }
+}

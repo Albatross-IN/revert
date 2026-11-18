@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_rvt_desk" model="ir.ui.view">
+        <field name="name">res.config.settings.form.rvt.desk</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="rvt_base.res_config_settings_view_form_rvt"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='rvt_rules']" position="after">
+                <block title="Revert Desk" name="rvt_desk">
+                    <setting string="One window for staff"
+                             help="Staff see only the Revert window; every other application menu is hidden for them. Administrators keep all menus.">
+                        <field name="rvt_desk_only"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

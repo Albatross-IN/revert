@@ -36,14 +36,14 @@ class RvtProjectTrade(models.Model):
 
     @api.depends("agency_id", "decide_by")
     def _compute_is_undecided_late(self):
-        today = fields.Date.context_today(self)
+        today = self.env["rvt.config"].today()
         for plan in self:
             plan.is_undecided_late = bool(not plan.agency_id and plan.decide_by and plan.decide_by < today)
 
     def _search_is_undecided_late(self, operator, value):
         if operator not in ("=", "!=", "in", "not in"):
             return NotImplemented
-        today = fields.Date.context_today(self)
+        today = self.env["rvt.config"].today()
         late = [("agency_id", "=", False), ("decide_by", "<", today)]
         positive = (operator in ("=", "in")) == bool(value if operator in ("=", "!=") else True in value)
         return late if positive else ["!"] + ["&"] + late

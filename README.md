@@ -2,7 +2,25 @@
 
 Architecture and interior project execution for **Revert Architects, Ahmedabad**: Odoo 20 Enterprise as the engine, one Flutter app with role homes for agencies, clients and the office, in Gujarati, Hindi and English.
 
-Status: **discovery and design, 2026-10-31; amended 2026-11-17**. No platform module or app exists yet. Revert already runs Odoo 20 in production (`erp.revert.co.in`, repo `Albatross-IN/revert` branch `20.0`); the platform will be built in that repo and that database (docs/memory.md §1a and decisions log). Start with the documents.
+Status: **Release 1 is being built on branch `20.0-release1`** (started 2026-11-19; phase log in docs/implementation_plan_r1.md §6). Production (`erp.revert.co.in`) runs branch `20.0` and is not touched until phase P11.
+
+## Release 1 modules
+
+| Module | What it is |
+|---|---|
+| `rvt_base` | Roles, trades, entity types, site presets, standard drawing sets, settings |
+| `rvt_project` | Onboarding service, one task per room, one work line per trade, team access, the project picture |
+| `rvt_desk` | The single window for staff at `/rvt/desk`, and the log-in page. It runs the screen code of the approved preview (`revert_fe/design`) on live data: see `rvt_desk/tools/sync_from_preview.py` |
+
+## Shared modules copied in (not edited here)
+
+| Module | Version | Copied from | Why |
+|---|---|---|---|
+| `identity` | 20.0.2.0.0 | aic_apps `20.0-glass` @ 53b6989 | Own brand in the standard back office; its address prefix comes from the server setting `identity_web_prefix` (set it to `office` on production) |
+| `web_theme_glass` | 20.0.1.1.0 | aic_apps `20.0-glass` @ 53b6989 (`identity_enterprise/`) | Glass look of the standard back office |
+| `web_glass_workspace` | 20.0.1.0.0 | aic_apps `20.0-glass` @ 53b6989 (`marut_loader/`) | Split view and left pane of the standard back office |
+
+Fix these in their home repository and copy again; record the new commit here.
 
 | Document | For |
 |---|---|

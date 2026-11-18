@@ -1,0 +1,25 @@
+/* The desk at the size of the real browser window: the preview's demo frame (caption, traffic lights, address bar) is not part of the product. */
+html.live,html.live body{height:100%;overflow:hidden}
+.live #app{height:100%;min-height:0}
+.live .stage{flex:1;min-height:0;display:flex}
+.live .dv-desk{flex:1;max-width:none;min-width:0;display:flex;flex-direction:column}
+.live .bw{flex:1;min-height:0;display:flex;flex-direction:column;border:0;border-radius:0;box-shadow:none;background:transparent}
+.live .bw-bar{height:0;padding:0;border:0;gap:0;background:transparent}
+.live .bw-bar>*{display:none}
+.live .scr{flex:1;min-height:0}
+.live .desk{height:100%}
+/* a thin line while a change travels to the server */
+html[data-sync] .gnav::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:linear-gradient(90deg,transparent,var(--g2),var(--pri),transparent);background-size:50% 100%;background-repeat:no-repeat;animation:livesync 1s linear infinite}
+@keyframes livesync{from{background-position:-50% 0}to{background-position:150% 0}}
+.toast.bad .i{background:var(--bad)}
+.livefail{margin:auto;max-width:420px;text-align:center;padding:40px 20px}.livefail h1{font-size:22px;margin:0 0 8px}.livefail p{color:var(--mute);margin:0 0 20px}
+/* sections whose back end arrives in a later phase stay out of sight until then */
+html[data-nof~="drawings"] .gn-menu [data-v="drawings"],html[data-nof~="drawings"] [data-v="ptab=drawings"],html[data-nof~="drawings"] [data-v="stab=sets"],html[data-nof~="drawings"] .steps li:nth-child(5),
+html[data-nof~="mom"] .gn-menu [data-v="mom"],html[data-nof~="mom"] [data-v="ptab=mom"],html[data-nof~="mom"] [data-v="ptab=client"],html[data-nof~="mom"] [data-v="stab=etl"],html[data-nof~="mom"] [data-a="startmom"],html[data-nof~="mom"] [data-a="raise"],html[data-nof~="mom"] [data-a="raiseclient"],
+html[data-nof~="bills"] .gn-menu [data-v="bills"],html[data-nof~="bills"] [data-v="ptab=bills"],html[data-nof~="bills"] [data-a="askbill"],
+html[data-nof~="wa"] [data-v="stab=tpl"],html[data-nof~="wa"] [data-v="stab=log"],html[data-nof~="wa"] [data-a="obinv"],html[data-nof~="wa"] [data-a="remind"]{display:none!important}
+/* the log-in page: the skyline sits at the foot of the ink sheet; the form is a plain form */
+.dl-art>.skyl{margin-top:22px;opacity:.9}
+.lform{display:flex;flex-direction:column}
+.lform .note{margin-top:14px}
+@media (max-width:860px){html.live:has(.dlogin),html.live:has(.dlogin) body{overflow:auto;height:auto}.live .dlogin{grid-template-columns:minmax(0,1fr);padding:16px}.live .dl-art{min-height:0}}

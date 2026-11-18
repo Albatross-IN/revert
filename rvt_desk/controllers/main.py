@@ -1,0 +1,78 @@
+import os
+
+from odoo import fields, http
+from odoo.http import request
+from odoo.modules import get_module_path
+
+from odoo.addons.rvt_project.models.rvt_picture import MONTHS, WEEKDAYS
+from odoo.addons.web.controllers.home import Home
+
+DESK_URL = "/rvt/desk"
+# the order matters: plain scripts that share one scope, as in the approved preview
+DESK_SCRIPTS = ["logo.js", "data.js", "core.js", "draw.js", "blocks.js", "sheets.js", "desk.js", "apps.js", "shell.js", "live.js"]
+
+
+def _stamp():
+    """A cache key that changes whenever a desk file changes."""
+    folder = _folder()
+    try:
+        return str(int(max(os.path.getmtime(os.path.join(folder, f)) for f in os.listdir(folder))))
+    except (OSError, ValueError):
+        return "0"
+
+
+def _folder():
+    return os.path.join(get_module_path("rvt_desk"), "static", "src", "desk")
+
+
+def _is_staff(user):
+    return user.has_group("rvt_base.group_rvt_staff") or user.has_group("base.group_system")
+
+
+class RvtDeskController(http.Controller):
+
+    @http.route(DESK_URL, type="http", auth="user")
+    def desk(self, **kw):
+        if not _is_staff(request.env.user):
+            return request.redirect("/web")
+        response = request.render("rvt_desk.desk_page", {"stamp": _stamp()})
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @http.route(DESK_URL + "/app.js", type="http", auth="user")
+    def desk_script(self, **kw):
+        """The screen code as one script, in one scope, exactly as the approved preview is built."""
+        folder = _folder()
+        parts = []
+        for name in DESK_SCRIPTS:
+            with open(os.path.join(folder, name), encoding="utf-8") as handle:
+                parts.append(handle.read())
+        body = '(function(){"use strict";\n%s\nliveBoot();})();\n' % "\n".join(parts)
+        return request.make_response(body, headers=[
+            ("Content-Type", "application/javascript; charset=utf-8"),
+            ("Cache-Control", "private, max-age=31536000, immutable"),
+        ])
+
+
+class RvtHome(Home):
+
+    @http.route()
+    def web_login(self, redirect=None, **kw):
+        """The standard log-in in every respect, shown as the desk's own page."""
+        response = super().web_login(redirect=redirect, **kw)
+        if getattr(response, "is_qweb", False) and response.template == "web.login" and not kw.get("classic"):
+            today = request.env["rvt.config"].today()
+            response.qcontext.update({
+                "stamp": _stamp(), "redirect": redirect or False,
+                "today_label": "%s %s %s" % (WEEKDAYS[today.weekday()], today.day, MONTHS[today.month - 1]),
+            })
+            response.template = "rvt_desk.login_page"
+        return response
+
+    def _login_redirect(self, uid, redirect=None):
+        """Staff land on the desk after logging in; administrators land where they always did."""
+        if not redirect:
+            user = request.env["res.users"].sudo().browse(uid)
+            if user.has_group("rvt_base.group_rvt_staff") and not user.has_group("base.group_system"):
+                return DESK_URL
+        return super()._login_redirect(uid, redirect=redirect)

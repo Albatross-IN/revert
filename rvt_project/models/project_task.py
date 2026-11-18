@@ -128,7 +128,7 @@ class ProjectTask(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        today = fields.Date.context_today(self)
+        today = self.env["rvt.config"].today()
         for vals in vals_list:
             if vals.get("rvt_kind") != "work":
                 continue
@@ -158,7 +158,7 @@ class ProjectTask(models.Model):
             if "rvt_agency_id" in vals or "rvt_kind" in vals:
                 self._rvt_flush_agency_access()
             return res
-        today = fields.Date.context_today(self)
+        today = self.env["rvt.config"].today()
         lines = self.filtered(lambda t: t.rvt_kind == "work" or vals.get("rvt_kind") == "work")
         res = True
         if self - lines:

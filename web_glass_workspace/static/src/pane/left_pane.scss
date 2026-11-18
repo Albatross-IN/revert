@@ -1,0 +1,154 @@
+// =============================================================================
+// Glass Workspace — left application pane (opt-in). Overlay under the top bar;
+// shifts only the action area, never the navbar.
+// =============================================================================
+// v3 (2026-09-27): the collapsed pane is 72 px — 12 + 40 px key + gutter + the scrollbar column,
+// which is reserved with `scrollbar-gutter: stable` so the keys never move and the bar never
+// overlaps them (at 60 px the 11 px bar sat on the keys).
+:root { --glass-pane-w: 248px; --glass-pane-mini-w: 72px; --glass-navbar-h: 46px; }
+
+.o_glass_pane_toggle.btn {
+    align-self: center;
+    width: 34px; height: 34px; margin: 0 2px 0 6px; padding: 0;
+    border-radius: 10px; color: var(--nm-text-faint);
+    box-shadow: var(--nm-raised-sm);
+    display: grid; place-items: center; flex: 0 0 auto;
+    &:hover { color: var(--nm-action); }
+    &.o_active { box-shadow: var(--nm-inset-sm); color: var(--nm-action); }
+}
+
+// shift the action area (the top bar stays full width)
+body.o_glass_pane_open .o_action_manager { padding-left: var(--glass-pane-w); transition: padding-left .2s var(--nm-ease-enter); }
+body.o_glass_pane_open.o_glass_pane_mini .o_action_manager { padding-left: var(--glass-pane-mini-w); }
+
+.o_glass_pane {
+    position: fixed;
+    top: var(--glass-navbar-h); left: 0; bottom: 0;
+    width: var(--glass-pane-w);
+    z-index: 900;
+    background-color: var(--nm-surface);
+    box-shadow: 6px 0 14px -8px var(--nm-shadow-dark);
+    display: flex; flex-direction: column;
+    transition: width .2s var(--nm-ease-enter);
+
+    &.o_glass_pane_is_mini {
+        width: var(--glass-pane-mini-w);
+        &:hover { width: var(--glass-pane-w); box-shadow: var(--nm-modal); }
+        &:not(:hover) {
+            .o_glass_pane_name, .o_glass_pane_sections, .o_glass_pane_label { display: none; }
+            .o_glass_pane_lock { display: none; }
+            .o_glass_pane_app { padding: 0 2px 0 4px; }     // key at x = 12, centred in the column left of the gutter
+        }
+    }
+
+    .o_glass_pane_scroll { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; padding: 10px 8px; scrollbar-gutter: stable; }   // thin / hidden-until-hover: theme.scss scrollbars
+
+    .o_glass_pane_head {
+        display: flex; align-items: center; height: 26px; padding: 0 6px 4px;
+        .o_glass_pane_label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--nm-text-faint); font-weight: 700; }
+        .o_glass_pane_lock { margin-left: auto; width: 26px; height: 26px; padding: 0; border-radius: 7px; color: var(--nm-text-faint); box-shadow: none;
+            &:hover { color: var(--nm-action); box-shadow: var(--nm-inset-sm); } }
+    }
+
+    .o_glass_pane_app {
+        display: flex; align-items: center; gap: 10px; width: 100%; height: 46px;
+        padding: 0 6px; border: 0; border-radius: 12px; background: transparent;
+        color: var(--nm-text); text-align: left; cursor: pointer;
+        .o_glass_pane_icon {
+            width: 40px; height: 40px; flex: none; border-radius: 11px; display: grid; place-items: center;
+            background: var(--nm-surface); box-shadow: var(--nm-raised-sm);
+            img, .o_identity_icon { width: 34px; height: 34px; border-radius: 6px; }   // v3: the file has an 11 % margin, 34 px shows a 26 px tile in the 40 px key
+            img { filter: var(--nm-icon-rest); }
+            i { color: var(--nm-text-muted); }
+        }
+        .o_glass_pane_name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        &:hover .o_glass_pane_icon { box-shadow: var(--nm-raised); }
+        &:hover, &.o_active, &.o_fly {
+            .o_glass_pane_icon img { filter: var(--nm-icon-hover); }
+            .o_glass_pane_icon .o_identity_icon::before { background-color: var(--nm-active-tint); box-shadow: 0 0 0 1px var(--nm-action); }
+            .o_glass_pane_icon .o_identity_icon::after { background-color: var(--nm-action); }
+        }
+        &.o_active {
+            box-shadow: var(--nm-inset-sm);
+            background: color-mix(in srgb, var(--nm-action) 4%, var(--nm-surface));
+            .o_glass_pane_name { font-weight: 700; color: var(--nm-action); }
+            .o_glass_pane_icon { box-shadow: var(--nm-inset-sm); }
+        }
+    }
+
+    .o_glass_pane_sections {
+        display: flex; flex-direction: column; gap: 1px;
+        margin: 2px 0 8px 33px; padding-left: 12px; border-left: 1px solid var(--nm-hairline);
+        .o_glass_pane_sec {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            width: 100%; text-align: left; border: 0; background: transparent;
+            min-height: 30px; padding: 4px 10px; border-radius: 8px; color: var(--nm-text-muted);
+            cursor: pointer;
+            .o_glass_pane_sec_name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .o_glass_pane_caret { flex: none; font-size: .68rem; opacity: .55; }
+            &:hover { background: var(--nm-active-tint); color: var(--nm-text); }
+            &.o_active { color: var(--nm-brand); font-weight: 600; background: var(--nm-active-tint); }
+            // leaves are the actual navigable items — a touch more prominent than category parents
+            &.o_glass_pane_leaf { color: var(--nm-text); }
+        }
+    }
+}
+
+// ---- the hover menu beside the pane -------------------------------------------------------
+// Fixed at the pane's right edge (its wrapper is flush with the pane, so the pointer never
+// leaves the pane's subtree on the way — the padding is the visual gap); one card per section,
+// two balanced columns when there are three cards or more.
+.o_glass_pane .o_glass_fly_wrap {
+    position: fixed; left: var(--glass-pane-w); z-index: 3;
+    padding: 0 12px 12px 8px;
+    animation: o_glass_fly_in .16s var(--nm-ease-enter);
+}
+.o_glass_pane.o_glass_pane_is_mini:not(:hover) .o_glass_fly_wrap { display: none; }
+.o_glass_fly {
+    width: 320px; max-height: calc(100vh - var(--glass-navbar-h) - 24px); overflow-y: auto; scrollbar-width: thin;
+    padding: 12px 14px 14px; border-radius: var(--nm-radius-lg);
+    background: var(--nm-surface); box-shadow: var(--nm-modal);
+    &.o_glass_fly_2col { width: 600px; .o_glass_fly_cols { column-count: 2; column-gap: 12px; } }
+
+    .o_glass_fly_head {
+        display: flex; align-items: center; gap: 8px; margin: 0 2px 10px; min-height: 28px;
+        .o_glass_fly_app { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; color: var(--nm-text); font-size: 14px;
+            img, .o_identity_icon { width: 28px; height: 28px; border-radius: 6px; } img { filter: var(--nm-icon-hover); }
+            .o_identity_icon::before { background-color: var(--nm-active-tint); box-shadow: 0 0 0 1px var(--nm-action); } .o_identity_icon::after { background-color: var(--nm-action); } }
+        .o_glass_fly_open { margin-left: auto; padding: 0 10px; height: 28px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--nm-action);
+            box-shadow: var(--nm-raised-sm); display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+            i { font-size: 11px; }
+            &:hover { color: var(--nm-action); box-shadow: var(--nm-inset-sm); } }
+    }
+    .o_glass_fly_cols { column-count: 1; }
+    .o_glass_fly_card {
+        display: inline-block; width: 100%; break-inside: avoid; margin: 0 0 12px;
+        padding: 10px 12px 8px; border-radius: var(--nm-radius); background: var(--nm-surface); box-shadow: var(--nm-raised-sm);
+        &.o_folded { padding-bottom: 10px; }
+    }
+    .o_glass_fly_card_head {
+        display: flex; align-items: center; gap: 8px; min-height: 24px;
+        .o_glass_fly_glyph { flex: none; font-size: 13px; color: var(--nm-action); }
+        .o_glass_fly_title { flex: 1; min-width: 0; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--nm-text-muted);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; border: 0; background: transparent; padding: 0;
+            &.o_glass_fly_link { cursor: pointer; &:hover, &.o_active { color: var(--nm-action); } } }
+        .o_glass_fly_fold { flex: none; width: 24px; height: 24px; padding: 0; border-radius: 7px; color: var(--nm-text-faint); display: grid; place-items: center; box-shadow: none;
+            &:hover { color: var(--nm-action); box-shadow: var(--nm-inset-sm); } }
+    }
+    .o_glass_fly_body { display: flex; flex-direction: column; gap: 1px; padding-top: 6px; }
+    .o_glass_fly_sub { font-size: 12.5px; font-weight: 600; color: var(--nm-text-muted); padding: 7px 6px 2px; border: 0; background: transparent; text-align: left;
+        &.o_glass_fly_link { cursor: pointer; &:hover { color: var(--nm-action); } } }
+    .o_glass_fly_item {
+        display: flex; align-items: center; gap: 9px; min-height: 28px; padding: 3px 8px; border: 0; border-radius: 8px;
+        background: transparent; color: var(--nm-text); font-size: 13px; text-align: left; cursor: pointer;
+        .o_glass_fly_dot { flex: none; width: 5px; height: 5px; border-radius: 50%; background: var(--nm-text-faint); }
+        .o_glass_fly_item_name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        &:hover { background: var(--nm-active-tint); .o_glass_fly_dot { background: var(--nm-action); } }
+        &.o_active { color: var(--nm-brand); font-weight: 600; background: var(--nm-active-tint); .o_glass_fly_dot { background: var(--nm-brand); } }
+    }
+}
+// the hovered app reads as pressed while its menu is open
+.o_glass_pane .o_glass_pane_app.o_fly:not(.o_active) { background: var(--nm-active-tint); }
+@keyframes o_glass_fly_in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .o_glass_pane .o_glass_fly_wrap { animation: none; } }
+

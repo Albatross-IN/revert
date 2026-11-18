@@ -1,0 +1,151 @@
+/* Dialogs (desk) / bottom sheets (phone), and the onboarding wizard. */
+const SHEETS={};
+const cancelB=()=>Bt('Cancel','close',null,'ghost');
+
+SHEETS.cell=(dev,s)=>{const p=pOf(s.pid),l=p.lines.find(x=>x.id===s.lid),f=dev.f,pl=planOf(p,l.t);
+ const dws=DB.drawings.filter(d=>d.pid===p.id&&d.st!=='released').sort((a,b)=>(b.t===l.t)-(a.t===l.t)).map(d=>[d.id,sheetNo(d)+' '+d.title+' · '+DS[d.st][0]]);
+ const ci=[...DB.drawings.filter(d=>d.pid===p.id&&d.st==='released'&&cur(d).client&&cur(d).client.dec==='pending').map(d=>[d.id,'Approve '+d.title]),...DB.points.filter(x=>x.pid===p.id&&x.kind==='client'&&x.st==='open').map(x=>[x.id,x.text])];
+ const pts=DB.points.filter(x=>x.pid===p.id&&x.st==='open'&&x.e===l.e&&x.t===l.t);
+ let cause='';
+ if(f.c_st==='wait'){cause=fld('Waiting for what? One tap, so the picture can say who must act',chips(dev,'c_cause',[['drawing','A drawing','dwg'],['client','The client','user'],['trade','Another trade','users'],['material','Material','layers'],['other','Other','more']]));
+  if(f.c_cause==='drawing')cause+=fld('Which drawing',fsel(dev,'c_ref',dws,'Choose the drawing'),dws.length?'':'Every drawing of this project is released.');
+  if(f.c_cause==='client')cause+=fld('Which client item',fsel(dev,'c_ref',ci,'Choose, or raise a new one below'))+fld('Or raise a new item for the client',fin(dev,'c_new','e.g. Choose the wardrobe laminate'));
+  if(f.c_cause==='trade')cause+=fld('Which trade',fsel(dev,'c_ref',p.plan.filter(x=>x.t!==l.t).map(x=>[x.t,TX[x.t].n+(x.ag?' · '+agN(x.ag):' · undecided')]),'Choose the trade'));
+  if(f.c_cause==='material'||f.c_cause==='other')cause+=fld('Note',fin(dev,'c_note',f.c_cause==='material'?'Which material, from whom':'What is it waiting for'))}
+ return {title:entN(p,l.e)+' · '+TX[l.t].n,sub:p.name,body:`<div class="stseg">${['ns','work','wait','done'].map(k=>`<button type="button" class="c-btn ${k}" data-a="set" data-v="c_st=${k}" aria-pressed="${f.c_st===k}">${LI[k]?ic(LI[k]):'<i class="ring"></i>'}<span>${LS[k][0]}</span></button>`).join('')}</div>${cause}
+  ${fld('Agency on this line',fsel(dev,'c_ag',DB.agencies.map(a=>[a.id,a.n+(a.tr.includes(l.t)?'':' (other trade)')]),pl.ag?'As the project: '+agN(pl.ag):'Undecided for the project'),'Change it only when this room has a different agency, e.g. a second carpenter for the kitchen.')}
+  ${pts.length?`<div class="lbl mt">Open points on this cell</div><div class="rows">${pts.map(x=>ptRow(x,dev)).join('')}</div>`:''}`,foot:cancelB()+Bt('Save','savecell',s.pid+'|'+s.lid,'gold','check')}};
+
+SHEETS.room=(dev,s)=>{const p=pOf(s.pid),e=p.ents.find(x=>x.id===s.eid),ls=p.lines.filter(l=>l.e===e.id),pts=DB.points.filter(x=>x.pid===p.id&&x.st==='open'&&x.e===e.id),done=ls.filter(l=>l.st==='done').length;
+ return {title:e.n,sub:p.name+' · '+done+' of '+ls.length+' trades done',body:`${ticks(done,ls.length,'ok',ls.filter(l=>l.st==='work').length)}<div class="lbl mt">Trades in this room · tap one to change it</div><div class="rows">${ls.map(l=>{const und=!lineAg(p,l);return `<button type="button" class="rw lk" data-a="cell" data-v="${p.id}|${l.id}"><span class="c ${l.st==='ns'&&und?'und':l.st} sm">${l.st==='ns'&&und?ic('alert'):LI[l.st]?ic(LI[l.st]):'<i class="ring"></i>'}</span><div class="m"><div class="t1">${esc(TX[l.t].n)}</div><div class="t2 ${und?'c-bad':''}">${und?'agency undecided':esc(agN(lineAg(p,l)))}${l.st==='wait'?' · <span class="c-wait">waiting for '+esc(waitText(p,l))+'</span>':''}</div></div><div class="r">${pill(LS[l.st][0],LS[l.st][1])}</div></button>`}).join('')}</div>
+  ${pts.length?`<div class="lbl mt">Open points here</div><div class="rows">${pts.map(x=>ptRow(x,dev)).join('')}</div>`:''}`,foot:Bt('Raise a point here','raisehere',p.id+'|'+e.id,'','plus')+Bt('Done','close',null,'gold')}};
+SHEETS.quick=(dev,s)=>{const ps=myProjects(),f=dev.f,p=pOf(f.q_pid);return {title:'What do you want to do?',sub:'Pick the site, then the act',body:`<div class="chips">${ps.map(x=>`<button type="button" class="chip" data-a="set" data-v="q_pid=${x.id}" aria-pressed="${String(f.q_pid)===String(x.id)}">${esc(x.name)}</button>`).join('')}</div>
+  <div class="qgrid"><button type="button" class="qtile" data-a="qgo" data-v="mom"><span class="mi brz">${ic('mom')}</span><div>Start MOM<small>visit ${p?p.visitNo+1:''} · points with photos</small></div></button><button type="button" class="qtile" data-a="qgo" data-v="raise"><span class="mi">${ic('plus')}</span><div>Raise a point<small>from the office, no visit</small></div></button>
+  <button type="button" class="qtile" data-a="qgo" data-v="bill" ${p&&p.onb?'':'disabled'}><span class="mi">${ic('bill')}</span><div>Ask for a bill<small>the agency uploads against it</small></div></button><button type="button" class="qtile" data-a="qgo" data-v="new"><span class="mi">${ic('folder')}</span><div>New project<small>onboard in six steps</small></div></button></div>`}};
+SHEETS.assign=(dev,s)=>{const p=pOf(s.pid),f=dev.f,a=agOf(f.a_ag),ls=p.lines.filter(l=>l.t===s.t).length;
+ return {title:'Decide the '+TX[s.t].n.toLowerCase()+' agency',sub:p.name+' · applies to '+plural(ls,'work line'),body:fld('Agency',fsel(dev,'a_ag',DB.agencies.slice().sort((x,y)=>y.tr.includes(s.t)-x.tr.includes(s.t)).map(x=>[x.id,x.n+(x.tr.includes(s.t)?'':' · other trade')]),'Undecided'))
+  +(a?`<div class="note ok">${ic('wa')}<span>MOM points and drawings for this trade go to <b>${esc(a.people.map(x=>x.n).join(', '))}</b> on WhatsApp, in ${({gu:'Gujarati',hi:'Hindi',en:'English'})[a.lang]}.</span></div>`
+   :fld('Decide by',chips(dev,'a_by',[[3,fd(3)],[7,fd(7)],[14,fd(14)]]),'Past this date the project shows a blocker to the coordinators and the owner.')),foot:cancelB()+Bt('Save','saveassign',s.pid+'|'+s.t,'gold','check')}};
+
+SHEETS.sendappr=(dev,s)=>{const d=dOf(s.id),f=dev.f,r=cur(d);return {title:(DB.set.approval?'Send for approval · ':'Release · ')+sheetNo(d),sub:d.title+' · revision '+r.n,body:
+  `<button type="button" class="drop ${f.sa_file?'on':''}" data-a="tog" data-v="sa_file">${ic(f.sa_file?'file':'plus')}<span>${f.sa_file?`<b>${sheetNo(d)}_rev${r.n}.pdf</b> · 1.4 MB · tap to remove`:'Choose the PDF'}</span></button>`
+  +fld('Note for the principal (optional)',fin(dev,'sa_note','What changed, what to check'))+(r.note&&d.revs.length>1?`<div class="note bad">${ic('edit')}${esc(r.note)}</div>`:'')
+  +`<div class="note">${ic('info')}${DB.set.approval?'It goes to '+esc(stf(pOf(d.pid).principal).n)+'’s “To approve” list. Nothing reaches an agency or the client before approval.':'“Release needs approval” is off in Setup, so you choose the receivers next.'}</div>`,
+  foot:cancelB()+Bt(DB.set.approval?'Send for approval':'Choose receivers','dosend',d.id,'gold','send')}};
+
+SHEETS.approve=(dev,s)=>{const d=dOf(s.id),p=pOf(d.pid),r=cur(d),w=p.lines.filter(l=>l.st==='wait'&&l.cause==='drawing'&&l.ref===d.id);
+ return {title:'Approve · '+sheetNo(d)+' '+d.title,sub:p.name+' · revision '+r.n+' · sent by '+stf(r.sentBy).n,wide:true,body:dwgPaper(d)+(r.note?`<div class="note">${ic('info')}${esc(r.note)}</div>`:'')
+  +(w.length?`<div class="note wait">${ic('pause')}${plural(w.length,'work line')} waiting for this drawing.</div>`:'')+fld('If it must go back, say why',fin(dev,'ap_note','e.g. Loft depth to match the beam')),
+  foot:Bt('Send back','sendback',d.id,'bad ghost')+Bt('Approve','doapprove',d.id,'','check')+Bt('Approve and release','doapprove',d.id+'|rel','gold','send')}};
+
+SHEETS.release=(dev,s)=>{const d=dOf(s.id),p=pOf(d.pid),f=dev.f,own=d.t&&planOf(p,d.t)&&planOf(p,d.t).ag;
+ const rows=[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))].sort((a,b)=>(b===own)-(a===own)).map(a=>[a,agN(a),p.plan.filter(x=>x.ag===a).map(x=>TX[x.t].n).join(', ')+' · '+agOf(a).people.map(x=>x.n).join(', '),a===own?'this drawing’s trade':'']);
+ if(d.forClient)rows.push(['client',p.client.n,'Client'+(d.needsApproval?' · will be asked to approve':''),'marked for the client']);
+ const n=rows.filter(r=>f['rc_'+r[0]]).length;
+ return {title:'Release · '+sheetNo(d)+' '+d.title,sub:p.name+' · revision '+cur(d).n,body:`<div class="lbl">Receivers</div><div class="rows">${rows.map(r=>`<button type="button" class="rw lk ck" data-a="tog" data-v="rc_${r[0]}" aria-pressed="${!!f['rc_'+r[0]]}"><i class="box">${ic('check')}</i><div class="m"><div class="t1">${esc(r[1])}${r[3]?pill(r[3],'gold'):''}</div><div class="t2">${esc(r[2])}</div></div></button>`).join('')}</div>
+  ${!d.forClient?`<div class="note">${ic('lock')}Not marked for the client, so the client does not receive it.</div>`:''}<div class="note ok">${ic('wa')}Each receiver gets a WhatsApp message with a secure link and a notification in the app. The first opening is recorded.</div>`,
+  foot:cancelB()+`<button type="button" class="btn gold" data-a="dorelease" data-v="${d.id}" ${n?'':'disabled'}>${ic('send')}<span>Release to ${n}</span></button>`}};
+
+SHEETS.logq=(dev,s)=>{const d=dOf(s.id),p=pOf(d.pid);return {title:'Log a question from a call',sub:sheetNo(d)+' '+d.title,body:fld('Asked by',fsel(dev,'lq_by',[...[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))].map(a=>[a,agN(a)]),['client',p.client.n+' (client)']],'Choose'))+fld('Question',fin(dev,'lq_text','What did they ask')),foot:cancelB()+Bt('Save','dologq',d.id,'gold','check')}};
+
+SHEETS.point=(dev,s)=>{const p=pOf(s.pid),f=dev.f;return {title:'Raise a point',sub:p.name+' · from the office, without a visit',body:fld('For',`<div class="chips">${forOptions(p).map(o=>`<button type="button" class="chip k-${o[2]}" data-a="set" data-v="rp_for=${o[0]}" aria-pressed="${f.rp_for===o[0]}">${esc(o[1])}</button>`).join('')}</div>`)
+  +fld('What is needed',fin(dev,'rp_text','e.g. Choose the kitchen platform stone'))+fld('Area',fsel(dev,'rp_area',p.ents.map(e=>[e.id,e.n]),'No single room'))+fld('By',chips(dev,'rp_due',[[0,'Today'],[1,'Tomorrow'],[2,dueW(2)],[5,dueW(5)],[7,fd(7)]]))
+  +`<div class="chips">${tog(dev,'rp_photo','Add a photo','cam')}</div>`+(f.rp_for==='client'&&DB.set.clientConfirm?`<div class="note wait">${ic('eye')}Client points wait for the office to confirm before the client sees them (a setting).</div>`:''),foot:cancelB()+Bt('Add point','doraise',p.id,'gold','plus')}};
+SHEETS.vendor=(dev,s)=>({title:'Point for a vendor',sub:'A supplier or anyone outside the project’s agencies',body:fld('Name',fin(dev,'vn','e.g. Asian Tiles')),foot:cancelB()+Bt('Use','dovendor',null,'gold')});
+SHEETS.closept=(dev,s)=>{const x=ptOf(s.id),p=pOf(x.pid);return {title:'Close point '+x.n,sub:partyName(p,x)+' · '+x.text,body:fld('Closing note',fin(dev,'cp_note','e.g. Done, checked on site'))+`<div class="chips">${tog(dev,'cp_photo','Add a photo','cam')}</div>`,foot:cancelB()+Bt('Close point','doclose',x.id,'gold','check')}};
+SHEETS.offerdone=(dev,s)=>{const p=pOf(s.pid),l=p.lines.find(x=>x.id===s.lid);return {title:'Mark the work done?',sub:entN(p,l.e)+' · '+TX[l.t].n,body:`<div class="note ok">${ic('check')}That was the last open point on this cell. If the work itself is finished, mark the line done now.</div>`,foot:Bt('Not yet','close',null,'ghost')+Bt('Mark done','markdone',s.pid+'|'+s.lid,'gold','check')}};
+
+SHEETS.askbill=(dev,s)=>{const f=dev.f,p=pOf(f.ab_pid||s.pid),ags=p?[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))]:[];
+ return {title:'Ask for a bill',sub:'The agency uploads only against this request. It cannot start one.',body:(s.pid?'':fld('Project',fsel(dev,'ab_pid',myProjects().filter(x=>x.onb).map(x=>[x.id,x.name]),'Choose')))
+  +fld('Agency',fsel(dev,'ab_ag',ags.map(a=>[a,agN(a)+' · '+p.plan.filter(x=>x.ag===a).map(x=>TX[x.t].n).join(', ')]),'Choose'))+fld('What is the bill for',fin(dev,'ab_what','e.g. Carpentry, stage 1'))+fld('Up to what amount (optional)',fin(dev,'ab_upto','₹',1))
+  +fld('Billed to',chips(dev,'ab_to',[['client','The client'],['revert','Revert']]),p?'Default of this project: '+(p.billedTo==='client'?'the client':'Revert')+'. Change it for this bill if needed.':''),foot:cancelB()+Bt('Ask on WhatsApp','doaskbill',s.pid||'','gold','wa')}};
+
+SHEETS.bill=(dev,s)=>{const b=billOf(s.id),p=pOf(b.pid),f=dev.f,st=BS[b.st],own=isOwner(),pd=paid(b);
+ let act='',foot='';
+ if(b.st==='asked'||b.st==='returned'){act=(b.st==='returned'?`<div class="note bad">${ic('alert')}Returned: ${esc(b.reason)}</div>`:`<div class="note wait">${ic('clock')}Asked ${fd(b.askedOn)}. Waiting for ${esc(agN(b.ag))} to upload.</div>`)
+   +`<div class="lbl mt">Upload on the agency’s behalf</div>`+fld('Bill number',fin(dev,'ub_no','e.g. MF/118'))+fld('Amount',fin(dev,'ub_amt','₹',1))+`<div class="chips">${tog(dev,'ub_doc','Photo or PDF of the bill','cam')}</div>`;foot=Bt('Submit bill','doupload',b.id+'|staff','gold','check')}
+ if(b.st==='submitted'){act=fld('If it must go back, say why',fin(dev,'rb_reason','e.g. GST number missing'));foot=Bt('Return','doreview',b.id+'|0','bad ghost')+Bt('Accept','doreview',b.id+'|1','gold','check')}
+ if((b.st==='accepted'||b.st==='part_paid')){act=own?`<div class="lbl mt">Record a payment · balance ${inr(b.amount-pd)}</div>`+fld('Amount',fin(dev,'py_amt','₹',1))+fld('Paid by',chips(dev,'py_by',[['client','The client'],['revert','Revert']]))+fld('Mode',chips(dev,'py_mode',[['Bank transfer','Bank transfer'],['UPI','UPI'],['Cheque','Cheque'],['Cash','Cash']]))+`<div class="chips">${tog(dev,'py_proof','Attach proof','file')}</div>`
+   :`<div class="note">${ic('lock')}Payments are recorded by the owner.</div>`;foot=own?Bt('Record payment','dopay',b.id,'gold','rupee'):''}
+ return {title:agN(b.ag)+' · '+TX[b.t].n,sub:p.name+' · '+b.what,body:`<div class="kv"><div><span>Status</span>${pill(st[0],st[1])}</div><div><span>Amount</span>${b.amount!=null?money(b.amount):'<span class="mu">not uploaded</span>'}</div>${b.upto?`<div><span>Asked up to</span>${money(b.upto)}</div>`:''}<div><span>Bill</span><b>${b.no?esc(b.no)+' · '+fd(b.date):'—'}</b></div><div><span>Asked by</span><b>${esc(stf(b.askedBy).n)} · ${fd(b.askedOn)}</b></div></div>
+  ${fld('Billed to',`<div class="chips">${[['client','The client'],['revert','Revert']].map(o=>`<button type="button" class="chip" data-a="billto" data-v="${b.id}|${o[0]}" aria-pressed="${b.billedTo===o[0]}" ${b.st==='paid'?'disabled':''}>${o[1]}</button>`).join('')}</div>`)}
+  ${b.no?`<div class="docrow">${ic('file')}<span><b>${esc(b.no)}.jpg</b> · photographed bill</span></div>`:''}
+  ${b.pay.length?`<div class="lbl mt">Payments</div><div class="rows">${b.pay.map(x=>`<div class="rw"><div class="m"><div class="t1">${money(x.amount,'c-ok')}</div><div class="t2">${fd(x.on)} · paid by <b>${x.by==='client'?'the client':'Revert'}</b> · ${esc(x.mode)}${x.proof?' · proof attached':''}${x.by==='revert'&&b.billedTo==='client'?' · <span class="c-wait">to recover from the client</span>':''}</div></div></div>`).join('')}</div>`:''}${act}`,foot:foot||Bt('Close','close',null,'ghost')}};
+
+SHEETS.pdf=(dev,s)=>({title:s.kind==='mom'?'MOM PDF':'Open points PDF',sub:'What the party receives on WhatsApp',wide:true,body:pdfDoc(s.kind,s.a,s.b),foot:Bt('Close','close',null,'ghost')});
+SHEETS.view=(dev,s)=>{const d=dOf(s.id);return {title:sheetNo(d)+' '+d.title,sub:pOf(d.pid).name,wide:true,body:dwgPaper(d),foot:Bt('Close','close',null,'ghost')}};
+SHEETS.addtrade=(dev,s)=>({title:'Add a trade',sub:'Setup · trades',body:fld('Name',fin(dev,'nt_n','e.g. Modular kitchen'))+fld('Name in Gujarati',fin(dev,'nt_gu','ગુજરાતી'))+fld('Name in Hindi',fin(dev,'nt_hi','हिंदी')),foot:cancelB()+Bt('Add','doaddtrade',null,'gold','plus')});
+SHEETS.addagency=(dev,s)=>({title:'Add an agency',sub:'Setup · agencies and their people',body:fld('Firm name',fin(dev,'na_n','e.g. Vishwakarma Wood Works'))+fld('Trade',fsel(dev,'na_t',TRADES.map(t=>[t.id,t.n]),'Choose'))+fld('Contact person',fin(dev,'na_p','Name'))+fld('WhatsApp number',fin(dev,'na_ph','98xxx xxxxx',1))+fld('Language',chips(dev,'na_l',[['gu','ગુજરાતી'],['hi','हिंदी'],['en','English']])),foot:cancelB()+Bt('Add','doaddagency',null,'gold','plus')});
+
+/* ---------- onboarding: one guided screen, six steps (phase1_adoption §5.2). It calls the same two methods the API will: proposal and onboard. ---------- */
+let OBU=0;
+function obStart(dev,pid){const p=pid?pOf(pid):null;
+ const ob={pid:p?p.id:null,step:1,name:p?p.name:'',client:p?p.client.n:'',cphone:p?p.client.contacts[0].ph:'',address:p?p.address:'',area:p?p.area:'',kind:p?p.kind:'home',label:p?p.label:'',billedTo:p?p.billedTo:'client',
+  principal:p?p.principal:'s1',designers:p?[...p.designers]:[],coords:p?[...p.coords]:[],preset:null,ents:[],tr:{},ticks:{},dr:[],inv:{},nd:''};
+ TRADES.forEach(t=>{const pl=p&&planOf(p,t.id);ob.tr[t.id]={on:p&&p.onb?!!pl:DEFAULT_TRADES.includes(t.id),ag:pl?pl.ag||'':'',by:pl&&pl.by!=null?pl.by:7,had:!!pl}});
+ if(p){p.ents.forEach(e=>{const u=++OBU;ob.ents.push({u,n:e.n,ty:e.ty,id:e.id});TRADES.forEach(t=>{ob.ticks[u+'|'+t.id]=p.lines.some(l=>l.e===e.id&&l.t===t.id)})});
+  DB.drawings.filter(d=>d.pid===p.id).forEach(d=>ob.dr.push({code:d.code,n:d.title,t:d.t||'',on:true,ds:d.ds,due:d.due,client:d.forClient,appr:d.needsApproval,exists:true}))}
+ dev.ob=ob;return ob}
+function obPreset(ob,name){const ps=PRESETS.find(x=>x.n===name);ob.preset=name;ob.kind=ps.kind==='other'?ob.kind:ps.kind;ob.ents=ob.ents.filter(e=>e.id||e.task);
+ ps.e.forEach(([ty,c,f])=>{for(let i=1;i<=c;i++)ob.ents.push({u:++OBU,n:c>1?ty+' '+(i+(f||1)-1):ty,ty})});
+ if(!ob.ents.some(e=>e.ty==='Whole site'))ob.ents.push({u:++OBU,n:'Whole site',ty:'Whole site'});if(!ob.label)ob.label=name}
+const obTick=(ob,e,t)=>ob.ticks[e.u+'|'+t]!==undefined?ob.ticks[e.u+'|'+t]:(ETX[e.ty]||ETX['Other room']).tr.includes(t);
+const obTrades=ob=>TRADES.filter(t=>ob.tr[t.id].on).map(t=>t.id);
+function obDrawings(ob){const want=['',...obTrades(ob)],ds=ob.designers.length?ob.designers:['s4'];
+ ob.dr=ob.dr.filter(d=>d.exists||d.custom||want.includes(d.t));
+ DTYPES.filter(x=>want.includes(x.t)).forEach(x=>{if(ob.dr.some(d=>d.code===x.code))return;const first=DTYPES.find(y=>y.t===x.t)===x,svc=['elec','plmb','ac','av'].includes(x.t);
+  ob.dr.push({code:x.code,n:x.n,t:x.t,on:x.client||first,ds:svc&&ds[1]?ds[1]:ds[0],due:x.off,client:x.client,appr:x.appr})});
+ ob.dr.sort((a,b)=>want.indexOf(a.t)-want.indexOf(b.t))}
+const OBSTEPS=['Project','Team','Site','Trades','Drawings','Review'];
+function obWizard(dev){const ob=dev.ob,s=ob.step,edit=!!ob.pid&&pOf(ob.pid).onb;let body='';
+ const mo=(path,val,ph,cls)=>`<input class="inp ${cls||''}" id="ob_${dev.id}_${path.replace(/\W/g,'_')}" data-mo="${path}" value="${esc(val||'')}" placeholder="${esc(ph||'')}" autocomplete="off">`;
+ const msel=(path,val,opts,ph)=>`<select class="inp" id="ob_${dev.id}_${path.replace(/\W/g,'_')}" data-mo="${path}" data-r="1">${ph!=null?`<option value="">${esc(ph)}</option>`:''}${opts.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
+ const pick=(key,val,opts)=>`<div class="chips">${opts.map(o=>`<button type="button" class="chip" data-a="obset" data-v="${key}=${o[0]}" aria-pressed="${String(val)===String(o[0])}">${esc(o[1])}</button>`).join('')}</div>`;
+ const multi=(key,arr,list)=>`<div class="chips">${list.map(u=>`<button type="button" class="chip tg" data-a="obmulti" data-v="${key}=${u.id}" aria-pressed="${arr.includes(u.id)}">${ic('check')}${esc(u.n)}</button>`).join('')}</div>`;
+ if(s===1)body=`<div class="fgrid">${fld('Project name',mo('name',ob.name,'e.g. Shah Residence'))}${fld('Client',mo('client',ob.client,'e.g. Mr. Nirav Shah'))}${fld('Client’s WhatsApp number',mo('cphone',ob.cphone,'98xxx xxxxx'),'Used for the invitation and the sign-in code.')}${fld('Area',mo('area',ob.area,'e.g. Bopal'))}</div>
+  ${fld('Site address',mo('address',ob.address,'Flat, building, road'))}${fld('Type of site',pick('kind',ob.kind,[['home','Home'],['office','Office'],['clinic','Clinic / hospital'],['other','Other']]))}
+  ${fld('Bills are normally addressed to',pick('billedTo',ob.billedTo,[['client','The client'],['revert','Revert']]),'A default for this project. It can be changed bill by bill.')}`;
+ if(s===2){const ds=DB.staff.filter(u=>has(u,'designer')),cs=DB.staff.filter(u=>has(u,'coordinator'));
+  body=fld('Principal consultant',pick('principal',ob.principal,DB.staff.filter(u=>has(u,'principal')).map(u=>[u.id,u.n])),'Approves every drawing release.')+fld('Designers',multi('designers',ob.designers,ds),'Each gets the drawings assigned to them on their list.')
+   +fld('Coordinators (one or more)',multi('coords',ob.coords,cs),'Keep the agency board and chase open items.')+`<div class="note">${ic('lock')}This is where access comes from: only these people, the agencies of step 4 and the client see this project. Owners and the principal see all projects.</div>`}
+ if(s===3){const tasks=ob.pid?pOf(ob.pid).tasks.filter(t=>!/^\d|MOM/i.test(t.n)&&!ob.ents.some(e=>e.task===t.n)):[];
+  body=fld('Start from a preset',`<div class="chips">${PRESETS.map(x=>`<button type="button" class="chip" data-a="obpreset" data-v="${esc(x.n)}" aria-pressed="${ob.preset===x.n}">${esc(x.n)}</button>`).join('')}</div>`,'One tap fills the list; then rename, remove or add.')
+   +(tasks.length?`<div class="note gold">${ic('layers')}<span>Earlier room tasks of this project. Use one as an entity instead of creating a second: ${tasks.map(t=>`<button type="button" class="chip" data-a="obtask" data-v="${esc(t.n)}">${ic('plus')}${esc(t.n)}</button>`).join(' ')}</span></div>`:'')
+   +`<div class="lbl mt">Rooms and zones · ${ob.ents.length} · one task each</div><div class="entlist">${ob.ents.map((e,i)=>`<div class="entrow">${mo('ents.'+i+'.n',e.n,'Name')}${msel('ents.'+i+'.ty',e.ty,ETYPES.map(t=>[t.n,t.n]))}${e.id?pill('exists','plain'):e.task?pill('earlier task','gold'):`<button type="button" class="ib" data-a="obdel" data-v="${i}" aria-label="Remove">${ic('x')}</button>`}</div>`).join('')||empty('Pick a preset or add rooms one by one.','grid')}</div>
+   <div class="lbl mt">Add</div><div class="chips">${[...new Set([...ETYPES.filter(t=>t.kind===ob.kind||t.kind==='any').map(t=>t.n),...EXTRAS])].map(n=>`<button type="button" class="chip" data-a="obadd" data-v="${esc(n)}">${ic('plus')}${esc(n)}</button>`).join('')}</div>
+   <div class="note">${ic('info')}A “Whole site” entity carries work that belongs to no single room: main board, main lines, final cleaning. No measurements in this release.</div>`}
+ if(s===4){const on=obTrades(ob),off=TRADES.filter(t=>!ob.tr[t.id].on);
+  body=`<div class="lbl">Trades on this project · ${on.length}</div><div class="trlist">${on.map(t=>{const x=ob.tr[t],ags=DB.agencies.filter(a=>a.tr.includes(t));return `<div class="trrow"><button type="button" class="chip tg" data-a="obtrade" data-v="${t}" aria-pressed="true">${ic('check')}${esc(TX[t].n)}</button>${msel('tr.'+t+'.ag',x.ag,ags.map(a=>[a.id,a.n]),'Undecided')}
+    ${x.ag?`<span class="t2">${esc(agOf(x.ag).people.map(p=>p.n).join(', '))}</span>`:`<span class="t2 c-wait">decide by</span>${msel('tr.'+t+'.by',x.by,[[3,fd(3)],[7,fd(7)],[14,fd(14)],[21,fd(21)]])}`}</div>`}).join('')}</div>
+   <div class="chips mt">${off.map(t=>`<button type="button" class="chip" data-a="obtrade" data-v="${t.id}">${ic('plus')}${esc(t.n)}</button>`).join('')}</div>
+   <div class="lbl mt">Which trade works in which room · pre-ticked from each room type · untick what does not apply</div>
+   <div class="gw"><table class="gr tks"><thead><tr><th></th>${on.map(t=>`<th><div class="gh">${esc(TX[t].s)}</div></th>`).join('')}</tr></thead><tbody>${ob.ents.map(e=>`<tr><th><div class="ge">${esc(e.n)}</div></th>${on.map(t=>`<td><button type="button" class="tk" data-a="obtick" data-v="${e.u}|${t}" aria-pressed="${obTick(ob,e,t)}" aria-label="${esc(e.n+' '+TX[t].n)}">${ic('check')}</button></td>`).join('')}</tr>`).join('')}</tbody></table></div>
+   <p class="mu f12">${ob.ents.reduce((n,e)=>n+on.filter(t=>obTick(ob,e,t)).length,0)} work lines will exist, one per tick, each carrying its trade’s agency.</p>`}
+ if(s===5){const grp={};ob.dr.forEach((d,i)=>(grp[d.t]=grp[d.t]||[]).push([d,i]));const ds=DB.staff.filter(u=>ob.designers.includes(u.id)||has(u,'designer'));
+  body=`<div class="lbl">Drawings needed · ${ob.dr.filter(d=>d.on).length} ticked of ${ob.dr.length}</div>${Object.keys(grp).map(t=>`<div class="dgrp"><div class="dgh">${t?esc(TX[t].n)+' · '+(ob.tr[t].ag?esc(agN(ob.tr[t].ag)):'<span class="c-bad">undecided</span>'):'General set'}</div>
+   ${grp[t].map(([d,i])=>`<div class="drow ${d.on?'on':''}"><button type="button" class="tk" data-a="obdraw" data-v="${i}" aria-pressed="${d.on}" ${d.exists?'disabled':''} aria-label="${esc(d.n)}">${ic('check')}</button><span class="sheet">${d.code}</span><span class="dn">${esc(d.n)}${d.exists?' <i class="mu">(exists)</i>':''}</span>
+    ${d.on&&!d.exists?`${msel('dr.'+i+'.ds',d.ds,ds.map(u=>[u.id,u.n]))}<span class="duectl"><button type="button" class="ib" data-a="obdue" data-v="${i}|-1" aria-label="Earlier">−</button><b class="mono">${fd(d.due)}</b><button type="button" class="ib" data-a="obdue" data-v="${i}|1" aria-label="Later">+</button></span>
+    <button type="button" class="chip tg sm" data-a="obflag" data-v="${i}|client" aria-pressed="${d.client}">${ic('check')}client</button><button type="button" class="chip tg sm" data-a="obflag" data-v="${i}|appr" aria-pressed="${d.appr}" ${d.client?'':'disabled'}>${ic('check')}approval</button>`:''}</div>`).join('')}</div>`).join('')}
+   <div class="addrow">${mo('nd',ob.nd,'Add a drawing by name, e.g. Bar counter details')}${Bt('Add','obadddraw',null,'','plus')}</div>
+   <div class="note">${ic('info')}Designer and due date are pre-filled from the standard set and the team, so most rows need only the tick. “client” = the client receives it; “approval” = the client must approve it.</div>`}
+ if(s===6){const on=obTrades(ob),lines=ob.ents.reduce((n,e)=>n+on.filter(t=>obTick(ob,e,t)).length,0),und=on.filter(t=>!ob.tr[t].ag),ags=[...new Set(on.map(t=>ob.tr[t].ag).filter(Boolean))];
+  body=`<div class="sumgrid"><div><b class="num">${ob.ents.length}</b><span>rooms and zones</span></div><div><b class="num">${on.length}</b><span>trades${und.length?` · <i class="c-bad">${und.length} undecided</i>`:''}</span></div><div><b class="num">${lines}</b><span>work lines</span></div><div><b class="num">${ob.dr.filter(d=>d.on).length}</b><span>drawings on the list</span></div></div>
+   <div class="kv"><div><span>Project</span><b>${esc(ob.name||'—')} · ${esc(ob.label||ob.kind)}</b></div><div><span>Client</span><b>${esc(ob.client||'—')}</b></div><div><span>Team</span><b>${esc([ob.principal,...ob.designers,...ob.coords].filter((v,i,a)=>a.indexOf(v)===i).map(x=>stf(x).n).join(', '))}</b></div><div><span>Bills addressed to</span><b>${ob.billedTo==='client'?'The client':'Revert'}</b></div></div>
+   <div class="lbl mt">Invite now on WhatsApp</div><div class="rows">${[...ags.map(a=>[a,agN(a),agOf(a).people[0].n+' · '+agOf(a).people[0].ph]),['client',ob.client||'Client',ob.cphone||'number missing']].map(r=>`<button type="button" class="rw lk ck" data-a="obinv" data-v="${r[0]}" aria-pressed="${!!ob.inv[r[0]]}"><i class="box">${ic('check')}</i><div class="m"><div class="t1">${esc(r[1])}</div><div class="t2">${esc(r[2])}</div></div></button>`).join('')}</div>
+   <div class="note ok">${ic('wa')}Nobody has to be invited today. Agencies receive drawings and MOM points on WhatsApp even if they never open the app.</div>`}
+ return `<div class="ob"><div class="obh"><div><div class="lbl">${edit?'Project configuration':ob.pid?'Configure an existing project':'New project'} · step ${s} of 6</div><h2>${esc(ob.name||'New project')}</h2></div><button type="button" class="xb" data-a="obclose" aria-label="Close">${ic('x')}</button></div>
+  <ol class="steps">${OBSTEPS.map((n,i)=>`<li class="${i+1===s?'on':i+1<s?'past':''}"><button type="button" data-a="obgo" data-v="${i+1}"><i>${i+1<s?ic('check'):i+1}</i><span>${n}</span></button></li>`).join('')}</ol>
+  <div class="obb" data-sc="ob${s}">${body}</div><div class="obf">${s>1?Bt('Back','obgo',s-1,'ghost','back'):'<span></span>'}${s<6?Bt(s===5?'Review':'Next','obgo',s+1,'gold'):Bt(edit?'Save changes':'Start project','obfinish',null,'gold','check')}</div></div>`}
+function obApply(ob){let p=ob.pid?pOf(ob.pid):null;const fresh=!p,was=p&&p.onb;
+ if(!p){p={id:++DB.seq.pid,tasks:[],plan:[],ents:[],lines:[],visitNo:0,client:{n:'',contacts:[]}};DB.projects.push(p)}
+ Object.assign(p,{name:ob.name,kind:ob.kind,label:ob.label||ob.kind,area:ob.area,address:ob.address,billedTo:ob.billedTo,principal:ob.principal,designers:[...ob.designers],coords:[...ob.coords],onb:true,onbOn:p.onbOn==null?0:p.onbOn});
+ p.client.n=ob.client;if(!p.client.contacts.length)p.client.contacts.push({n:ob.client.replace(/^(Mr\.|Mrs\.|Dr\.)\s*/,''),ph:ob.cphone,inv:false});
+ const on=obTrades(ob);on.forEach(t=>{const x=ob.tr[t];let pl=planOf(p,t);if(!pl){pl={t,ag:null,people:[],by:null};p.plan.push(pl)}pl.ag=x.ag||null;pl.by=x.ag?null:+x.by;pl.people=x.ag?[0]:[]});
+ p.plan=p.plan.filter(pl=>on.includes(pl.t)||p.lines.some(l=>l.t===pl.t));let nl=0,nd=0;
+ ob.ents.forEach((e,i)=>{let ent=e.id&&p.ents.find(x=>x.id===e.id);if(!ent){ent={id:'e'+p.id+'_n'+e.u,n:e.n,ty:e.ty};p.ents.push(ent)}else{ent.n=e.n;ent.ty=e.ty}
+  on.forEach(t=>{const has=p.lines.find(l=>l.e===ent.id&&l.t===t);if(obTick(ob,e,t)&&!has){p.lines.push({id:'l'+(++DB.seq.lid),e:ent.id,t,ag:null,st:'ns',cause:null,ref:null,note:'',since:null,fin:null,doneOn:null,startOn:null});nl++}
+   if(!obTick(ob,e,t)&&has&&has.st==='ns')p.lines.splice(p.lines.indexOf(has),1)})});
+ ob.ents.filter(e=>e.task).forEach(e=>{p.tasks=p.tasks.filter(t=>t.n!==e.task)});
+ ob.dr.filter(d=>d.on&&!d.exists).forEach(d=>{const no=DB.drawings.filter(x=>x.pid===p.id&&x.code===d.code).length+1;DB.drawings.push({id:'d'+(++DB.seq.did),pid:p.id,code:d.code,no,title:d.n,t:d.t||null,e:null,ds:d.ds,due:+d.due,forClient:!!d.client,needsApproval:!!(d.client&&d.appr),st:'to_draw',revs:[{n:1,st:'draft',note:'',rc:[]}],q:[]});nd++});
+ let inv=0;Object.keys(ob.inv).filter(k=>ob.inv[k]).forEach(k=>{if(k==='client'){p.client.contacts[0].inv=true;notify('invite','client:'+p.id,{site:p.name})}else notify('invite',k,{site:p.name});inv++});
+ return {p,nl,nd,inv,fresh,was}}

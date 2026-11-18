@@ -43,8 +43,10 @@ class TestRvtBase(TransactionCase):
         ents = preset.rvt_entities()
         names = [e["name"] for e in ents]
         self.assertEqual(len(ents), 13, "12 rooms and the whole site")
-        self.assertIn("Bedroom 1", names)
+        self.assertIn("Master bedroom", names)
         self.assertIn("Bedroom 2", names)
+        self.assertIn("Bedroom 3", names)
+        self.assertNotIn("Bedroom 1", names, "the master bedroom is the first")
         self.assertIn("Toilet 3", names)
         self.assertIn("Kitchen", names)
         self.assertEqual(names[-1], "Whole site")

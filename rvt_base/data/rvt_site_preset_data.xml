@@ -80,6 +80,7 @@
     <record id="preset_3bhk_bedroom" model="rvt.site.preset.line">
         <field name="preset_id" ref="preset_3bhk"/>
         <field name="entity_type_id" ref="entity_type_bedroom"/>
+        <field name="number_from">2</field>
         <field name="count">2</field>
         <field name="sequence">50</field>
     </record>
@@ -139,6 +140,7 @@
     <record id="preset_4bhk_bedroom" model="rvt.site.preset.line">
         <field name="preset_id" ref="preset_4bhk"/>
         <field name="entity_type_id" ref="entity_type_bedroom"/>
+        <field name="number_from">2</field>
         <field name="count">3</field>
         <field name="sequence">50</field>
     </record>

@@ -1,4 +1,10 @@
+from datetime import datetime
+
+import pytz
+
 from odoo import api, models
+
+DEFAULT_TZ = "Asia/Kolkata"
 
 # key -> (type, default). Read through rvt.config so that every caller gets the
 # same defaults and nobody needs read access on system parameters.
@@ -24,3 +30,14 @@ class RvtConfig(models.AbstractModel):
             key, type_, default = PARAMS[name]
             return icp.get_bool(key, default) if type_ == "bool" else icp.get_int(key, default)
         return {n: self.get(n) for n in PARAMS}
+
+    @api.model
+    def today(self):
+        """Today's date where the work happens. A person's own time zone when they have one;
+        India's otherwise (agency people and clients sign in by phone and have none set)."""
+        name = self.env.context.get("tz") or self.env.user.tz or DEFAULT_TZ
+        try:
+            zone = pytz.timezone(name)
+        except pytz.UnknownTimeZoneError:
+            zone = pytz.timezone(DEFAULT_TZ)
+        return datetime.now(zone).date()

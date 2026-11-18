@@ -20,8 +20,8 @@ class RvtSitePreset(models.Model):
         self.ensure_one()
         out = []
         for line in self.line_ids:
-            for i in range(1, line.count + 1):
-                name = line.entity_type_id.name if line.count == 1 else f"{line.entity_type_id.name} {i}"
+            for i in range(line.count):
+                name = line.entity_type_id.name if line.count == 1 else f"{line.entity_type_id.name} {line.number_from + i}"
                 out.append({
                     "name": name,
                     "entity_type_id": line.entity_type_id.id,
@@ -41,6 +41,9 @@ class RvtSitePresetLine(models.Model):
     preset_id = fields.Many2one("rvt.site.preset", required=True, ondelete="cascade", index=True)
     entity_type_id = fields.Many2one("rvt.entity.type", string="Entity type", required=True, ondelete="restrict")
     count = fields.Integer(default=1, required=True)
+    number_from = fields.Integer(
+        string="Numbered from", default=1, required=True,
+        help="Two bedrooms beside a master bedroom are Bedroom 2 and Bedroom 3: numbered from 2.")
     sequence = fields.Integer(default=10)
 
     _count_positive = models.Constraint("check (count > 0)", "The count must be at least 1.")

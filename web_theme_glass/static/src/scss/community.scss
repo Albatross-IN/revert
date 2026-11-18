@@ -1,0 +1,51 @@
+// =============================================================================
+// Glass — Odoo COMMUNITY readability rules (light and dark)
+//
+// Everything here is scoped to `body.o_glass_community`, a class ir_http.py puts on <body>
+// only when web_enterprise is not installed: an Enterprise page never matches a selector of
+// this file. The rules come from the 2026-09-18 contrast audit of 38 Community screens on
+// desktop and phone (qa/community.md): Community draws several texts with colours that fall
+// below 4.5:1 on the theme's clay where Enterprise uses darker inks of its own.
+//
+// Compiled in both bundles (web.assets_backend and, through it, web.assets_web_dark), so the
+// values switch with `$o-webclient-color-scheme` like the rest of the theme's tokens.
+// =============================================================================
+
+$-glass-c-dark: $o-webclient-color-scheme == dark;
+// label ink: 5.2:1 on the light clay; the mid grey of the dark scale on the dark clay
+$glass-c-label: if($-glass-c-dark, $o-gray-700, #5A6270) !default;
+// (the faint ink of that audit, #6F7889, is the theme's own --nm-text-faint since Odoo 20: see tokens.scss)
+
+body.o_theme_glass.o_glass_community {
+    --nm-text-label: #{$glass-c-label};
+    // dark: the indigo brand lifted to 5.0:1 on the Community dark clay (the same value
+    // community_dark.scss gives $o-brand-primary); light keeps the theme's brand
+    @if $-glass-c-dark {
+        --nm-brand: #7B8FE0;
+        --nm-brand-rgb: 123, 143, 224;
+        --nm-brand-hover: #8C9EE6;
+        --nm-brand-shadow: rgba(123, 143, 224, .5);
+    }
+
+    // Top bar — Community's navbar is dark by default, so its entries (systray icons, company
+    // switcher, apps toggle) read `--NavBar-entry-color` with a WHITE fallback
+    // (rgba(255,255,255,.9), navbar.variables.scss): on the theme's light clay they were nearly
+    // invisible (user screenshot). Enterprise's navbar variables are dark to begin with, so
+    // the theme never had to set these; Community gets the theme's inks through Odoo's own
+    // variables (muted at rest, full ink on hover / open).
+    .o_main_navbar {
+        --NavBar-entry-color: var(--nm-text-muted);
+        --NavBar-entry-color--hover: var(--nm-text);
+        --NavBar-entry-color--active: var(--nm-text);
+        // Odoo 20 portals the breadcrumbs (and the view's title dropdown) into the top bar on
+        // phones, inked with the brand colour — white for Community's dark bar by default
+        --NavBar-brand-color: var(--nm-text);
+    }
+
+    // Form labels — Community colours them with $o-brand-secondary (#8f8f8f → 2.7:1 on the
+    // clay) and dims the read-only ones further (2.3:1). Editable labels take the label ink;
+    // read-only labels keep a lighter look (muted ink, no extra dimming) and stay readable.
+    .o_form_view .o_form_label { color: var(--nm-text-label); }
+    .o_form_view .o_form_label.o_form_label_readonly { color: var(--nm-text-muted); opacity: 1; }
+
+}

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Phone calendar: Odoo hides the previous / next arrows below 768px and relies on swiping
+         (calendar_controller.xml, `t-if="!this.uiService.isSmall"`), and the mini date picker lives
+         in the side panel that phones never show. Users asked for a way to change the period
+         directly: two arrows (the controller's own setDate) and a tap on the period title, which
+         opens the phone's native month picker (calendar_nav.js). Nothing else is changed.
+         Registered FIRST in the bundle so every primary copy of web.CalendarController
+         (calendar.AttendeeCalendarController, hr_holidays.CalendarController …) gets them. -->
+    <t t-name="web_glass_workspace.CalendarController.phoneNav" t-inherit="web.CalendarController" t-inherit-mode="extension">
+        <xpath expr="//div[hasclass('o_calendar_header')]" position="inside">
+            <div t-if="this.uiService.isSmall" class="o_glass_m_calnav btn-group d-print-none order-1">
+                <button type="button" class="btn btn-sm btn-light o_calendar_button_prev" title="Previous" aria-label="Previous"
+                        t-on-click.stop="() => this.setDate('previous')"><i class="oi" data-icon="arrow_back"/></button>
+                <button type="button" class="btn btn-sm btn-light o_calendar_button_next" title="Next" aria-label="Next"
+                        t-on-click.stop="() => this.setDate('next')"><i class="oi" data-icon="arrow_forward"/></button>
+            </div>
+        </xpath>
+        <xpath expr="//div[hasclass('o_calendar_header')]/h5" position="attributes">
+            <attribute name="t-att-class">{ o_glass_m_caltitle: this.uiService.isSmall }</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('o_calendar_header')]/h5" position="inside">
+            <input t-if="this.uiService.isSmall" type="month" class="o_glass_m_monthpick" aria-label="Go to month"
+                   t-att-value="this.glassMonthValue" t-on-change="this.glassJumpToMonth" t-on-click.stop=""/>
+        </xpath>
+    </t>
+
+</templates>
