@@ -31,6 +31,13 @@ def home(who: Annotated[Caller, Depends(client)]):
     return who.env["rvt.api"].client_home(who.project_id or None)
 
 
+@router.get("/snapshot", summary="The client's slice in the shape of the app's screens")
+def snapshot(who: Annotated[Caller, Depends(client)]):
+    data = who.env["rvt.api"].client_snapshot(who.project_id or None)
+    data["me_info"] = who.user.rvt_api_me()
+    return data
+
+
 @router.post("/drawings/{drawing_id}/open", summary="The client opened the drawing")
 def open_drawing(drawing_id: int, who: Annotated[Caller, Depends(client)]):
     drawing = _mine(who, "rvt.drawing", drawing_id)

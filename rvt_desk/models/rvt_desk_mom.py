@@ -109,6 +109,8 @@ class RvtDesk(models.AbstractModel):
             "for_kind": kind, "entity_id": _num(a.get("e")), "drawing_id": _num(a.get("dwg")),
             "due_date": today + timedelta(days=int(a["due"])) if a.get("due") is not None else False,
             "photo": a.get("photo") or False,
+            # given by a phone that wrote the point without network: the same point sent twice is created once
+            "client_uid": a.get("client_uid") or False,
         }
         if a.get("t"):
             vals["trade_id"] = self.env["rvt.trade"].search([("code", "=", a["t"])], limit=1).id

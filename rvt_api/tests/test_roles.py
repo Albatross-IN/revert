@@ -174,6 +174,39 @@ class TestRoles(ApiCase):
         self.assertRefused(self.post("/client/drawings/%s/decide" % self.wardrobe.id, {"decision": "approved"}, token), 403)
         self.assertRefused(self.call("PUT", "/me/password", {"old": "x", "new": "yyyyyyyyy"}, token), 403)
 
+    def test_screen_slices_carry_nothing_of_others(self):
+        self.wardrobe.rvt_ask(self.ag_carp, "Loft 18 or 24?", person_name="Bherubhai Suthar")
+        self.wardrobe.rvt_ask(self.client_partner, "Can it be white?", via="office", person_name="Nirav Shah")
+        self.wardrobe.released_revision_id.note = "Internal: check the beam before release"
+        token = self.otp(self.carp_phone)["access_token"]
+        snap = self.get("/agency/snapshot", token).json()
+        key = "a%s" % self.ag_carp.id
+        self.assertEqual((snap["role"], snap["me"]), ("agency", key))
+        self.assertEqual(snap["agencies"][0]["people"][0]["n"], "Bherubhai Suthar", "the person signed in comes first")
+        self.assertEqual([d["title"] for d in snap["drawings"]], ["Wardrobe details"])
+        drawing = snap["drawings"][0]
+        self.assertEqual((drawing["st"], len(drawing["revs"])), ("released", 1))
+        self.assertEqual([r["to"] for r in drawing["revs"][0]["rc"]], [key], "not the client's receipt")
+        self.assertEqual(drawing["revs"][0]["note"], "", "the office's notes stay in the office")
+        self.assertEqual([q["text"] for q in drawing["q"]], ["Loft 18 or 24?"], "not the client's question")
+        self.assertEqual({p["party"] for p in snap["points"]}, {key})
+        project = next(p for p in snap["projects"] if p["id"] == self.project.id)
+        self.assertEqual({l["t"] for l in project["lines"]}, {"carp"})
+        self.assertEqual({l["ag"] for l in project["lines"]}, {key})
+        self.assertEqual(project["client"], {"id": False, "n": "", "contacts": []}, "the client is not the agency's business")
+        self.assertNotIn("pic", project)
+        token = self.otp(self.client_phone)["access_token"]
+        snap = self.get("/client/snapshot", token).json()
+        self.assertEqual((snap["role"], snap["clientPid"]), ("client", self.project.id))
+        self.assertEqual([d["title"] for d in snap["drawings"]], ["Wardrobe details"])
+        drawing = snap["drawings"][0]
+        self.assertEqual([r["to"] for r in drawing["revs"][0]["rc"]], ["client"])
+        self.assertEqual(drawing["revs"][0]["client"]["dec"], "pending")
+        self.assertEqual([q["text"] for q in drawing["q"]], ["Can it be white?"])
+        self.assertEqual([p["text"] for p in snap["points"]], ["Choose the kitchen platform stone"])
+        self.assertEqual(snap["projects"][0]["client"]["contacts"][0]["n"], "Nirav Shah")
+        self.assertEqual(snap["projects"][0]["lines"], [], "a client sees no work lines")
+
     # ---- client ---------------------------------------------------------
     def test_client_sees_and_does_only_its_own(self):
         token = self.otp(self.client_phone)["access_token"]

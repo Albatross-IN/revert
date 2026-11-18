@@ -30,6 +30,13 @@ def home(who: Annotated[Caller, Depends(agency)]):
     return who.env["rvt.api"].agency_home()
 
 
+@router.get("/snapshot", summary="The agency's slice in the shape of the app's screens")
+def snapshot(who: Annotated[Caller, Depends(agency)]):
+    data = who.env["rvt.api"].agency_snapshot()
+    data["me_info"] = who.user.rvt_api_me()
+    return data
+
+
 @router.post("/drawings/{drawing_id}/open", summary="The agency opened the drawing")
 def open_drawing(drawing_id: int, who: Annotated[Caller, Depends(agency)]):
     drawing = _drawing(who, drawing_id)

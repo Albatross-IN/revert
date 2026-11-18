@@ -127,3 +127,123 @@ class RvtApi(models.AbstractModel):
                 "waiting": waiting, "drawings": rows,
             })
         return {"today": iso(today), "name": me.name, "projects": out}
+
+    # ------------------------------------------------------------------
+    # the same slices in the shape of the screens (the app runs the approved screens as they are)
+    # ------------------------------------------------------------------
+    def _screen_base(self, role):
+        Desk = self.env["rvt.desk"]
+        config = self.env["rvt.config"].get()
+        today = self.env["rvt.config"].today()
+        masters = Desk._masters()
+        return {
+            "role": role, "today_date": fields.Date.to_string(today),
+            "features": dict(Desk._features(), bills=False),
+            "masters": {"trades": masters["trades"], "default_trades": [], "etypes": [], "extras": [], "presets": [], "dtypes": []},
+            "set": {"approval": config["release_needs_approval"], "clientConfirm": config["client_points_need_confirmation"],
+                    "lim": {"open": 2, "q": 1, "bill": 3, "stuck": 7}, "sending": self.env["rvt.notify"].sending_on(), "number": ""},
+            "staff": [], "agencies": [], "projects": [], "drawings": [], "visits": [], "points": [], "bills": [], "wa": [],
+            "today": [], "mytasks": [], "company": self.env.company.name, "prefix": "", "admin": False,
+        }
+
+    def _screen_drawing(self, drawing, off, key, partners):
+        """A drawing as a receiver may see it: the released revision only, its own receipt only,
+        its own questions only, and none of the office's notes."""
+        Desk = self.env["rvt.desk"]
+        row = Desk._drawing_row(drawing.sudo().with_context(bin_size=True), off, partners if key == "client" else self.env["res.partner"])
+        released = [r for r in row["revs"] if r["st"] == "released"][-1:]
+        for rev in released:
+            rev.update({"note": "", "back": None, "sentBy": None, "apprBy": None, "relBy": None, "sentOn": None, "apprOn": None})
+            rev["rc"] = [r for r in rev["rc"] if r["to"] == key]
+        row.update({"revs": released, "st": "released", "ds": None, "q": [q for q in row["q"] if q["by"] == key]})
+        return row
+
+    def _screen_staff(self, rows):
+        """The names behind answers, nothing more."""
+        ids = {int(q["ansBy"][1:]) for d in rows for q in d["q"] if q.get("ansBy")}
+        users = self.env["res.users"].sudo().browse(list(ids)).exists()
+        from odoo.addons.rvt_project.models.rvt_picture import short_name
+        return [{"id": "s%s" % u.id, "n": short_name(u.name), "full": u.name, "roles": [], "login": ""} for u in users]
+
+    @api.model
+    def agency_snapshot(self):
+        env = self.env
+        Desk = env["rvt.desk"]
+        me = env.user.partner_id
+        firm = me.commercial_partner_id
+        key = "a%s" % firm.id
+        today = env["rvt.config"].today()
+        off = lambda date: (date - today).days if date else None
+        data = self._screen_base("agency")
+        people = env["res.partner"].sudo().search([("parent_id", "=", firm.id)], order="id")
+        people = (me if me != firm else people[:1]) | people
+        data["me"] = key
+        data["lang"] = me.rvt_prefs()["lang"]
+        data["agencies"] = [{
+            "id": key, "n": firm.name, "tr": firm.sudo().rvt_trade_ids.mapped("code"), "lang": data["lang"],
+            "people": [{"id": p.id, "n": p.name, "ph": p.phone or ""} for p in people],
+        }]
+        lines = env["project.task"].search([("rvt_kind", "=", "work")], order="project_id, parent_id, sequence")
+        drawings = env["rvt.drawing"].search([], order="id")
+        seen = set(drawings.ids)
+        for project in env["project.project"].search([], order="name"):
+            p = project.sudo()
+            mine = lines.filtered(lambda l: l.project_id == project).sudo()
+            rooms = mine.parent_id.sorted(lambda t: (t.rvt_entity_type_id.is_whole_site, t.sequence, t.id))
+            data["projects"].append({
+                "id": p.id, "name": p.name, "kind": p.rvt_site_kind or "home", "label": p.rvt_site_label or "",
+                "area": p.rvt_site_area or "", "address": p.rvt_site_address or "",
+                "client": {"id": False, "n": "", "contacts": []}, "billedTo": "client",
+                "principal": None, "designers": [], "coords": [], "onb": False, "onbOn": None, "visitNo": 0,
+                "plan": [{"t": plan.trade_id.code, "ag": key, "people": [], "by": None}
+                         for plan in p.rvt_trade_plan_ids if plan.agency_id == firm],
+                "ents": [{"id": "e%s" % e.id, "n": e.name, "ty": e.rvt_entity_type_id.name or "Other room"} for e in rooms],
+                "lines": [{
+                    "id": "l%s" % l.id, "e": "e%s" % l.parent_id.id, "t": l.rvt_trade_id.code, "ag": key,
+                    "st": STATE_OUT.get(l.rvt_work_state, "ns"), "cause": l.rvt_wait_cause or None,
+                    "ref": "d%s" % l.rvt_wait_drawing_id.id if l.rvt_wait_cause == "drawing" and l.rvt_wait_drawing_id.id in seen else None,
+                    "note": "", "since": None, "fin": off(l.rvt_expected_finish), "doneOn": None, "startOn": None,
+                } for l in mine],
+                "tasks": [],
+            })
+        data["drawings"] = [self._screen_drawing(d, off, key, None) for d in drawings]
+        points = env["rvt.point"].search(["|", ("state", "=", "open"), ("closed_on", ">", fields.Date.subtract(today, days=30))], order="number")
+        data["points"] = [Desk._point_row(p.sudo(), off) for p in points]
+        data["staff"] = self._screen_staff(data["drawings"])
+        self._agency_screen_extra(data, firm, off)
+        return data
+
+    def _agency_screen_extra(self, data, firm, off):
+        """Hook: bills (P10)."""
+        return
+
+    @api.model
+    def client_snapshot(self, project_id=None):
+        env = self.env
+        Desk = env["rvt.desk"]
+        me = env.user.partner_id
+        today = env["rvt.config"].today()
+        off = lambda date: (date - today).days if date else None
+        data = self._screen_base("client")
+        data["me"] = "client"
+        data["lang"] = me.rvt_prefs()["lang"]
+        projects = env["project.project"].search([("id", "=", project_id)] if project_id else [], order="id")
+        for project in projects:
+            p = project.sudo()
+            others = p.rvt_client_contact_ids - me
+            data["projects"].append({
+                "id": p.id, "name": p.name, "kind": p.rvt_site_kind or "home", "label": p.rvt_site_label or "",
+                "area": p.rvt_site_area or "", "address": p.rvt_site_address or "",
+                "client": {"id": p.rvt_client_id.id, "n": p.rvt_client_id.name or me.name,
+                           "contacts": [{"id": c.id, "n": c.name, "ph": c.phone or "", "inv": True} for c in (me | others)]},
+                "billedTo": p.rvt_billed_to_default or "client", "principal": None, "designers": [], "coords": [],
+                "onb": True, "onbOn": None, "visitNo": 0, "plan": [], "ents": [], "lines": [], "tasks": [],
+            })
+        drawings = env["rvt.drawing"].search([("project_id", "in", projects.ids)], order="id")
+        partners = {p.id: p.rvt_client_id | p.rvt_client_contact_ids for p in projects.sudo()}
+        data["drawings"] = [self._screen_drawing(d, off, "client", partners.get(d.project_id.id)) for d in drawings]
+        points = env["rvt.point"].search([("project_id", "in", projects.ids), ("state", "=", "open")], order="due_date, number")
+        data["points"] = [Desk._point_row(p.sudo(), off) for p in points]
+        data["staff"] = self._screen_staff(data["drawings"])
+        data["clientPid"] = projects[:1].id or False
+        return data
