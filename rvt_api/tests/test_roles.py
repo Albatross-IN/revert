@@ -51,6 +51,14 @@ class TestRoles(ApiCase):
         self.assertRefused(self.post("/staff/op", {"name": "setting", "args": {"key": "approval", "value": False}}, token), 403, "FORBIDDEN")
         self.assertRefused(self.post("/staff/op", {"name": "set_line", "args": {"line": "l%s" % line.id, "state": "wait"}}, token), 422)
         self.assertEqual(line.rvt_work_state, "working", "a refused operation leaves nothing behind")
+        # choosing an agency links its contact person: the link is checked against the caller,
+        # not against the anonymous user the request began as
+        plan = self.project.rvt_trade_plan_ids.filtered(lambda p: p.trade_id.code == "carp")
+        chosen = self.post("/staff/op", {"name": "assign", "args": {"project": self.project.id, "trade": "carp", "agency": "a%s" % self.ag_carp2.id}}, token)
+        self.assertEqual(chosen.status_code, 200, chosen.text)
+        plan.invalidate_recordset()
+        self.assertEqual(plan.agency_id, self.ag_carp2)
+        self.assertEqual(plan.contact_ids.mapped("name"), ["Mukesh Mistry"])
 
     def test_staff_endpoints_one_by_one(self):
         token = self.token(self.coordinator)
@@ -253,6 +261,55 @@ class TestRoles(ApiCase):
         self.assertRefused(self.post("/client/drawings/%s/decide" % layout.id, {"decision": "approved"}, token), 403)
         full = self.otp(self.client_phone)["access_token"]
         self.assertEqual(len(self.get("/client/home", full).json()["projects"]), 2, "signed in with the number, both projects show")
+
+    def test_the_link_serves_the_screens_and_the_drawing(self):
+        """The link opens the app's screens in a browser. The page holds no data; the drawing
+        opens from the client's own receipt link, which records the opening."""
+        staff = self.token(self.coordinator)
+        made = self.post("/staff/op", {"name": "client_link", "args": {"project": self.project.id}}, staff)
+        self.assertEqual(made.status_code, 200, made.text)
+        self.assertEqual(made.json()["name"], self.client_contact.name)
+        path = "/rvt/c/" + made.json()["url"].rsplit("/", 1)[1]
+        page = self.url_open(path)
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("window.RVT_LINK=", page.text)
+        self.assertIn("/rvt_api/static/app/app.js", page.text)
+        self.assertNotIn(self.project.name, page.text, "the page itself carries nothing of the project")
+        self.assertEqual(page.headers.get("Cache-Control"), "no-store")
+        self.assertEqual(page.headers.get("Referrer-Policy"), "no-referrer")
+        self.assertEqual(self.url_open("/rvt/c/not-a-link").status_code, 404)
+        self.assertEqual(self.url_open("/rvt_api/static/app/app.js").status_code, 200, "the screens are in the module")
+        token = self.post("/auth/link", {"token": path.rsplit("/", 1)[1], "device": {"uid": "browser-1", "platform": "web"}}).json()["access_token"]
+        row = next(d for d in self.get("/client/snapshot", token).json()["drawings"] if d["id"] == "d%s" % self.wardrobe.id)
+        self.assertTrue(row["url"].startswith("/rvt/d/"), row.get("url"))
+        receipt = self.wardrobe.released_revision_id.receipt_ids.filtered(lambda r: r.token == row["url"].rsplit("/", 1)[1])
+        self.assertIn(receipt.partner_id, self.project.rvt_client_id | self.project.rvt_client_contact_ids, "the client's own receipt")
+        receipt.opened_on = False        # the drawing was opened in the app before; here it is the link that counts
+        sheet = self.url_open(row["url"])
+        self.assertEqual(sheet.headers["Content-Type"], "application/pdf")
+        receipt.invalidate_recordset()
+        self.assertTrue(receipt.opened_on, "opening the sheet from the page is recorded")
+        # an agency's drawing carries the firm's own link, never another receiver's
+        agency = self.otp(self.carp_phone)["access_token"]
+        mine = next(d for d in self.get("/agency/snapshot", agency).json()["drawings"] if d["id"] == "d%s" % self.wardrobe.id)
+        firm = self.wardrobe.released_revision_id.receipt_ids.filtered(lambda r: r.partner_id.commercial_partner_id == self.ag_carp)
+        self.assertEqual(mine["url"], "/rvt/d/%s" % firm[:1].token)
+
+    def test_a_token_after_a_restart_keeps_the_role(self):
+        """After a restart the first thing the server hears from a phone is a request with a token,
+        not a sign-in. The person's role must come out the same, and stay."""
+        agency = self.otp(self.carp_phone)
+        client = self.otp(self.client_phone)
+        staff = self.token(self.coordinator)
+        self.env.transaction.invalidate_ormcache()   # what a restart does to the groups the framework remembers
+        self.assertEqual(self.get("/agency/home", agency["access_token"]).status_code, 200)
+        self.assertEqual(self.get("/client/home", client["access_token"]).status_code, 200)
+        self.assertEqual(self.get("/staff/snapshot", staff).status_code, 200)
+        self.assertEqual(self.get("/me", agency["access_token"]).json()["role"], "agency")
+        self.assertEqual(self.get("/me", client["access_token"]).json()["role"], "client")
+        self.env.transaction.invalidate_ormcache()
+        again = self.post("/auth/refresh", {"refresh_token": client["refresh_token"]})
+        self.assertEqual(again.json()["me"]["role"], "client", again.text)
 
     def test_staff_are_refused_the_other_apps(self):
         token = self.token(self.coordinator)

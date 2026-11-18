@@ -156,7 +156,18 @@ class RvtApi(models.AbstractModel):
             rev.update({"note": "", "back": None, "sentBy": None, "apprBy": None, "relBy": None, "sentOn": None, "apprOn": None})
             rev["rc"] = [r for r in rev["rc"] if r["to"] == key]
         row.update({"revs": released, "st": "released", "ds": None, "q": [q for q in row["q"] if q["by"] == key]})
+        # the receiver's own link to the sheet: the same one sent on WhatsApp, which also records the opening.
+        # The page behind the client's link opens the drawing with it, since a browser has no PDF viewer of ours.
+        mine = self._screen_receipt(drawing, partners)
+        row["url"] = "/rvt/d/%s" % mine.token if mine else ""
         return row
+
+    def _screen_receipt(self, drawing, partners):
+        receipts = drawing.sudo().released_revision_id.receipt_ids
+        me = self.env.user.partner_id
+        firm = partners or me.commercial_partner_id      # an agency's receipt is its firm's
+        own = receipts.filtered(lambda r: r.partner_id == me)
+        return (own or receipts.filtered(lambda r: r.partner_id in firm or r.partner_id.commercial_partner_id in firm))[:1]
 
     def _screen_staff(self, rows):
         """The names behind answers, nothing more."""

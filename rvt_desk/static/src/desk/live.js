@@ -121,7 +121,12 @@ function etlReport(dev){const R=LIVE.etl;if(!isOwner()&&!DB.admin)return `<div c
   ${card('People to match','<span class="mu f12">from the sheet Revert fills in</span>',`<div class="kv"><div><span>People named in earlier entries</span><b>${R.people}</b></div><div><span>Matched through the sheet</span><b class="c-ok">${R.people-R.unmapped}</b></div><div><span>Kept as vendors, listed for review</span><b class="c-wait">${R.unmapped}</b></div><div><span>Entries without a person</span><b>${R.noperson}</b></div></div>`)}`}
 
 A.invite=function(v,el,dev){const [pid,i]=v.split('|'),p=pOf(pid),c=p.client.contacts[+i];if(!c)return;c.inv=true;sync('invite',{project:p.id,contact:c.id});toast(`Invitation to ${c.n} · ${sent()}.`)};
-A.copylink=function(){toast('The client link is switched on with the app.','wait')};
+/* the address a client contact opens without the app; it is made by the app's back end, when that is installed */
+A.copylink=function(v,el,dev){const p=pOf(v),c=p&&p.client.contacts[0];if(!c)return toast('Add a client contact with a mobile number first.','wait');
+ rpc('op',['client_link',{project:p.id,contact:c.id}]).then(r=>{const box=()=>{openSheet(dev,'linkbox',r);render()};
+   if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(r.url).then(()=>{toast(`Link copied for ${r.name}. It opens ${p.name} without the app.`);render()},box);else box()})
+  .catch(e=>{toast(e.message==='Unknown action.'?'The client link is switched on with the app.':e.message,'wait');render()})};
+SHEETS.linkbox=function(dev,s){return {title:'Link for '+s.name,sub:'Opens this project without the app or a sign-in',body:fld('Copy this address',`<input class="inp mono" readonly value="${esc(s.url)}" onfocus="this.select()">`),foot:Bt('Close','close',null,'ghost')}};
 
 /* onboarding: the wizard is the preview's; the result is written by the server in one go.
    A new project starts with the real principal, and with the person who sets it up on its team. */

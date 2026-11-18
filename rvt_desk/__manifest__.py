@@ -12,7 +12,7 @@ is onboarded here in a few guided steps.
 The screens follow the approved Release 1 preview. Other menus stay hidden
 for staff; administrators keep them.
 """,
-    "version": "20.0.1.3.0",
+    "version": "20.0.1.3.1",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Albatross",

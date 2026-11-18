@@ -35,8 +35,8 @@ Release 1 replaces Phases D and 1–9 below as the first thing built. Those phas
 - [ ] R1.4a (connector copied in 2026-11-19, see README; `web_auth_otp_login` is not used: it needs the Website app, the app's sign-in code goes through `rvt_notify` instead; still open: helper service on production and the number pairing 🧑) Vendor `open_whatsapp_connector` 20.0.95.0.0 and `web_auth_otp_login` from sudi_20; sidecar service on production; dedicated number paired (🧑)
 - [x] R1.4b (2026-11-19; push follows with R1.5a) `rvt_notify`: message texts en/gu/hi, MOM PDF and drawing sends, caps, delivery log, push (FCM)
 - [x] R1.5a (2026-11-19) `rvt_api`: staff login, phone + WhatsApp code, every desk function incl. `GET /projects/{id}/picture`, secure links
-- [ ] R1.5b Flutter app, staff: Today, Projects, onboarding, drawings, MOM capture with offline queue and per-party send, bills
-- [ ] R1.5c Flutter app, agency and client homes; client browser link; gu/hi/en
+- [x] R1.5b (2026-11-19; one Android phone, iOS build and push open; bills with R1.6) Flutter app, staff: Today, Projects, onboarding, drawings, MOM capture with offline queue and per-party send, bills
+- [x] R1.5c (2026-11-19; gu/hi wording to be checked by a native reader) Flutter app, agency and client homes; client browser link; gu/hi/en
 - [ ] R1.5d Exit: a MOM is captured on site and an agency receives its PDF on WhatsApp within a minute; a pilot client closes an item
 - [ ] R1.6 `rvt_bill`: ask, upload, review, payments against bills (no advances), billed-to default from project, agency status list, owner money view
 - [ ] R1.7 Rollout: store listing, privacy page, onboarding material gu/hi, production release, waves 0–5

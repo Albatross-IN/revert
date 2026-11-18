@@ -167,6 +167,15 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 - Never name a model method `_register` (the framework keeps a class attribute of that name: "'bool' object is not callable"); prefix helpers with `_rvt_`.
 - Tests that count rows (message log, sign-in codes, agencies by name) must ignore what the copy already holds: take a floor id in `setUp`, or select by id.
 - The dev server does not compress answers; nginx does on the server. The staff snapshot is about 120 KB plain on this copy.
+- **API: make the caller the transaction's user.** A FastAPI request starts as the public user. After the token is checked, `deps.caller` sets `env.transaction.default_env` to the caller's environment (what `request.update_env` does after a web sign-in). Without it, an x2many command towards `res.partner` or `res.users` (models with `_allow_sudo_commands = False`) is checked against the public user and refused ("Failed to write field ... Public user").
+- **Never ask a person's groups under their own rights.** `user.has_group()` on a non-sudo record of a portal-type user reads `all_group_ids` as that user, gets nothing, and the framework's groups cache keeps "no groups" for that user until the next restart, for every later check. `env.user` is safe (it is a sudo record); a browsed user is not: `user.sudo().has_group(...)`. Test: `test_a_token_after_a_restart_keeps_the_role`.
+- `env.transaction.invalidate_ormcache()` is how a test drops the ormcache in this version (`registry.clear_cache()` is gone).
+- **The app must send a stated `Content-Length`.** Dart's `HttpClient` sends a chunked body when the length is not set; the server behind a plain WSGI gateway reads it as empty ("The request is not complete").
+- **A web view keeps the app's own files.** The screens are served with `no-store` and each build has its own address for `app.js` and `styles.css` (`?v=`), or an updated app shows old screens for minutes.
+- Android's web view follows the phone's font-size setting (text zoom): fixed at 100 in the shell; the app's own "Large" text size scales the whole layout instead.
+- The system's fingerprint prompt cannot be screenshotted (`adb screencap` comes back empty): check for its window with `dumpsys window` instead.
+- Hand tests on the dev copy used the fixtures' sample people and numbers. The API tests now take those numbers over inside the test (`ApiCase._own_the_numbers`), so they pass on any copy.
+- The web view of a debug build can be driven over USB: `adb forward tcp:9555 localabstract:webview_devtools_remote_<pid>` and the Chrome DevTools protocol.
 
 ## 7. Glossary
 | Term | Meaning |
