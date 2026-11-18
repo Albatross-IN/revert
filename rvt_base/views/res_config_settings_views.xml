@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_rvt" model="ir.ui.view">
+        <field name="name">res.config.settings.form.rvt</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority">5</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Revert" string="Revert" name="rvt_base" groups="rvt_base.group_rvt_owner,base.group_system">
+                    <block title="Drawings and points" name="rvt_rules">
+                        <setting string="Release needs approval"
+                                 help="A drawing goes out only after the principal consultant approves it. When off, the designer releases directly.">
+                            <field name="rvt_release_needs_approval"/>
+                        </setting>
+                        <setting string="Confirm client points first"
+                                 help="A point written for the client on site reaches the client only after the office confirms it.">
+                            <field name="rvt_client_points_need_confirmation"/>
+                        </setting>
+                    </block>
+                    <block title="Day limits of the project picture" name="rvt_limits">
+                        <setting string="Drawing not opened" help="A released drawing that an agency has not opened becomes a blocker after this many days.">
+                            <field name="rvt_limit_not_opened_days" class="oe_inline"/> days
+                        </setting>
+                        <setting string="Question unanswered" help="A question on a drawing becomes a blocker after this many working days.">
+                            <field name="rvt_limit_question_days" class="oe_inline"/> working days
+                        </setting>
+                        <setting string="Bill not reviewed" help="A submitted bill becomes a blocker after this many days.">
+                            <field name="rvt_limit_bill_review_days" class="oe_inline"/> days
+                        </setting>
+                        <setting string="Project stuck" help="A project shows as stuck when any blocker is older than this.">
+                            <field name="rvt_limit_stuck_days" class="oe_inline"/> days
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="rvt_settings_action" model="ir.actions.act_window">
+        <field name="name">Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="context">{'module': 'rvt_base', 'bin_size': False}</field>
+    </record>
+</odoo>

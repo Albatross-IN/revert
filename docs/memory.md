@@ -90,6 +90,11 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 - Modules verified present in this build (2026-10-31): `project`, `project_enterprise`, `web_gantt`, `web_map`, `worksheet`, `planning`, `documents`, `documents_project`, `sign`, `whatsapp`, `gamification`, `purchase`, `project_purchase`, `sale_project`, `hr_expense`, `l10n_in`, `l10n_account_withholding_tax`, `knowledge`, `approvals`, `voip`. **Absent:** `industry_fsm`. Translations `gu.po` and `hi.po` exist in core modules.
 - Vendor sources: `fastapi` + `endpoint_route_handler` from `/opt/erp/custom/marut_20`; `identity*`, `web_theme_glass`, `web_glass_workspace`, `open_whatsapp_connector` from `/opt/projects/aic_apps-20.0`; `queue_job` from marut_20 (with the Py3.14 stack-leak fix 1896eda).
 
+### Om's laptop (2026-11-19)
+- Odoo 20 at `/opt/odoo20/odoo20`, enterprise `/opt/odoo20/ent`, venv `/opt/odoo20/odoo20-venv` (Python 3.12), repo at `/opt/odoo20/custom/revert_20`, app repo at `/opt/odoo20/custom/revert_fe`. `source /opt/odoo20/tools/revert_env.sh` sets the variables of implementation_plan_r1 §2 and gives `rv` = `tools/dev.sh` with the data folder `/opt/odoo20/revert-dev-data`.
+- `revert20` on this laptop is a neutralised clone of the local production copy of **23 Oct 2026** (`revert20_oct_dev`: 18 projects, 1,202 tasks, 741 MOM entries), not the 17 Nov backup of §3, because the nightly backup cannot be fetched from this machine. Counts in exit checks are therefore those of this copy. Its admin password is reset to a local one for browser tests.
+- Tests: `createdb -T revert20 revert20_test`, copy the filestore folder too, then `REVERT_DB=revert20_test REVERT_PORT=8194 rv -u <module> --test-enable --test-tags /<module> --stop-after-init`.
+
 ## 6. Build status (2026-10-31)
 - Documents only: prd, questionnaire, architecture, system_design, api_design, mobile_app_plan, design, rules, memory, tasks, deployment_plan, deployment (dev as-built). No module, no database, no app.
 - Waiting on the owner / principal consultant: questionnaire answers (★ A1, A2, A3, C1, D2, E1, E2, F1, J2, K4 gate the build), attachments (measurement template, quotation formats, sample MOM and drawing set, agency list, brand).
@@ -117,6 +122,15 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 - Production code was compared with branch `20.0` file by file: identical. The server's `REVISION` file names commit `f3c3d9f`, which is not in the repository (an old hash); correct it at the next release.
 - Live figures (copy of 2026-11-17): 10 staff users, 19 active projects, 1,219 tasks, 925 MOM entries of which 151 open, about 40 "Related To" people with some duplicate spellings.
 - Staff create top-level tasks named by date ("17/11/2025", "MOM master") only to hang MOM entries on; the new visit model removes that need.
+
+### Update 2026-11-19
+- Preview v4 approved by the project owner; development started. Phase log in implementation_plan_r1.md §6; additions of the day in its §8.
+- P1 `rvt_base` done.
+
+### Traps found while building Release 1
+- Odoo 20: an `ir.actions.act_window` has no `target="inline"` any more (current / new / fullscreen / main).
+- A `.po` file must not repeat a `msgid`: when two records share a source word ("AC" as name and as short name), list both `#:` references on one entry.
+- Boolean settings that default to on: `set_bool(key, False)` stores "False", so `get_bool(key, True)` reads the choice back correctly; read them through `rvt.config` only.
 
 ## 7. Glossary
 | Term | Meaning |

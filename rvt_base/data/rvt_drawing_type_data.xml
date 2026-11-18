@@ -1,0 +1,260 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- docs/masters_draft.md §4: the general set (no trade) and the set per trade. The due offsets are a first proposal. -->
+    <record id="drawing_type_ml" model="rvt.drawing.type">
+        <field name="code">ML</field>
+        <field name="name">Measurement / existing layout</field>
+        <field name="for_client" eval="False"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">3</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="drawing_type_fl" model="rvt.drawing.type">
+        <field name="code">FL</field>
+        <field name="name">Furniture layout</field>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">7</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="drawing_type_we" model="rvt.drawing.type">
+        <field name="code">WE</field>
+        <field name="name">Wall elevations</field>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">12</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="drawing_type_3d" model="rvt.drawing.type">
+        <field name="code">3D</field>
+        <field name="name">Views / concept</field>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">14</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="drawing_type_ds" model="rvt.drawing.type">
+        <field name="code">DS</field>
+        <field name="name">Door and window schedule</field>
+        <field name="for_client" eval="False"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">16</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="drawing_type_dm" model="rvt.drawing.type">
+        <field name="code">DM</field>
+        <field name="name">Demolition and new wall layout</field>
+        <field name="trade_id" ref="trade_civ"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">6</field>
+        <field name="sequence">60</field>
+    </record>
+    <record id="drawing_type_wp" model="rvt.drawing.type">
+        <field name="code">WP</field>
+        <field name="name">Water-proofing areas</field>
+        <field name="trade_id" ref="trade_civ"/>
+        <field name="for_client" eval="False"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">8</field>
+        <field name="sequence">70</field>
+    </record>
+    <record id="drawing_type_flr" model="rvt.drawing.type">
+        <field name="code">FLR</field>
+        <field name="name">Flooring layout and pattern</field>
+        <field name="trade_id" ref="trade_tile"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">12</field>
+        <field name="sequence">80</field>
+    </record>
+    <record id="drawing_type_wt" model="rvt.drawing.type">
+        <field name="code">WT</field>
+        <field name="name">Wall tile layout</field>
+        <field name="trade_id" ref="trade_tile"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">14</field>
+        <field name="sequence">90</field>
+    </record>
+    <record id="drawing_type_st" model="rvt.drawing.type">
+        <field name="code">ST</field>
+        <field name="name">Stone details</field>
+        <field name="trade_id" ref="trade_stone"/>
+        <field name="for_client" eval="False"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">15</field>
+        <field name="sequence">100</field>
+    </record>
+    <record id="drawing_type_el" model="rvt.drawing.type">
+        <field name="code">EL</field>
+        <field name="name">Electrical layout</field>
+        <field name="trade_id" ref="trade_elec"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">9</field>
+        <field name="sequence">110</field>
+    </record>
+    <record id="drawing_type_sb" model="rvt.drawing.type">
+        <field name="code">SB</field>
+        <field name="name">Switchboard details</field>
+        <field name="trade_id" ref="trade_elec"/>
+        <field name="for_client" eval="False"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">11</field>
+        <field name="sequence">120</field>
+    </record>
+    <record id="drawing_type_lt" model="rvt.drawing.type">
+        <field name="code">LT</field>
+        <field name="name">Lighting layout</field>
+        <field name="trade_id" ref="trade_elec"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">12</field>
+        <field name="sequence">130</field>
+    </record>
+    <record id="drawing_type_lc" model="rvt.drawing.type">
+        <field name="code">LC</field>
+        <field name="name">Looping / circuit layout</field>
+        <field name="trade_id" ref="trade_elec"/>
+        <field name="for_client" eval="False"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">13</field>
+        <field name="sequence">140</field>
+    </record>
+    <record id="drawing_type_pl" model="rvt.drawing.type">
+        <field name="code">PL</field>
+        <field name="name">Plumbing layout</field>
+        <field name="trade_id" ref="trade_plmb"/>
+        <field name="for_client" eval="False"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">9</field>
+        <field name="sequence">150</field>
+    </record>
+    <record id="drawing_type_te" model="rvt.drawing.type">
+        <field name="code">TE</field>
+        <field name="name">Toilet elevations with fitting heights</field>
+        <field name="trade_id" ref="trade_plmb"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">13</field>
+        <field name="sequence">160</field>
+    </record>
+    <record id="drawing_type_fc" model="rvt.drawing.type">
+        <field name="code">FC</field>
+        <field name="name">False ceiling layout</field>
+        <field name="trade_id" ref="trade_pop"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">11</field>
+        <field name="sequence">170</field>
+    </record>
+    <record id="drawing_type_fcs" model="rvt.drawing.type">
+        <field name="code">FCS</field>
+        <field name="name">Ceiling sections and details</field>
+        <field name="trade_id" ref="trade_pop"/>
+        <field name="for_client" eval="False"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">14</field>
+        <field name="sequence">180</field>
+    </record>
+    <record id="drawing_type_cd" model="rvt.drawing.type">
+        <field name="code">CD</field>
+        <field name="name">Furniture details</field>
+        <field name="trade_id" ref="trade_carp"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">16</field>
+        <field name="sequence">190</field>
+    </record>
+    <record id="drawing_type_kd" model="rvt.drawing.type">
+        <field name="code">KD</field>
+        <field name="name">Kitchen details</field>
+        <field name="trade_id" ref="trade_carp"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">18</field>
+        <field name="sequence">200</field>
+    </record>
+    <record id="drawing_type_dd" model="rvt.drawing.type">
+        <field name="code">DD</field>
+        <field name="name">Door details</field>
+        <field name="trade_id" ref="trade_carp"/>
+        <field name="for_client" eval="False"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">18</field>
+        <field name="sequence">210</field>
+    </record>
+    <record id="drawing_type_cs" model="rvt.drawing.type">
+        <field name="code">CS</field>
+        <field name="name">Colour and finish schedule</field>
+        <field name="trade_id" ref="trade_col"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">22</field>
+        <field name="sequence">220</field>
+    </record>
+    <record id="drawing_type_gl" model="rvt.drawing.type">
+        <field name="code">GL</field>
+        <field name="name">Glass partition and window details</field>
+        <field name="trade_id" ref="trade_alu"/>
+        <field name="for_client" eval="False"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">16</field>
+        <field name="sequence">230</field>
+    </record>
+    <record id="drawing_type_fb" model="rvt.drawing.type">
+        <field name="code">FB</field>
+        <field name="name">Fabrication details</field>
+        <field name="trade_id" ref="trade_fab"/>
+        <field name="for_client" eval="False"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">16</field>
+        <field name="sequence">240</field>
+    </record>
+    <record id="drawing_type_ac" model="rvt.drawing.type">
+        <field name="code">AC</field>
+        <field name="name">AC layout</field>
+        <field name="trade_id" ref="trade_ac"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">10</field>
+        <field name="sequence">250</field>
+    </record>
+    <record id="drawing_type_av" model="rvt.drawing.type">
+        <field name="code">AV</field>
+        <field name="name">AV, data and intercom point layout</field>
+        <field name="trade_id" ref="trade_av"/>
+        <field name="for_client" eval="False"/>
+        <field name="needs_client_approval" eval="False"/>
+        <field name="due_offset">12</field>
+        <field name="sequence">260</field>
+    </record>
+    <record id="drawing_type_sf" model="rvt.drawing.type">
+        <field name="code">SF</field>
+        <field name="name">Loose furniture selection sheet</field>
+        <field name="trade_id" ref="trade_sf"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">24</field>
+        <field name="sequence">270</field>
+    </record>
+    <record id="drawing_type_sfn" model="rvt.drawing.type">
+        <field name="code">SFN</field>
+        <field name="name">Curtain and fabric schedule</field>
+        <field name="trade_id" ref="trade_soft"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">26</field>
+        <field name="sequence">280</field>
+    </record>
+    <record id="drawing_type_ls" model="rvt.drawing.type">
+        <field name="code">LS</field>
+        <field name="name">Landscape layout</field>
+        <field name="trade_id" ref="trade_land"/>
+        <field name="for_client" eval="True"/>
+        <field name="needs_client_approval" eval="True"/>
+        <field name="due_offset">20</field>
+        <field name="sequence">290</field>
+    </record>
+</odoo>

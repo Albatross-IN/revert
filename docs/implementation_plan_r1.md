@@ -258,7 +258,7 @@ Repository `revert_fe` (new). Stack and structure as in [mobile_app_plan.md](mob
 | Phase | Finished | Commit | Differences from the plan · notes for the next phase |
 |---|---|---|---|
 | P0 | partly, 2026-11-18 | see git log | P0.2 screens done (prototype/). P0.1 and P0.3 open |
-| P1 | | | |
+| P1 | 2026-11-19 | `[P1] rvt_base` | Built as planned. Added: `rvt.trade.short_name` (grid column heading) and `covers`; entity-type marks `is_whole_site` and `is_extra`; the extras of masters_draft §3 (Terrace, Home theatre, Study, Guest room, Store, Parking, Lift) and "Other room" as entity types with **assumed** trades; Garden also carries Landscape. Languages gu_IN and hi_IN are activated by the module; trade names are translated in `i18n/gu.po`, `hi.po`. Settings are read through `env['rvt.config'].get()` (no access to system parameters needed). `res.users.rvt_roles()` names a person principal only when the role was given by name (the owner group implies the principal group for access). **For P2:** staff need `project` access through `group_rvt_staff`; `preset.rvt_entities()` returns the entity proposal. Dev database on Om's laptop: see memory.md §5 |
 | P2 | | | |
 | P3 | | | |
 | P4 | | | |
@@ -273,3 +273,13 @@ Repository `revert_fe` (new). Stack and structure as in [mobile_app_plan.md](mob
 ## 7. Order and time
 
 P1 → P2 → P3 → P4 → P5 → P6 → P7 → P8 → P9 → P10 → P11, about 18.5 working weeks in a single stream. P1 and P2 need nothing but the corrected master lists and can start now. The screens (P0.2) are needed before P3. If a second person is free, P0.2 can run beside P1–P2, and P8–P9 can start as soon as P7's sign-in and the first endpoints exist.
+
+## 8. Additions agreed with the project owner on 2026-11-19
+
+| # | Addition | Lands in |
+|---|---|---|
+| 1 | **The approved preview is the layout contract.** `revert_fe/design/Revert_Release1_Preview.html` (v4, "ink and gold on glass", approved 2026-11-19) replaces `prototype/index.html` as the reference for the desk and the app: same screens, colours, type and motion. Where the preview and §5 differ on layout, the preview wins; on rules and data, §5 and phase1_adoption.md win. | P3, P8, P9 |
+| 2 | **Profile page in the app** for every role: notification switches, app lock with fingerprint or face, language, light / dark, text size, offline data and outbox, about, sign out. | P8, P9 (+ `/me/preferences` in P7) |
+| 3 | **The app resumes where it was closed** (route, tab, scroll position, unsent drafts), as the preview does. | P8 |
+| 4 | WhatsApp through `open_whatsapp_connector` and the API through FastAPI are confirmed as planned (P6, P7). | — |
+
