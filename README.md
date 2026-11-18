@@ -13,6 +13,7 @@ Status: **Release 1 is being built on branch `20.0-release1`** (started 2026-11-
 | `rvt_drawing` | Drawing register, revisions, approval, release with receivers, opened tracking by link, questions, the client's approval |
 | `rvt_mom` | Site visits and points (one record for MOM lines, office-raised items and client items), per-party PDFs, the move of the earlier MOM entries (`tools/etl_mom.py`) |
 | `rvt_notify` | The one sender: message texts in English, Gujarati and Hindi, delivery log, reminders, invitations; never sends from a test copy |
+| `rvt_api` | The app's back end at `/api/rvt/v1` (FastAPI): sign-in for staff, agencies and clients, the staff snapshot and operations, agency and client homes, files, preferences, push |
 | `rvt_desk` | The single window for staff at `/rvt/desk`, and the log-in page. It runs the screen code of the approved preview (`revert_fe/design`) on live data: see `rvt_desk/tools/sync_from_preview.py` |
 
 ## Shared modules copied in (not edited here)
@@ -24,8 +25,9 @@ Status: **Release 1 is being built on branch `20.0-release1`** (started 2026-11-
 | `web_glass_workspace` | 20.0.1.0.0 | aic_apps `20.0-glass` @ 53b6989 (`marut_loader/`) | Split view and left pane of the standard back office |
 
 | `open_whatsapp_connector` | 20.0.95.0.0 | synapse_be @ 85705e5 (the tracked files; the helper service's `node_modules` are installed on the server by `sidecar/setup.sh`) | WhatsApp through a paired number |
+| `fastapi`, `endpoint_route_handler` | 20.0.1.1.0, 20.0.1.2.0 | sudi_20 @ 818c723 (the in-house port of the OCA modules to version 20) | The API framework |
 
-Fix these in their home repository and copy again; record the new commit here.
+Fix these in their home repository and copy again; record the new commit here. Python packages they need: `requirements.txt`.
 
 | Document | For |
 |---|---|

@@ -44,7 +44,8 @@ class TestDesk(RvtCommon):
         self.assertEqual((me["n"], me["full"], me["roles"]), ("Meera", "Meera Joshi", ["coordinator"]))
         principal = next(u for u in snap["staff"] if u["id"] == "s%s" % self.principal.id)
         self.assertEqual((principal["n"], principal["roles"]), ("Pranav", ["owner", "principal"]))
-        agency = next(a for a in snap["agencies"] if a["n"] == "Jay Electric")
+        agency = next(a for a in snap["agencies"] if a["id"] == "a%s" % self.ag_elec.id)
+        self.assertEqual(agency["n"], "Jay Electric")
         self.assertEqual(agency["tr"], ["elec"])
         self.assertEqual([p["n"] for p in agency["people"]][:2], ["Jaybhai Solanki", "Vipul (site)"])
 

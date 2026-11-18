@@ -55,7 +55,11 @@ class RvtDesk(models.AbstractModel):
         last = {}
         for visit in visits:
             last[visit.project_id.id] = max(last.get(visit.project_id.id, 0), visit.number)
-        points = env["rvt.point"].sudo().search([("project_id", "in", projects.ids)], order="project_id, number, id")
+        domain = [("project_id", "in", projects.ids)]
+        if self.env.context.get("rvt_app"):
+            # the phone keeps what is open and what was closed in the last six weeks
+            domain += ["|", ("state", "=", "open"), ("closed_on", ">", today - timedelta(days=42))]
+        points = env["rvt.point"].sudo().search(domain, order="project_id, number, id")
         data["points"] = [self._point_row(p, off) for p in points]
         moved = {task.id: count for task, count in env["rvt.point"].sudo()._read_group(
             [("project_id", "in", projects.ids), ("legacy_task_id", "!=", False)], ["legacy_task_id"], ["__count"])}

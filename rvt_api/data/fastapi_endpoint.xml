@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="fastapi_endpoint_rvt" model="fastapi.endpoint">
+        <field name="name">Revert app API</field>
+        <field name="description">Staff, agencies and clients of Revert Architects. Used by the Revert app.</field>
+        <field name="app">rvt</field>
+        <field name="root_path">/api/rvt/v1</field>
+        <!-- The app starts as the public user; each request then becomes the signed-in person,
+             without elevated rights, so the access rules apply. -->
+        <field name="user_id" ref="base.public_user"/>
+        <field name="save_http_session" eval="False"/>
+    </record>
+</odoo>

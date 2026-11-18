@@ -36,8 +36,13 @@ class TestNotify(MomCommon):
         self.patch(Notify, "_wa_send_file", lambda self_, account, number, text, name, data, mimetype="application/pdf":
                    self.sent.append(("file", number, text, name, data[:4])) or True)
 
+    def setUp(self):
+        super().setUp()
+        # the copy has its own log rows: only what this test writes counts
+        self.log_floor = self.Log.search([], order="id desc", limit=1).id
+
     def logs(self, event):
-        return self.Log.search([("event", "=", event)], order="id")
+        return self.Log.search([("event", "=", event), ("id", ">", self.log_floor)], order="id")
 
     # ---- helpers ------------------------------------------------------
     def test_numbers_and_filling(self):

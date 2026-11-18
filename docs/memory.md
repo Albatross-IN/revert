@@ -125,7 +125,7 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 
 ### Update 2026-11-19
 - Preview v4 approved by the project owner; development started. Phase log in implementation_plan_r1.md §6; additions of the day in its §8.
-- P1 `rvt_base`, P2 `rvt_project`, P3 `rvt_desk`, P4 `rvt_drawing`, P5 `rvt_mom` and P6 `rvt_notify` done (the earlier MOM is moved on the dev copy; its screens are still on). Local test logins on the dev copy (never on production): `meera` (coordinator), plus local passwords on two existing users for browser checks.
+- P1 `rvt_base`, P2 `rvt_project`, P3 `rvt_desk`, P4 `rvt_drawing`, P5 `rvt_mom`, P6 `rvt_notify` and P7 `rvt_api` done (the earlier MOM is moved on the dev copy; its screens are still on). Local test logins on the dev copy (never on production): `meera` (coordinator), plus local passwords on two existing users for browser checks.
 
 ### Traps found while building Release 1
 - Odoo 20: an `ir.actions.act_window` has no `target="inline"` any more (current / new / fullscreen / main).
@@ -163,6 +163,10 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 - A contact created under a firm starts in the database's default language. For messages take Gujarati or Hindi from the person, else from the firm (`rvt.notify._lang`).
 - A keyword argument named like a method's own parameter (`partner=` passed through `**values` into `render(event, record, partner, ...)`) raises "multiple values": keep pass-through values in one dict.
 - The WhatsApp connector's own copy in sudi_20 carries Sudi's template data; the clean copy of the same version is in synapse_be.
+
+- Never name a model method `_register` (the framework keeps a class attribute of that name: "'bool' object is not callable"); prefix helpers with `_rvt_`.
+- Tests that count rows (message log, sign-in codes, agencies by name) must ignore what the copy already holds: take a floor id in `setUp`, or select by id.
+- The dev server does not compress answers; nginx does on the server. The staff snapshot is about 120 KB plain on this copy.
 
 ## 7. Glossary
 | Term | Meaning |
