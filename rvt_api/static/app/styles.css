@@ -545,4 +545,4 @@ html[data-nof~="bills"] [data-a="qgo"][data-v="bill"]{display:none!important}
 html.web #app{max-width:430px;margin-inline:auto}
 .pdft.web{border:0;background:none;cursor:pointer;overflow:visible}.pdft.web .paper{pointer-events:none}
 .pdft.web .zm{position:static;width:max-content;margin:10px auto 2px}
-button.docrow{width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer}
+button.docrow{width:100%;text-align:left;font:inherit;font-size:13px;color:inherit;cursor:pointer;border:0}

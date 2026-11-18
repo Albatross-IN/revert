@@ -49,3 +49,5 @@ Fix these in their home repository and copy again; record the new commit here. P
 | [docs/deployment_plan.md](docs/deployment_plan.md) · [docs/deployment.md](docs/deployment.md) | How prod will be built · what exists today |
 
 Planned modules (all `rvt_*`): `rvt_base`, `rvt_site`, `rvt_crm`, `rvt_design`, `rvt_agency`, `rvt_execution`, `rvt_visit`, `rvt_mom`, `rvt_finance`, `rvt_game`, `rvt_notify`, `rvt_office`, `rvt_api`, plus vendored `fastapi`, `endpoint_route_handler`, `queue_job`, `identity*`, `web_theme_glass`, `web_glass_workspace`.
+
+Going live: `docs/release1_rollout.md` (the run sheet), `docs/store_listing.md`, `docs/privacy_page.md`, `docs/guides/` (one page per audience; `tools/guides_pdf.py` prints them).
