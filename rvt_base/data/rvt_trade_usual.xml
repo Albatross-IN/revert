@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The trades pre-ticked in the trades step of onboarding. Set once; changes made in Setup are kept. -->
+    <function model="rvt.trade" name="_rvt_init_usual" eval="(['civ', 'tile', 'elec', 'plmb', 'pop', 'carp', 'col'],)"/>
+</odoo>

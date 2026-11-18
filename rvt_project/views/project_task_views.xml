@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_task_view_form_rvt" model="ir.ui.view">
+        <field name="name">project.task.form.rvt</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Revert" name="rvt" groups="rvt_base.group_rvt_staff,base.group_system"
+                      invisible="not rvt_kind">
+                    <group>
+                        <group>
+                            <field name="rvt_kind" readonly="1"/>
+                            <field name="rvt_entity_type_id" invisible="rvt_kind != 'entity'"/>
+                            <field name="rvt_entity_state" invisible="rvt_kind != 'entity'"/>
+                            <field name="rvt_trade_id" invisible="rvt_kind != 'work'" readonly="1"/>
+                            <field name="rvt_agency_id" invisible="rvt_kind != 'work'" context="{'default_rvt_is_agency': True}"/>
+                        </group>
+                        <group invisible="rvt_kind != 'work'">
+                            <field name="rvt_work_state"/>
+                            <field name="rvt_wait_cause" invisible="rvt_work_state != 'waiting'" required="rvt_work_state == 'waiting'"/>
+                            <field name="rvt_wait_trade_id" invisible="rvt_work_state != 'waiting' or rvt_wait_cause != 'trade'"
+                                   required="rvt_work_state == 'waiting' and rvt_wait_cause == 'trade'"/>
+                            <field name="rvt_wait_note" invisible="rvt_work_state != 'waiting'"/>
+                            <field name="rvt_wait_since" invisible="rvt_work_state != 'waiting'" readonly="1"/>
+                            <field name="rvt_expected_finish"/>
+                            <field name="rvt_started_on" readonly="1"/>
+                            <field name="rvt_done_on" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="rvt_line_ids" invisible="rvt_kind != 'entity'" readonly="1">
+                        <list>
+                            <field name="rvt_trade_id"/>
+                            <field name="rvt_agency_id"/>
+                            <field name="rvt_work_state" widget="badge"
+                                   decoration-success="rvt_work_state == 'done'" decoration-info="rvt_work_state == 'working'"
+                                   decoration-warning="rvt_work_state == 'waiting'"/>
+                            <field name="rvt_wait_cause"/>
+                            <field name="rvt_expected_finish"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="project_task_view_search_rvt" model="ir.ui.view">
+        <field name="name">project.task.search.rvt</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_search_form_base"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="rvt_trade_id"/>
+                <field name="rvt_agency_id"/>
+                <filter name="rvt_entities" string="Rooms and zones" domain="[('rvt_kind', '=', 'entity')]"/>
+                <filter name="rvt_lines" string="Work lines" domain="[('rvt_kind', '=', 'work')]"/>
+                <filter name="rvt_hand_made" string="Made by hand" domain="[('rvt_kind', '=', False)]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

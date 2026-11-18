@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Staff work on projects and tasks; what they see is narrowed by the team rules in ir.access.csv. -->
+    <record id="rvt_base.group_rvt_staff" model="res.groups">
+        <field name="implied_ids" eval="[(4, ref('project.group_project_user'))]"/>
+    </record>
+</odoo>

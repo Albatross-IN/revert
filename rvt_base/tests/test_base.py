@@ -125,7 +125,7 @@ class TestRvtBase(TransactionCase):
     # ---- agencies -----------------------------------------------------
     def test_agency_partner(self):
         agency = self.env["res.partner"].create({
-            "name": "Mahadev Furniture", "is_company": True, "rvt_is_agency": True,
+            "name": "Mahadev Furniture", "rvt_is_agency": True,
             "rvt_trade_ids": [(6, 0, self.env.ref("rvt_base.trade_carp").ids)]})
         person = self.env["res.partner"].create({"name": "Bherubhai", "parent_id": agency.id, "phone": "+91 98244 18830"})
         self.assertEqual(agency.rvt_trade_ids.code, "carp")

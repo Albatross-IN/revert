@@ -12,6 +12,7 @@
                 <field name="name"/>
                 <field name="short_name"/>
                 <field name="code"/>
+                <field name="is_usual"/>
                 <field name="covers" optional="show"/>
                 <field name="active" widget="boolean_toggle" optional="hide"/>
             </list>

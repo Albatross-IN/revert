@@ -125,12 +125,19 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 
 ### Update 2026-11-19
 - Preview v4 approved by the project owner; development started. Phase log in implementation_plan_r1.md §6; additions of the day in its §8.
-- P1 `rvt_base` done.
+- P1 `rvt_base` and P2 `rvt_project` done.
 
 ### Traps found while building Release 1
 - Odoo 20: an `ir.actions.act_window` has no `target="inline"` any more (current / new / fullscreen / main).
 - A `.po` file must not repeat a `msgid`: when two records share a source word ("AC" as name and as short name), list both `#:` references on one entry.
 - Boolean settings that default to on: `set_bool(key, False)` stores "False", so `get_bool(key, True)` reads the choice back correctly; read them through `rvt.config` only.
+
+- Odoo 20: `res.partner.is_company` is computed (own commercial entity **and** a VAT number), so an agency without GST is not a "company"; its people are still its child contacts and `commercial_partner_id` still points at the firm.
+- Odoo 20: outside (portal) users read only whitelisted fields of `project.task`; extend the `TASK_PORTAL_READABLE_FIELDS` property for every `rvt_` field an agency must read.
+- A search under an access rule that reads a **stored computed** field does not recompute that field when it is still pending in the same transaction (seen with `project.rvt_agency_ids`). After changing what it depends on, call `flush_recordset([field])` (see `_rvt_flush_agency_access`).
+- Access rules are evaluated once per user and cached: in tests, give a user its partner at creation, do not swap it afterwards.
+- Never type a `pkill -f <pattern>` whose pattern also appears in the command line that runs it: it kills its own shell.
+- Tasks created in code take the current user as assignee unless `user_ids` is passed as False.
 
 ## 7. Glossary
 | Term | Meaning |
