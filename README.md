@@ -9,6 +9,7 @@ Status: **discovery and design, 2026-10-31; amended 2026-11-17**. No platform mo
 | [docs/prd.md](docs/prd.md) | The business, the brief processed into a lifecycle, scope v1, gaps, references |
 | [docs/phase1_adoption.md](docs/phase1_adoption.md) | **Release 1**: what is built first and how it is rolled out (2026-11-17, after client feedback) |
 | [docs/implementation_plan_r1.md](docs/implementation_plan_r1.md) | **Release 1 build plan**, phase by phase (start here to build) |
+| [prototype/index.html](prototype/index.html) | Clickable screens of Release 1 (open in a browser) |
 | [docs/masters_draft.md](docs/masters_draft.md) | Draft trades, room types, site presets and standard drawing sets, for Revert to correct |
 | [docs/questionnaire.md](docs/questionnaire.md) | Questions for the principal consultant; ★ items gate the build |
 | [docs/architecture.md](docs/architecture.md) | Decisions, module map, Odoo mapping, environments |

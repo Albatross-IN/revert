@@ -78,7 +78,8 @@ Estimates are working weeks for one developer and are estimates, not measurement
 | | |
 |---|---|
 | Done 2026-11-18 | Repo checkout at `/opt/erp/custom/revert`; website work committed on `20.0`; branch `20.0-release1`; `tools/dev.sh`, `tools/dev_db.sh`; dev database `revert20`; [masters_draft.md](masters_draft.md) |
-| Open | **P0.1** Revert corrects masters_draft.md. **P0.2** Clickable screens (R1.0) for onboarding, Today, project picture, MOM capture, release, bill, agency and client homes: needed before P3. **P0.3** Shared modules copied into the repo from their home repositories: `web_theme_glass`, `web_glass_workspace`, `identity` (needed for P3); `open_whatsapp_connector` 20.0.95.0.0, `web_auth_otp_login` (P6); `fastapi`, `endpoint_route_handler` (P7). They are copied whole and not edited here. |
+| Done 2026-11-18 | **P0.2** Clickable screens: `prototype/index.html` (open the file in a browser). One page, invented data, every flow of Release 1 across desk, staff phone, agency phone and client phone on one shared record set; its `picture()` function is a working reference for `rvt_picture()` in P3. Awaiting Revert's comments |
+| Open | **P0.1** Revert corrects masters_draft.md. **P0.3** Shared modules copied into the repo from their home repositories: `web_theme_glass`, `web_glass_workspace`, `identity` (needed for P3); `open_whatsapp_connector` 20.0.95.0.0, `web_auth_otp_login` (P6); `fastapi`, `endpoint_route_handler` (P7). They are copied whole and not edited here. |
 
 ### P1 — `rvt_base`: roles and master lists · 1 week · tasks R1.1a
 **Goal:** the lists onboarding needs exist, and each present user has a role.
@@ -256,7 +257,7 @@ Repository `revert_fe` (new). Stack and structure as in [mobile_app_plan.md](mob
 
 | Phase | Finished | Commit | Differences from the plan · notes for the next phase |
 |---|---|---|---|
-| P0 | partly, 2026-11-18 | see git log | P0.1–P0.3 open |
+| P0 | partly, 2026-11-18 | see git log | P0.2 screens done (prototype/). P0.1 and P0.3 open |
 | P1 | | | |
 | P2 | | | |
 | P3 | | | |

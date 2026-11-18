@@ -20,7 +20,7 @@ Release 1 replaces Phases D and 1–9 below as the first thing built. Those phas
 - [x] R1.A Review of phase1_adoption.md v0.1 by the project owner; answers to its 11 questions — 2026-11-18
 - [x] R1.B v0.4 approved by the project owner — 2026-11-18
 - [ ] R1.C 🧑 Revert corrects [masters_draft.md](masters_draft.md); pilot sheet and the person → trade / agency / number sheet; WhatsApp SIM
-- [ ] R1.0 Design: clickable screens for onboarding, Today, project panel, MOM capture, release, bill, agency and client homes; en/gu/hi wording; sign-off
+- [ ] R1.0 (prototype built 2026-11-18 in `prototype/index.html`; sign-off by Revert open) Design: clickable screens for onboarding, Today, project panel, MOM capture, release, bill, agency and client homes; en/gu/hi wording; sign-off
 - [ ] R1.1a `rvt_base`: roles (owner, principal, designer, coordinator, agency, client), trades, settings ("release needs approval", "client points need confirmation")
 - [ ] R1.1b `rvt_project`: onboarding (project, team with several coordinators, site configuration from presets, trades and agencies, entity × trade grid, drawings from standard sets), one `project.task` per entity with one work line per trade (state on the line, entity state computed), grid view, access from project membership; standard drawing sets per trade and project type
 - [ ] R1.1c `rvt_desk`: single window (Today, Projects panel, Setup), Glass + Identity at `/office`, other menus hidden for staff (sfj_admin pattern)
