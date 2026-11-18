@@ -32,8 +32,8 @@ Release 1 replaces Phases D and 1–9 below as the first thing built. Those phas
 - [x] R1.3a (2026-11-19) `rvt_mom`: points and visits (one record type for MOM points and office-raised items), numbering, close with note/photo, PDFs (visit, per party, open points)
 - [x] R1.3b (2026-11-19; "Remind on WhatsApp" arrives with R1.4) Desk: MOM section and project MOM tab with the present dashboard's figures; picture rule B7 and points progress; "Remind on WhatsApp" per item with R1.4
 - [ ] R1.3c (move built and run on the dev copy 2026-11-19: 741 entries, every project equal, second run moves nothing; switching the present MOM screens off waits for the owner's sign-off and is one command, `SWITCH_OFF=1`) ETL of existing MOM entries (`revert_customizations` activities) into points, with a verification report (counts, photos, visit numbers per project); dry run on `revert20`; present MOM screens off; supersedes task 6.6
-- [ ] R1.4a Vendor `open_whatsapp_connector` 20.0.95.0.0 and `web_auth_otp_login` from sudi_20; sidecar service on production; dedicated number paired (🧑)
-- [ ] R1.4b `rvt_notify`: message texts en/gu/hi, MOM PDF and drawing sends, caps, delivery log, push (FCM)
+- [ ] R1.4a (connector copied in 2026-11-19, see README; `web_auth_otp_login` is not used: it needs the Website app, the app's sign-in code goes through `rvt_notify` instead; still open: helper service on production and the number pairing 🧑) Vendor `open_whatsapp_connector` 20.0.95.0.0 and `web_auth_otp_login` from sudi_20; sidecar service on production; dedicated number paired (🧑)
+- [x] R1.4b (2026-11-19; push follows with R1.5a) `rvt_notify`: message texts en/gu/hi, MOM PDF and drawing sends, caps, delivery log, push (FCM)
 - [ ] R1.5a `rvt_api`: staff login, phone + WhatsApp code, every desk function incl. `GET /projects/{id}/picture`, secure links
 - [ ] R1.5b Flutter app, staff: Today, Projects, onboarding, drawings, MOM capture with offline queue and per-party send, bills
 - [ ] R1.5c Flutter app, agency and client homes; client browser link; gu/hi/en

@@ -12,12 +12,12 @@ is onboarded here in a few guided steps.
 The screens follow the approved Release 1 preview. Other menus stay hidden
 for staff; administrators keep them.
 """,
-    "version": "20.0.1.2.0",
+    "version": "20.0.1.3.0",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Albatross",
     "website": "https://albatross.work",
-    "depends": ["rvt_project", "rvt_drawing", "rvt_mom", "web"],
+    "depends": ["rvt_project", "rvt_drawing", "rvt_mom", "rvt_notify", "web"],
     "data": [
         "views/desk_templates.xml",
         "views/login_templates.xml",

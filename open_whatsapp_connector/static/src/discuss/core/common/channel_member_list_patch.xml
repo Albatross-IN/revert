@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Odoo 20 port: the member list is grouped by computed categories and
+         the old offlineMembers slot is gone; append a dedicated "WhatsApp
+         User" section after the category groups instead. -->
+    <t t-name="open_whatsapp_connector.ChannelMemberList" t-inherit="discuss.ChannelMemberList" t-inherit-mode="extension">
+        <xpath expr="//span[@t-if='this.search.searchTerm and !this.search.loading and !this.hasFilteredMembers(this.categories())']" position="before">
+            <!-- With the official WhatsApp app installed its own "WhatsApp User"
+                 section (channel.whatsappMember) already lists this member. -->
+            <t t-if="this.props.channel.owaWhatsappMember and !this.props.channel.whatsappMember and !this.search.searchTerm">
+                <t t-set="category" t-value="{ label: 'WhatsApp User', icon: 'oi_whatsapp', filtered: [this.props.channel.owaWhatsappMember], showCount: false }"/>
+                <t t-call="discuss.ChannelMemberList.section"/>
+                <div class="d-flex flex-column bg-inherit gap-1">
+                    <ChannelMember member="this.props.channel.owaWhatsappMember"/>
+                </div>
+            </t>
+        </xpath>
+    </t>
+
+</templates>

@@ -47,6 +47,11 @@ PATCHES = {
          """<span class="tx">${esc(x.text)}</span>${x.photo?`<span class="phb" role="button" tabindex="0" data-a="photo" data-v="${x.id}" aria-label="Open the photo">${ic('cam','mu')}</span>`:''}</div>"""),
     ],
     "desk.js": [
+        # the message log shows every outcome, and the WhatsApp card says honestly whether a number is paired
+        ("<td>${m.held?pill('held','wait'):pill('sent','ok')}</td>",
+         "<td>${pill(m.st||(m.held?'held':'sent'),({sent:'ok',held:'wait',failed:'bad','no number':'bad','in the app':'plain'})[m.st||(m.held?'held':'sent')])}${m.why?`<div class=\"t2\">${esc(m.why)}</div>`:''}</td>"),
+        ("<div><span>Dedicated number</span><b class=\"mono\">${s.number}</b></div><div><span>Connector</span><b class=\"c-ok\">paired · caps per minute and per day stay on</b></div>",
+         "<div><span>Dedicated number</span><b class=\"mono\">${s.number||'—'}</b></div><div><span>Connector</span>${s.number?'<b class=\"c-ok\">paired · caps per minute and per day stay on</b>':'<b class=\"c-wait\">no number is paired yet</b>'}</div>${s.testcopy?'<div><span>This database</span><b class=\"c-wait\">test copy · nothing is ever sent from it</b></div>':''}"),
         # Today lists the hand-made tasks assigned to me (plan P3), not the first five of my projects
         ("const tasks=ps.flatMap(p=>p.tasks.map(t=>[p,t])).slice(0,5).map(([p,t])=>",
          "const tasks=(DB.mytasks||[]).map(t=>[{name:t.p},{n:t.n,stage:t.stage,subs:t.subs,id:t.id}]).map(([p,t])=>"),

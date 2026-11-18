@@ -12,6 +12,7 @@ Status: **Release 1 is being built on branch `20.0-release1`** (started 2026-11-
 | `rvt_project` | Onboarding service, one task per room, one work line per trade, team access, the project picture |
 | `rvt_drawing` | Drawing register, revisions, approval, release with receivers, opened tracking by link, questions, the client's approval |
 | `rvt_mom` | Site visits and points (one record for MOM lines, office-raised items and client items), per-party PDFs, the move of the earlier MOM entries (`tools/etl_mom.py`) |
+| `rvt_notify` | The one sender: message texts in English, Gujarati and Hindi, delivery log, reminders, invitations; never sends from a test copy |
 | `rvt_desk` | The single window for staff at `/rvt/desk`, and the log-in page. It runs the screen code of the approved preview (`revert_fe/design`) on live data: see `rvt_desk/tools/sync_from_preview.py` |
 
 ## Shared modules copied in (not edited here)
@@ -21,6 +22,8 @@ Status: **Release 1 is being built on branch `20.0-release1`** (started 2026-11-
 | `identity` | 20.0.2.0.0 | aic_apps `20.0-glass` @ 53b6989 | Own brand in the standard back office; its address prefix comes from the server setting `identity_web_prefix` (set it to `office` on production) |
 | `web_theme_glass` | 20.0.1.1.0 | aic_apps `20.0-glass` @ 53b6989 (`identity_enterprise/`) | Glass look of the standard back office |
 | `web_glass_workspace` | 20.0.1.0.0 | aic_apps `20.0-glass` @ 53b6989 (`marut_loader/`) | Split view and left pane of the standard back office |
+
+| `open_whatsapp_connector` | 20.0.95.0.0 | synapse_be @ 85705e5 (the tracked files; the helper service's `node_modules` are installed on the server by `sidecar/setup.sh`) | WhatsApp through a paired number |
 
 Fix these in their home repository and copy again; record the new commit here.
 

@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- The wording of every message, per event and language. Gujarati and Hindi need a native check before release.
+         Kept in Setup › Templates afterwards: an update of the module does not overwrite a corrected text. -->
+    <record id="tpl_drawing_released_en" model="rvt.notify.template">
+        <field name="event">drawing_released</field>
+        <field name="lang">en</field>
+        <field name="text">New drawing · {site}: {sheet} {title} · rev {rev}. Tap the link to open.</field>
+    </record>
+    <record id="tpl_drawing_released_gu" model="rvt.notify.template">
+        <field name="event">drawing_released</field>
+        <field name="lang">gu</field>
+        <field name="text">નવું ડ્રોઇંગ · {site}: {sheet} {title} · રિવિઝન {rev}. ખોલવા માટે લિંક દબાવો.</field>
+    </record>
+    <record id="tpl_drawing_released_hi" model="rvt.notify.template">
+        <field name="event">drawing_released</field>
+        <field name="lang">hi</field>
+        <field name="text">नई ड्रॉइंग · {site}: {sheet} {title} · रिविज़न {rev}. खोलने के लिए लिंक दबाएँ।</field>
+    </record>
+    <record id="tpl_drawing_client_en" model="rvt.notify.template">
+        <field name="event">drawing_client</field>
+        <field name="lang">en</field>
+        <field name="text">{site}: your {title} (rev {rev}) is ready. Please have a look and give your go-ahead.</field>
+    </record>
+    <record id="tpl_drawing_client_gu" model="rvt.notify.template">
+        <field name="event">drawing_client</field>
+        <field name="lang">gu</field>
+        <field name="text">{site}: તમારું {title} (રિવિઝન {rev}) તૈયાર છે. કૃપા કરીને જોઈને મંજૂરી આપશો.</field>
+    </record>
+    <record id="tpl_drawing_client_hi" model="rvt.notify.template">
+        <field name="event">drawing_client</field>
+        <field name="lang">hi</field>
+        <field name="text">{site}: आपकी {title} (रिविज़न {rev}) तैयार है। कृपया देखकर मंज़ूरी दें।</field>
+    </record>
+    <record id="tpl_mom_party_pdf_en" model="rvt.notify.template">
+        <field name="event">mom_party_pdf</field>
+        <field name="lang">en</field>
+        <field name="text">MOM · {site} · Visit {no} · {date}: {count} for you. PDF attached.</field>
+    </record>
+    <record id="tpl_mom_party_pdf_gu" model="rvt.notify.template">
+        <field name="event">mom_party_pdf</field>
+        <field name="lang">gu</field>
+        <field name="text">મિનિટ્સ · {site} · મુલાકાત {no} · {date}: તમારા માટે {count}. PDF જોડેલ છે.</field>
+    </record>
+    <record id="tpl_mom_party_pdf_hi" model="rvt.notify.template">
+        <field name="event">mom_party_pdf</field>
+        <field name="lang">hi</field>
+        <field name="text">MOM · {site} · विज़िट {no} · {date}: आपके लिए {count}. PDF संलग्न है।</field>
+    </record>
+    <record id="tpl_client_item_en" model="rvt.notify.template">
+        <field name="event">client_item</field>
+        <field name="lang">en</field>
+        <field name="text">{site}: we need your go-ahead on “{text}”, by {date}.</field>
+    </record>
+    <record id="tpl_client_item_gu" model="rvt.notify.template">
+        <field name="event">client_item</field>
+        <field name="lang">gu</field>
+        <field name="text">{site}: “{text}” માટે આપની મંજૂરી જોઈએ છે, {date} સુધીમાં.</field>
+    </record>
+    <record id="tpl_client_item_hi" model="rvt.notify.template">
+        <field name="event">client_item</field>
+        <field name="lang">hi</field>
+        <field name="text">{site}: “{text}” के लिए आपकी मंज़ूरी चाहिए, {date} तक।</field>
+    </record>
+    <record id="tpl_bill_asked_en" model="rvt.notify.template">
+        <field name="event">bill_asked</field>
+        <field name="lang">en</field>
+        <field name="text">Please upload your bill · {site} · {what}.</field>
+    </record>
+    <record id="tpl_bill_asked_gu" model="rvt.notify.template">
+        <field name="event">bill_asked</field>
+        <field name="lang">gu</field>
+        <field name="text">કૃપા કરીને તમારું બિલ અપલોડ કરો · {site} · {what}.</field>
+    </record>
+    <record id="tpl_bill_asked_hi" model="rvt.notify.template">
+        <field name="event">bill_asked</field>
+        <field name="lang">hi</field>
+        <field name="text">कृपया अपना बिल अपलोड करें · {site} · {what}.</field>
+    </record>
+    <record id="tpl_bill_returned_en" model="rvt.notify.template">
+        <field name="event">bill_returned</field>
+        <field name="lang">en</field>
+        <field name="text">Your bill for {site} needs a correction: {reason}</field>
+    </record>
+    <record id="tpl_bill_returned_gu" model="rvt.notify.template">
+        <field name="event">bill_returned</field>
+        <field name="lang">gu</field>
+        <field name="text">{site} ના બિલમાં સુધારો જોઈએ છે: {reason}</field>
+    </record>
+    <record id="tpl_bill_returned_hi" model="rvt.notify.template">
+        <field name="event">bill_returned</field>
+        <field name="lang">hi</field>
+        <field name="text">{site} के बिल में सुधार चाहिए: {reason}</field>
+    </record>
+    <record id="tpl_bill_accepted_en" model="rvt.notify.template">
+        <field name="event">bill_accepted</field>
+        <field name="lang">en</field>
+        <field name="text">Your bill for {site} ({what}) is accepted.</field>
+    </record>
+    <record id="tpl_bill_accepted_gu" model="rvt.notify.template">
+        <field name="event">bill_accepted</field>
+        <field name="lang">gu</field>
+        <field name="text">{site} નું તમારું બિલ ({what}) સ્વીકારાયું છે.</field>
+    </record>
+    <record id="tpl_bill_accepted_hi" model="rvt.notify.template">
+        <field name="event">bill_accepted</field>
+        <field name="lang">hi</field>
+        <field name="text">{site} का आपका बिल ({what}) स्वीकार हो गया है।</field>
+    </record>
+    <record id="tpl_bill_paid_en" model="rvt.notify.template">
+        <field name="event">bill_paid</field>
+        <field name="lang">en</field>
+        <field name="text">Payment recorded on your bill · {site} · {what}: {state}.</field>
+    </record>
+    <record id="tpl_bill_paid_gu" model="rvt.notify.template">
+        <field name="event">bill_paid</field>
+        <field name="lang">gu</field>
+        <field name="text">તમારા બિલ પર ચુકવણી નોંધાઈ · {site} · {what}: {state}.</field>
+    </record>
+    <record id="tpl_bill_paid_hi" model="rvt.notify.template">
+        <field name="event">bill_paid</field>
+        <field name="lang">hi</field>
+        <field name="text">आपके बिल पर भुगतान दर्ज हुआ · {site} · {what}: {state}.</field>
+    </record>
+    <record id="tpl_invite_en" model="rvt.notify.template">
+        <field name="event">invite</field>
+        <field name="lang">en</field>
+        <field name="text">{site}: Revert has added you. Open the app with this number to see your drawings and points.</field>
+    </record>
+    <record id="tpl_invite_gu" model="rvt.notify.template">
+        <field name="event">invite</field>
+        <field name="lang">gu</field>
+        <field name="text">{site}: Revert એ તમને ઉમેર્યા છે. તમારા ડ્રોઇંગ અને મુદ્દા જોવા આ નંબરથી એપ ખોલો.</field>
+    </record>
+    <record id="tpl_invite_hi" model="rvt.notify.template">
+        <field name="event">invite</field>
+        <field name="lang">hi</field>
+        <field name="text">{site}: Revert ने आपको जोड़ा है। अपनी ड्रॉइंग और बिंदु देखने के लिए इस नंबर से ऐप खोलें।</field>
+    </record>
+    <record id="tpl_remind_en" model="rvt.notify.template">
+        <field name="event">remind</field>
+        <field name="lang">en</field>
+        <field name="text">Reminder · {site}: {text}</field>
+    </record>
+    <record id="tpl_remind_gu" model="rvt.notify.template">
+        <field name="event">remind</field>
+        <field name="lang">gu</field>
+        <field name="text">યાદ અપાવવા · {site}: {text}</field>
+    </record>
+    <record id="tpl_remind_hi" model="rvt.notify.template">
+        <field name="event">remind</field>
+        <field name="lang">hi</field>
+        <field name="text">याद दिलाने के लिए · {site}: {text}</field>
+    </record>
+    <record id="tpl_otp_en" model="rvt.notify.template">
+        <field name="event">otp</field>
+        <field name="lang">en</field>
+        <field name="text">{code} is your Revert sign-in code. It is valid for 10 minutes.</field>
+    </record>
+    <record id="tpl_otp_gu" model="rvt.notify.template">
+        <field name="event">otp</field>
+        <field name="lang">gu</field>
+        <field name="text">{code} તમારો Revert સાઇન-ઇન કોડ છે. 10 મિનિટ માટે માન્ય.</field>
+    </record>
+    <record id="tpl_otp_hi" model="rvt.notify.template">
+        <field name="event">otp</field>
+        <field name="lang">hi</field>
+        <field name="text">{code} आपका Revert साइन-इन कोड है। 10 मिनट के लिए मान्य।</field>
+    </record>
+    <record id="tpl_drawing_approval_needed_en" model="rvt.notify.template">
+        <field name="event">drawing_approval_needed</field>
+        <field name="lang">en</field>
+        <field name="text">{site}: {sheet} {title} rev {rev} waits for your approval.</field>
+    </record>
+    <record id="tpl_drawing_question_en" model="rvt.notify.template">
+        <field name="event">drawing_question</field>
+        <field name="lang">en</field>
+        <field name="text">{site}: a question on {sheet} {title}: “{text}”</field>
+    </record>
+</odoo>

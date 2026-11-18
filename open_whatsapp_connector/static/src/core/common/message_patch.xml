@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="open_whatsapp_connector.Message" t-inherit="mail.Message" t-inherit-mode="extension">
+        <!-- WhatsApp-style delivery ticks on each outbound bubble:
+             clock = sending, single tick = sent, double tick = delivered,
+             blue double tick = read, warning icon = failed. Rendered per message
+             (in the content, not the squashed header) and only for messages we
+             sent (isSelfAuthored). -->
+        <xpath expr="//div[hasclass('o-mail-Message-content')]" position="inside">
+            <t t-if="this.message.message_type === 'whatsapp_message' and this.message.isSelfAuthored">
+                <span class="o-owa-ticks ms-1 small align-middle"
+                      t-att-class="this.getWhatsappStatusClass()"
+                      t-att-style="this.getWhatsappStatusStyle()"
+                      t-att-title="this.getWhatsappStatusTitle()">
+                    <i t-if="!this.message.whatsappStatus or this.message.whatsappStatus === 'outgoing'" class="oi" data-icon="schedule"/>
+                    <i t-elif="this.message.whatsappStatus === 'error' or this.message.whatsappStatus === 'bounced' or this.message.whatsappStatus === 'cancel'" class="oi" data-icon="error"/>
+                    <t t-elif="this.message.whatsappStatus === 'sent'">✓</t>
+                    <t t-else="">✓✓</t>
+                </span>
+            </t>
+        </xpath>
+    </t>
+
+</templates>

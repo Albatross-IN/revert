@@ -20,6 +20,7 @@ async function rpc(method,args){
 function applySnapshot(s){const m=s.masters,fill=(a,b)=>{a.length=0;b.forEach(x=>a.push(x))},clear=o=>Object.keys(o).forEach(k=>delete o[k]);
  fill(TRADES,m.trades);clear(TX);TRADES.forEach(t=>TX[t.id]=t);fill(ETYPES,m.etypes);clear(ETX);ETYPES.forEach(e=>ETX[e.n]=e);
  fill(PRESETS,m.presets);fill(EXTRAS,m.extras);fill(DEFAULT_TRADES,m.default_trades);fill(DTYPES,m.dtypes);
+ if(m.templates){clear(TPL);Object.assign(TPL,m.templates)}
  const [y,mo,d]=s.today_date.split('-').map(Number);BASE=Date.UTC(y,mo-1,d);
  const t=new Date(),h=t.getHours();NOW=((h%12)||12)+':'+String(t.getMinutes()).padStart(2,'0')+(h<12?' am':' pm');
  const seq=DB&&DB.seq&&DB.seq.ptid>=LOCAL0?DB.seq:localSeq();
@@ -65,6 +66,10 @@ wrapOP('addPoint',(x,o)=>sync('add_point',{pid:o.pid,vid:o.vid||'',kind:o.kind,p
 wrapOP('closePoint',(r,x,note,photo)=>sync('close_point',{point:x.id,note:note||'',photo:photo?takeImg('cp_photo'):''}));
 wrapOP('confirmPoint',(r,x)=>sync('confirm_point',{point:x.id}));
 wrapOP('sendParty',(n,v,key)=>{if(n)sync('send_party',{visit:v.id,key})});
+
+/* messages: a reminder is sent by the server; the screen's own WhatsApp list is the server's log */
+notify=function(){};
+wrapOP('remind',(r,to,pid,text)=>sync('remind',{to,project:pid,text}));
 
 /* ---------- actions that differ from the preview: they talk to the server or leave the desk ---------- */
 const wrapA=(name,after)=>{const o=A[name];A[name]=function(v,el,dev){const r=o.apply(A,arguments);after(v,el,dev);return r}};
@@ -114,6 +119,9 @@ function etlReport(dev){const R=LIVE.etl;if(!isOwner()&&!DB.admin)return `<div c
  return `<div class="kpis">${kpi('Entries moved',R.moved)}${kpi('Open',T[1],'c-wait')}${kpi('Closed',T[2],'c-ok')}${kpi('Photos, by checksum',T[3])}${kpi('Visits',T[4])}</div>${card('Verification report',badge,`<div class="tw"><table class="tb"><thead><tr><th>Project</th><th class="ar">Entries</th><th class="ar">Open</th><th class="ar">Closed</th><th class="ar">Photos</th><th class="ar">Visits</th><th>Check</th></tr></thead><tbody>${R.rows.map(r=>`<tr><td><b>${esc(r.p)}</b></td>${r.b.map((v,i)=>`<td class="ar num">${v}${r.a?` <span class="mu">= ${r.a[i]}</span>`:''}</td>`).join('')}<td>${r.eq==null?pill('to move','wait'):r.eq?pill('equal','ok','check'):pill('different','bad','alert')}</td></tr>`).join('')}</tbody></table></div>
    <div class="note">${ic('info')}<span>Every earlier MOM entry became a point with its text, person, photo, visit date and number, serial number, due date, state, closing note and author. A second run creates nothing. The earlier screens are switched off only after the owner compares three projects and signs off.</span></div>`)}
   ${card('People to match','<span class="mu f12">from the sheet Revert fills in</span>',`<div class="kv"><div><span>People named in earlier entries</span><b>${R.people}</b></div><div><span>Matched through the sheet</span><b class="c-ok">${R.people-R.unmapped}</b></div><div><span>Kept as vendors, listed for review</span><b class="c-wait">${R.unmapped}</b></div><div><span>Entries without a person</span><b>${R.noperson}</b></div></div>`)}`}
+
+A.invite=function(v,el,dev){const [pid,i]=v.split('|'),p=pOf(pid),c=p.client.contacts[+i];if(!c)return;c.inv=true;sync('invite',{project:p.id,contact:c.id});toast(`Invitation to ${c.n} · ${sent()}.`)};
+A.copylink=function(){toast('The client link is switched on with the app.','wait')};
 
 /* onboarding: the wizard is the preview's; the result is written by the server in one go.
    A new project starts with the real principal, and with the person who sets it up on its team. */

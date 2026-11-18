@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="rvt_notify_log_view_list" model="ir.ui.view">
+        <field name="name">rvt.notify.log.list</field>
+        <field name="model">rvt.notify.log</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" decoration-muted="state == 'held'" decoration-danger="state in ('failed', 'no_number')">
+                <field name="create_date" string="When"/>
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="event"/>
+                <field name="lang"/>
+                <field name="text"/>
+                <field name="document" optional="show"/>
+                <field name="project_id" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'sent'" decoration-warning="state == 'held'" decoration-info="state == 'in_app'"/>
+                <field name="reason" optional="show"/>
+                <field name="sent_by_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="rvt_notify_log_view_search" model="ir.ui.view">
+        <field name="name">rvt.notify.log.search</field>
+        <field name="model">rvt.notify.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="phone"/>
+                <field name="text"/>
+                <field name="project_id"/>
+                <filter name="sent" string="Sent" domain="[('state', '=', 'sent')]"/>
+                <filter name="held" string="Held" domain="[('state', '=', 'held')]"/>
+                <filter name="problems" string="Failed or no number" domain="[('state', 'in', ('failed', 'no_number'))]"/>
+                <group>
+                    <filter name="group_event" string="Event" context="{'group_by': 'event'}"/>
+                    <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
+                    <filter name="group_project" string="Project" context="{'group_by': 'project_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="rvt_notify_log_action" model="ir.actions.act_window">
+        <field name="name">Message log</field>
+        <field name="res_model">rvt.notify.log</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="rvt_notify_template_view_list" model="ir.ui.view">
+        <field name="name">rvt.notify.template.list</field>
+        <field name="model">rvt.notify.template</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="event"/>
+                <field name="lang"/>
+                <field name="text"/>
+            </list>
+        </field>
+    </record>
+    <record id="rvt_notify_template_action" model="ir.actions.act_window">
+        <field name="name">Message texts</field>
+        <field name="res_model">rvt.notify.template</field>
+        <field name="view_mode">list</field>
+    </record>
+    <menuitem id="menu_rvt_notify_templates" name="Message texts" parent="rvt_base.menu_rvt_config" action="rvt_notify_template_action" sequence="70"/>
+    <menuitem id="menu_rvt_notify_log" name="Message log" parent="rvt_base.menu_rvt_config" action="rvt_notify_log_action" sequence="72"/>
+
+    <record id="res_config_settings_view_form_rvt_notify" model="ir.ui.view">
+        <field name="name">res.config.settings.form.rvt.notify</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="rvt_base.res_config_settings_view_form_rvt"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='rvt_rules']" position="after">
+                <block title="WhatsApp" name="rvt_whatsapp">
+                    <setting string="Sending is on"
+                             help="Off: nothing leaves; every message is logged as held. On a test copy of the database nothing is ever sent, whatever this switch says.">
+                        <field name="rvt_notify_sending_on"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>
