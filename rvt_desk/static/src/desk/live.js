@@ -67,6 +67,13 @@ wrapOP('closePoint',(r,x,note,photo)=>sync('close_point',{point:x.id,note:note||
 wrapOP('confirmPoint',(r,x)=>sync('confirm_point',{point:x.id}));
 wrapOP('sendParty',(n,v,key)=>{if(n)sync('send_party',{visit:v.id,key})});
 
+/* bills: asked, uploaded, reviewed and paid on the server; the document and the proof are real files */
+const takeFile=k=>{const g=LIVE.img[k];delete LIVE.img[k];return g?{file:g.b64,name:g.name}:{file:'',name:''}};
+wrapOP('askBill',(b,o)=>sync('ask_bill',{project:o.pid,agency:o.ag,trade:o.t||'',what:o.what,upto:o.upto||null,billedTo:o.billedTo||''},b.id));
+wrapOP('uploadBill',(r,b,o)=>sync('upload_bill',Object.assign({bill:b.id,no:o.no==='—'?'':o.no,amount:o.amount},takeFile('ub_doc'))));
+wrapOP('reviewBill',(r,b,ok,reason)=>sync('review_bill',{bill:b.id,ok:!!ok,reason:reason||''}));
+wrapOP('pay',(r,b,o)=>sync('pay_bill',Object.assign({bill:b.id,amount:o.amount,by:o.by,mode:o.mode},takeFile('py_proof'))));
+
 /* messages: a reminder is sent by the server; the screen's own WhatsApp list is the server's log */
 notify=function(){};
 wrapOP('remind',(r,to,pid,text)=>sync('remind',{to,project:pid,text}));
@@ -103,9 +110,14 @@ wrapA('newrev',v=>sync('new_revision',{drawing:v}));
 /* MOM: a visit is started on the server; a photo is a real photo; the PDF is the real PDF */
 const startmom0=A.startmom;A.startmom=function(v,el,dev){const had=new Set(DB.visits.map(x=>x.id));startmom0.call(A,v,el,dev);const nv=DB.visits.find(x=>!had.has(x.id));if(nv)sync('start_visit',{project:nv.pid},nv.id)};
 wrapA('finishvisit',v=>sync('finish_visit',{visit:v}));
-const tog0=A.tog;A.tog=function(v,el,dev){if(!['m_photo','rp_photo','cp_photo'].includes(v))return tog0.call(A,v,el,dev);
+const FILE_TOGS={m_photo:'image/*',rp_photo:'image/*',cp_photo:'image/*',ub_doc:'image/*,application/pdf',py_proof:'image/*,application/pdf'};
+const tog0=A.tog;A.tog=function(v,el,dev){const accept=FILE_TOGS[v];if(!accept)return tog0.call(A,v,el,dev);
  if(dev.f[v]&&LIVE.img[v]){dev.f[v]=false;delete LIVE.img[v];return}
- dev.f[v]=false;pickFile('image/*',12e6,'That photo is larger than 12 MB.',(file,b64)=>{LIVE.img[v]={b64,name:file.name};dev.f[v]=true;render()})};
+ dev.f[v]=false;pickFile(accept,12e6,'That file is larger than 12 MB.',(file,b64)=>{LIVE.img[v]={b64,name:file.name};dev.f[v]=true;render()})};
+wrapA('billto',v=>{const [id,to]=v.split('|');sync('bill_to',{bill:id,to})});
+/* a bill's document is the file that was uploaded, or nothing: never a made-up file name */
+const bill0=SHEETS.bill;SHEETS.bill=function(dev,s){const o=bill0(dev,s),b=billOf(s.id),id=String(b.id).replace(/\D/g,'');
+ o.body=o.body.replace(/<div class="docrow">[^]*?<\/div>/,b.doc&&+id<9e6?`<a class="docrow" href="/rvt/desk/bill/${id}/document" target="_blank" rel="noopener">${ic('file')}<span><b>${b.doc==='pdf'?'PDF':'Photo'} of the bill</b> · open</span></a>`:'');return o};
 A.photo=function(v,el,dev){openSheet(dev,'photo',{id:v})};
 SHEETS.photo=function(dev,s){const x=ptOf(s.id);return {title:'Photo · point '+(x?x.n:''),sub:x?x.text:'',wide:true,body:`<div class="phw"><img class="phv" alt="Photo of the point" src="/rvt/desk/point/${String(s.id).replace(/\D/g,'')}/photo"></div>`,foot:Bt('Close','close',null,'ghost')}};
 SHEETS.pdf=function(dev,s){return {title:s.kind==='mom'?'MOM PDF':'Open points PDF',sub:'What the party receives on WhatsApp',wide:true,

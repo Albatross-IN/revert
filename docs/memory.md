@@ -176,6 +176,8 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 - The system's fingerprint prompt cannot be screenshotted (`adb screencap` comes back empty): check for its window with `dumpsys window` instead.
 - Hand tests on the dev copy used the fixtures' sample people and numbers. The API tests now take those numbers over inside the test (`ApiCase._own_the_numbers`), so they pass on any copy.
 - The web view of a debug build can be driven over USB: `adb forward tcp:9555 localabstract:webview_devtools_remote_<pid>` and the Chrome DevTools protocol.
+- **Money fields are closed by field groups** (`rvt.bill`: `amount`, `up_to_amount`, `paid_amount`, `balance`, `payment_ids`). Code that serves other roles reads them through `sudo()` on purpose and decides what to pass on (`rvt.desk._bill_row(bill, off, money, payments)`); a new screen or endpoint must make the same choice, never pass a sudo record's amount along by default.
+- A module that adds to the desk, the API and the picture goes on top of `rvt_api` (as `rvt_bill` does): it extends `rvt.desk` (`_features`, `_snapshot_extra`, `_op_*`), `rvt.api` (`_agency_home_extra`, `_agency_screen_extra`), `project.project` (`_rvt_picture_ctx`, `_rvt_blocker_rules`, `_rvt_next_builders`) and `fastapi.endpoint._get_fastapi_routers`.
 
 ## 7. Glossary
 | Term | Meaning |

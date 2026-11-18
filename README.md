@@ -14,6 +14,7 @@ Status: **Release 1 is being built on branch `20.0-release1`** (started 2026-11-
 | `rvt_mom` | Site visits and points (one record for MOM lines, office-raised items and client items), per-party PDFs, the move of the earlier MOM entries (`tools/etl_mom.py`) |
 | `rvt_notify` | The one sender: message texts in English, Gujarati and Hindi, delivery log, reminders, invitations; never sends from a test copy |
 | `rvt_api` | The app's back end at `/api/rvt/v1` (FastAPI): sign-in for staff, agencies and clients, the staff snapshot and operations, agency and client homes, files, preferences, push. Also the page behind the client's link, `/rvt/c/<token>`: the app's own screens in a browser (`rvt_api/static/app`, copied from the app's build by `rvt_api/tools/sync_app.py`) |
+| `rvt_bill` | Bills and payments: the office asks, the agency uploads, the office reviews, the owner records payments against the bill (no advances). Amounts are the owner's. Adds rule B10 to the picture, the Bills screens' data to the desk and the app, and `/bills` to the API. Installing it installs the whole of Release 1 |
 | `rvt_desk` | The single window for staff at `/rvt/desk`, and the log-in page. It runs the screen code of the approved preview (`revert_fe/design`) on live data: see `rvt_desk/tools/sync_from_preview.py` |
 
 ## Shared modules copied in (not edited here)

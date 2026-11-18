@@ -38,7 +38,7 @@ Release 1 replaces Phases D and 1–9 below as the first thing built. Those phas
 - [x] R1.5b (2026-11-19; one Android phone, iOS build and push open; bills with R1.6) Flutter app, staff: Today, Projects, onboarding, drawings, MOM capture with offline queue and per-party send, bills
 - [x] R1.5c (2026-11-19; gu/hi wording to be checked by a native reader) Flutter app, agency and client homes; client browser link; gu/hi/en
 - [ ] R1.5d Exit: a MOM is captured on site and an agency receives its PDF on WhatsApp within a minute; a pilot client closes an item
-- [ ] R1.6 `rvt_bill`: ask, upload, review, payments against bills (no advances), billed-to default from project, agency status list, owner money view
+- [x] R1.6 (2026-11-19) `rvt_bill`: ask, upload, review, payments against bills (no advances), billed-to default from project, agency status list, owner money view
 - [ ] R1.7 Rollout: store listing, privacy page, onboarding material gu/hi, production release, waves 0–5
 
 ## Phase D — Design

@@ -1288,6 +1288,14 @@ wrapOP('closePoint',(r,x,note,photo)=>{if(APP.role==='client')send('POST','/clie
 wrapOP('open',(first,d)=>{if(first&&APP.role!=='staff')send('POST','/'+APP.role+'/drawings/'+num(d.id)+'/open',{})});
 wrapOP('clientDecide',(r,d,dec,note)=>send('POST','/client/drawings/'+num(d.id)+'/decide',{decision:dec,note:note||''}));
 
+/* bills: staff ask, upload for an agency, review; the owner pays; an agency uploads its own */
+wrapOP('askBill',(b,o)=>sync('ask_bill',{project:o.pid,agency:o.ag,trade:o.t||'',what:o.what,upto:o.upto||null,billedTo:o.billedTo||''},b.id));
+wrapOP('uploadBill',(r,b,o)=>{const no=o.no==='—'?'':o.no;
+ if(APP.role==='agency')send('POST','/agency/bills/'+num(b.id)+'/upload',{no,amount:o.amount,photo:takeImg('ab_doc')});
+ else sync('upload_bill',{bill:b.id,no,amount:o.amount,file:takeImg('ub_doc')})});
+wrapOP('reviewBill',(r,b,ok,reason)=>sync('review_bill',{bill:b.id,ok:!!ok,reason:reason||''}));
+wrapOP('pay',(r,b,o)=>sync('pay_bill',{bill:b.id,amount:o.amount,by:o.by,mode:o.mode,file:takeImg('py_proof')}));
+
 /* ---------- actions that differ from the preview ---------- */
 ['asuser','reset','scen','setview','jump','guide','wapanel','replay','linkmode','wachat','wadoc','closepanel','motion'].forEach(k=>A[k]=function(){});
 A.offline=function(){if(UI.offline||APP.queue.length){toast(UI.offline?T('offline'):plural(APP.queue.length,'change')+' going out…','wait');pump()}else toast('Online. Everything is sent.')};
@@ -1298,6 +1306,7 @@ wrapA('finishvisit',v=>sync('finish_visit',{visit:v}));
 wrapA('dstart',v=>sync('dstart',{drawing:v}));
 wrapA('newrev',v=>sync('new_revision',{drawing:v}));
 wrapA('setting',v=>sync('setting',{key:v,value:DB.set[v]}));
+wrapA('billto',v=>{const [id,to]=v.split('|');sync('bill_to',{bill:id,to})});
 A.sendparty=function(v,el,dev){const [vid,key]=v.split('|'),n=OP.sendParty(visOf(vid),key);if(n){flash(dev,UI.offline?'Saved':'Sent','wa');toast(UI.offline?`Saved. ${agN(key)}’s PDF goes out when the network returns.`:`${agN(key)}: ${plural(n,'point')} as a PDF · ${sent()}.`)}};
 A.sendall=function(v,el,dev){const vi=visOf(v),ks=[...new Set(DB.points.filter(x=>x.vid===v&&x.st==='open'&&x.kind==='agency').map(x=>x.party))];ks.forEach(k=>OP.sendParty(vi,k));flash(dev,UI.offline?'Saved':'Sent','wa');
  toast(UI.offline?'Saved. Every party’s PDF goes out when the network returns.':`${plural(ks.length,'party','parties')} got their own PDF · ${sent()}. Client points wait for the office.`)};
@@ -1327,7 +1336,7 @@ A.obfinish=function(v,el,dev){const ob=dev.ob;if(!ob||APP.saving)return;if(!ob.n
 /* ---------- camera, files, drawings ---------- */
 const fmtSize=n=>n>=1e6?(n/1e6).toFixed(1)+' MB':Math.max(1,Math.round(n/1e3))+' KB';
 async function pick(kind){const r=await local('pick',{kind});if(!r||r.cancelled)return null;const b64=await (await fetch(r.blob+'?b64=1')).text();return {name:r.name,size:r.size,b64}}
-const PHOTO_KEYS=['m_photo','rp_photo','cp_photo','aq_photo','ab_doc'];
+const PHOTO_KEYS=['m_photo','rp_photo','cp_photo','aq_photo','ab_doc','ub_doc','py_proof'];
 const tog0=A.tog;A.tog=function(v,el,dev){if(!PHOTO_KEYS.includes(v))return tog0.call(A,v,el,dev);
  if(dev.f[v]&&APP.img[v]){dev.f[v]=false;delete APP.img[v];return}dev.f[v]=false;openSheet(dev,'picksrc',{key:v})};
 SHEETS.picksrc=function(dev,s){return {title:T('addphoto'),body:`<div class="langs">${Bt(T('camera'),'pickimg',s.key+'|camera','gold lg blk','cam')}${Bt(T('gallery'),'pickimg',s.key+'|gallery','lg blk','layers')}</div>`}};
@@ -1354,7 +1363,13 @@ A.pdf=function(v){const [kind,a,b]=v.split('|');let path,title;
 function phOf(kind,x){const id=num(x.id);if(!id||+id>=LOCAL0)return '<span class="ph"></span>';const src=`${API}/files/${kind}/${id}/photo`;
  return `<span class="ph real" role="button" tabindex="0" data-a="photo" data-v="${kind}|${x.id}" aria-label="${esc(T('aphoto'))}" ${WEB?`data-asrc="${src}"`:`style="background-image:url(${src})"`}></span>`}
 A.photo=function(v,el,dev){const [a,b]=v.split('|');openSheet(dev,'photo',b?{kind:a,id:b}:{kind:'point',id:a})};
-SHEETS.photo=function(dev,s){const x=s.kind==='point'?ptOf(s.id):null;return {title:T('aphoto')+(x&&APP.role==='staff'?' · point '+x.n:''),sub:x?x.text:'',body:`<div class="phw"><img class="phv" alt="" ${WEB?'data-asrc':'src'}="${API}/files/${s.kind}/${num(s.id)}/photo"></div>`,foot:Bt(T('shut'),'close',null,'ghost')}};
+SHEETS.photo=function(dev,s){const x=s.kind==='point'?ptOf(s.id):null,b=s.kind==='bill'?billOf(s.id):null;
+ return {title:b?(b.no||T('bills')):T('aphoto')+(x&&APP.role==='staff'?' · point '+x.n:''),sub:x?x.text:b?b.what:'',body:`<div class="phw"><img class="phv" alt="" ${WEB?'data-asrc':'src'}="${API}/files/${s.kind}/${num(s.id)}/${b?'document':'photo'}"></div>`,foot:Bt(T('shut'),'close',null,'ghost')}};
+/* a bill's document is the file that was uploaded, or nothing: never a made-up file name */
+const bill0=SHEETS.bill;SHEETS.bill=function(dev,s){const o=bill0(dev,s),b=billOf(s.id);
+ o.body=o.body.replace(/<div class="docrow">[^]*?<\/div>/,b.doc&&+num(b.id)<LOCAL0?`<button type="button" class="docrow" data-a="billdoc" data-v="${b.id}">${ic('file')}<span><b>${b.doc==='pdf'?'PDF':'Photo'} of the bill</b> · open</span></button>`:'');return o};
+A.billdoc=function(v,el,dev){const b=billOf(v);if(!b||!b.doc)return;
+ if(b.doc==='pdf')local('pdf/open',{path:API+'/files/bill/'+num(v)+'/document',title:b.no||'Bill',sub:agN(b.ag)}).catch(e=>toast(e.message,'bad'));else openSheet(dev,'photo',{kind:'bill',id:v})};
 
 /* ---------- sign-in: one app for everybody ---------- */
 function authHTML(dev){const si=dev.si||(dev.si={step:'lang'}),lang=UI.lang.auth||'gu',t=k=>tr(k,lang),f=dev.f;let b='';

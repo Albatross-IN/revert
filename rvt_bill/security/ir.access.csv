@@ -1,0 +1,8 @@
+id,name,model_id,group_id/id,operation,domain
+access_rvt_bill_staff,rvt.bill staff,rvt.bill,rvt_base.group_rvt_staff,cru,
+access_rvt_bill_system,rvt.bill system,rvt.bill,base.group_system,crud,
+rvt_bill_project_rule,rvt.bill: staff only on a project they may see,rvt.bill,,crud,"[(1, '=', 1)] if not user.has_group('rvt_base.group_rvt_staff') else [('project_id', 'access', 'read')]"
+access_rvt_bill_agency,rvt.bill agency: its own bills,rvt.bill,rvt_base.group_rvt_agency,r,"[('agency_id', '=', user.partner_id.commercial_partner_id.id)]"
+access_rvt_bill_payment_owner,rvt.bill.payment owner,rvt.bill.payment,rvt_base.group_rvt_owner,crud,
+access_rvt_bill_payment_system,rvt.bill.payment system,rvt.bill.payment,base.group_system,crud,
+rvt_bill_payment_project_rule,rvt.bill.payment: only on a project the owner may see,rvt.bill.payment,,crud,"[('project_id', 'access', 'read')]"

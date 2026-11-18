@@ -30,3 +30,5 @@ html[data-nof~="wa"] [data-v="stab=tpl"],html[data-nof~="wa"] [data-v="stab=log"
 .phb{display:contents}.phb .i{cursor:pointer}
 .phw{display:flex;justify-content:center;background:var(--well);border-radius:14px;padding:10px}
 .phv{max-width:100%;max-height:72vh;border-radius:10px;display:block}
+
+a.docrow{text-decoration:none;color:inherit}a.docrow:hover b{text-decoration:underline}

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="tpl_bill_submitted_en" model="rvt.notify.template">
+        <field name="event">bill_submitted</field>
+        <field name="lang">en</field>
+        <field name="text">{agency} uploaded a bill · {site} · {what}. It waits for review.</field>
+    </record>
+</odoo>
