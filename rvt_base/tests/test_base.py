@@ -150,3 +150,24 @@ class TestRvtBase(TransactionCase):
         self.env.cr.precommit.data.pop("rvt.live", None)
         Live.with_context(rvt_quiet=True).touch()
         self.assertFalse(self.env.cr.precommit.data.get("rvt.live"), "a quiet change tells nobody")
+
+    # ---- photos on their way to a screen ----------------------------------
+    def test_a_list_gets_a_small_copy_of_a_photo(self):
+        import base64
+        import io
+
+        from PIL import Image
+
+        from odoo.addons.rvt_base.photos import sized
+
+        big = io.BytesIO()
+        Image.new("RGB", (3000, 2000), (120, 90, 60)).save(big, "JPEG", quality=95)
+        photo = big.getvalue()
+        thumb, view = sized(photo, "thumb"), sized(photo, "view")
+        self.assertEqual(Image.open(io.BytesIO(thumb)).size, (480, 320))
+        self.assertEqual(Image.open(io.BytesIO(view)).size, (1600, 1067))
+        self.assertLess(len(thumb), len(view))
+        self.assertIs(sized(photo), photo, "without a size the photo travels as it was taken")
+        self.assertIs(sized(photo, "huge"), photo)
+        pdf = base64.b64decode("JVBERi0xLjQK")
+        self.assertEqual(sized(pdf, "thumb"), pdf, "what is not an image travels as it is")

@@ -65,7 +65,7 @@ SHEETS.ptview=(dev,s)=>{const x=ptOf(s.id);if(!x)return {title:'Point',body:empt
    ${ptBA(x,'en')}<div class="kv"><div><span>For</span><b>${esc(partyName(p,x))}${x.t&&TX[x.t]?' · '+esc(TX[x.t].n):''}</b></div><div><span>Raised</span><b>${by?esc(by)+' · ':''}${x.on!=null?fd(x.on)+' · ':''}${v?'visit '+v.no:x.legacy?'earlier MOM':'from the office'}</b></div>
    ${open?'':`<div><span>${x.doneBy?'Marked done':'Closed'}</span><b>${who?esc(who)+' · ':''}${x.closedOn!=null?fd(x.closedOn):''}</b></div>${x.note?`<div><span>Note</span><b>${esc(x.note)}</b></div>`:''}`}</div>`,
   foot:open?Bt('Back','close',null,'ghost')+(x.kind==='agency'&&agOf(x.party)?Bt('Remind','remind',x.party+'|'+p.id+'|Point '+x.n+': '+x.text,'wa','wa'):'')+(x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'gold'):Bt('Mark done','closept',x.id,'gold','check'))
-   :Bt('Back','close',null,'ghost')+Bt('Not right: open again','reopenpt',x.id,'','refresh')}};
+   :Bt('Back','close',null,'ghost')+Bt('Open again','reopenpt',x.id,'','refresh')}};
 SHEETS.sitepts=(dev,s)=>{const p=pOf(s.id),list=sitePts(p);return {title:'Points for the whole site',sub:p.name+' · not tied to one room',body:`<div class="rows">${list.map(x=>ptRow(x,dev)).join('')||empty('Nothing here.')}</div>`,foot:Bt('Close','close',null,'ghost')}};
 /* one searchable list for a long choice: who a point is for, which room it is in */
 function pickOpts(s){const p=pOf(s.pid);if(!p)return [];if(s.src==='area')return [['','Whole site','not tied to one room']].concat(p.ents.map(e=>[e.id,e.n,e.ty&&e.ty!==e.n?e.ty:'']));

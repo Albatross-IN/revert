@@ -88,7 +88,7 @@ Run as on `deploy_production.md`: root on the server, `erp` owns the files.
 | "Copy link" on a pilot project's Client tab | the link opens that project in a phone browser without sign-in |
 | Message log (Setup → WhatsApp) | "sent", not "held" |
 | Open the desk in two browsers, change a line in one | the other shows it within a second or two, untouched (the live line); if it takes about 15 seconds, `/websocket` is not reaching the service |
-| Module tests | were run before the release on a copy: 174 pass (`/rvt_base,/rvt_project,/rvt_drawing,/rvt_mom,/rvt_notify,/rvt_desk,/rvt_api,/rvt_bill`). Never run tests on the live database |
+| Module tests | were run before the release on a copy: 175 pass (`/rvt_base,/rvt_project,/rvt_drawing,/rvt_mom,/rvt_notify,/rvt_desk,/rvt_api,/rvt_bill`). Never run tests on the live database |
 
 ## 5. The app
 

@@ -6,6 +6,7 @@ from odoo.http.stream import content_disposition
 from odoo.modules import get_module_path
 from odoo.tools.mimetypes import guess_mimetype
 
+from odoo.addons.rvt_base.photos import sized
 from odoo.addons.rvt_project.models.rvt_picture import MONTHS, WEEKDAYS
 from odoo.addons.web.controllers.home import Home
 
@@ -118,7 +119,7 @@ class RvtDeskController(http.Controller):
         ])
 
     @http.route(DESK_URL + "/question/<int:question_id>/photo", type="http", auth="user")
-    def desk_question_photo(self, question_id, **kw):
+    def desk_question_photo(self, question_id, size=None, **kw):
         """The photo an agency sent with its question on a drawing."""
         if not _is_staff(request.env.user):
             return request.not_found()
@@ -129,14 +130,14 @@ class RvtDeskController(http.Controller):
             return request.not_found()
         if not question or not question.photo:
             return request.not_found()
-        content = question.photo.content
+        content = sized(question.photo.content, size)
         return request.make_response(content, headers=[
             ("Content-Type", guess_mimetype(content, default="image/jpeg")),
             ("Cache-Control", "private, max-age=3600"),
         ])
 
     @http.route(DESK_URL + "/point/<int:point_id>/photo", type="http", auth="user")
-    def desk_point_photo(self, point_id, close=None, **kw):
+    def desk_point_photo(self, point_id, close=None, size=None, **kw):
         if not _is_staff(request.env.user):
             return request.not_found()
         point = request.env["rvt.point"].browse(point_id).exists()
@@ -147,7 +148,7 @@ class RvtDeskController(http.Controller):
         value = point.close_photo if close else point.photo
         if not point or not value:
             return request.not_found()
-        content = value.content
+        content = sized(value.content, size)
         return request.make_response(content, headers=[
             ("Content-Type", guess_mimetype(content, default="image/jpeg")),
             ("Cache-Control", "private, max-age=3600"),

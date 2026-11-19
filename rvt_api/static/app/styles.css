@@ -96,7 +96,7 @@ h1,h2,h3,h4,p{margin:0}h1,h2,h3,h4{font-weight:700;letter-spacing:-.02em;text-wr
 #fx canvas{position:fixed;left:0;top:0}
 
 /* ---------- atoms ---------- */
-.scr{container-type:inline-size;position:relative}
+.scr{position:relative}
 .stack{display:flex;flex-direction:column;gap:14px;min-width:0}
 .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.two.wk{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);align-items:start}
 .card{background:radial-gradient(280px circle at var(--mx,-400px) var(--my,-400px),var(--spot),transparent 70%),var(--pane);border:1px solid var(--edge);border-radius:22px;padding:16px 18px;box-shadow:var(--sh);min-width:0}.card.flush{padding:4px 16px}.card.solid,.site.solid{background:var(--solid)}
@@ -348,7 +348,7 @@ button.c:hover:not(:disabled){transform:translateY(-3px) scale(1.06);box-shadow:
 @keyframes fadeto{to{opacity:1}}@keyframes iris{from{clip-path:circle(140% at 50% 44%)}to{clip-path:circle(0% at 50% 44%);visibility:hidden}}
 .splash.quick{animation-delay:1.25s}.splash.quick .skyl,.splash.quick .ax,.splash.quick .gb{display:none}.splash.quick .sp-logo .logo path{animation:drawl .55s cubic-bezier(.6,0,.2,1) .05s forwards,fillin .3s ease .45s forwards}.splash.quick .sp-logo::after{animation-delay:.6s;animation-duration:.6s}
 .splash.quick .sp-dim{animation-delay:.3s;animation-duration:.4s}.splash.quick .sp-tag{animation-delay:.3s;animation-duration:.4s}.splash.quick .sp-load{animation-delay:.25s}.splash.quick .sp-load .tkb i{animation-delay:calc(var(--i)*26ms + .3s)}
-.pscr:has(.splash){--sd:3.35s}.pscr:has(.splash.quick){--sd:1.3s}
+.pscr.sp{--sd:3.35s}.pscr.spq{--sd:1.3s}
 /* the opening of the preview: the same splash, the size of the window */
 #intro{position:fixed;inset:0;z-index:100;border-radius:0}#app.intro{--sd:3.35s}
 .splash.big .sp-in{gap:22px;margin-top:-9%}.splash.big .sp-logo .logo{height:min(16vh,132px)}.splash.big .sp-dim{width:min(38vw,330px)}.splash.big .sp-tag{font-size:12.5px}.splash.big .sp-load .tkb{width:240px;height:16px}.splash.big .sp-load small{font-size:13px}.splash.big .gb{width:28px;height:28px;font-size:12px}
@@ -406,7 +406,7 @@ button.c:hover:not(:disabled){transform:translateY(-3px) scale(1.06);box-shadow:
 .pscr.scrolled .pab,.pscr.scrolled>.tabs{background:var(--pane);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur)}.pscr.scrolled .pab:not(:has(+.tabs)),.pscr.scrolled>.tabs{box-shadow:0 10px 20px -16px rgba(24,32,51,.5)}.pscr.scrolled .psb{background:var(--pane);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur)}
 .pscr>.tabs{padding:0 14px;margin:0 0 6px;flex:none;position:relative;z-index:5}
 .pbody{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:6px 14px 24px;display:flex;flex-direction:column;gap:13px;position:relative;z-index:1;scrollbar-width:none}.pbody::-webkit-scrollbar{display:none}.pbody>*{flex:none}
-.pscr:has(.pnav) .pbody{padding-bottom:108px}
+.pscr.hasnav .pbody{padding-bottom:108px}
 .pnav{position:absolute;left:12px;right:12px;bottom:12px;z-index:5;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;align-items:center;background:var(--pane-hi);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--edge);border-radius:28px;padding:7px 8px;box-shadow:var(--sh2)}
 .pnav button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px 6px;font-size:10.5px;font-weight:650;color:var(--mute);position:relative;z-index:1;border-radius:18px;transition:transform .2s var(--spring),color .2s}.pnav .i{width:22px;height:22px}.pnav button:active{transform:scale(.9)}
 .pnav button[aria-current=page]{color:var(--pri-t);font-weight:750}.pnav .sld{border-radius:18px;background:var(--pri-s)}
@@ -468,12 +468,12 @@ button.c:hover:not(:disabled){transform:translateY(-3px) scale(1.06);box-shadow:
 @supports (animation-timeline:view()){@media (prefers-reduced-motion:no-preference){.pbody:not(.enter):not(.momb):not(.obp)>*:not(.ink),.pbody:not(.enter) .tlist>.todo,.dmain:not(.enter) .tlist>.todo,.dmain:not(.enter) .stack>.card{animation:reveal linear both;animation-timeline:view();animation-range:entry 0% entry 42%}}}
 
 /* ---------- narrow containers ---------- */
-@container (max-width:1180px){.home{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.home>aside{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}.home>aside .sech{grid-column:1/-1}.home .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@container (max-width:900px){.two,.two.wk,.home{grid-template-columns:minmax(0,1fr)}.dlogin{grid-template-columns:minmax(0,1fr);padding:14px}.dl-art{min-height:0}.dl-art h1{font-size:30px;padding-top:18px}.dl-art .bld small{display:none}.dl-art .bld b{font-size:12px}.dl-form{padding:20px}.mss{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media all{.home{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.home>aside{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}.home>aside .sech{grid-column:1/-1}.home .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media all{.two,.two.wk,.home{grid-template-columns:minmax(0,1fr)}.dlogin{grid-template-columns:minmax(0,1fr);padding:14px}.dl-art{min-height:0}.dl-art h1{font-size:30px;padding-top:18px}.dl-art .bld small{display:none}.dl-art .bld b{font-size:12px}.dl-form{padding:20px}.mss{grid-template-columns:repeat(2,minmax(0,1fr))}
  .gnav{gap:8px;padding:8px 10px}.gn-app,.gn-co,.gn-u div{display:none}.gn-menu{margin-left:0}.gn-menu .i{display:block;width:18px;height:18px}.gn-menu button span,.gn-menu button b{display:none}.gn-menu button[aria-current=page] span{display:inline}
  .split{grid-template-columns:minmax(0,1fr);height:auto;overflow:auto}.dmain:has(>.split:not(.in)){overflow:auto}.sl{flex-direction:row;overflow-x:auto;padding:14px}.sl .site{min-width:290px}.slh{flex-direction:column;align-items:flex-start;gap:6px}.sd{overflow:visible;padding:8px 14px 30px}.split.in{grid-template-columns:minmax(0,1fr)}.split.in .sl{flex-direction:column;max-height:260px}
  .trrow{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.sumgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.prjh h1,.dh h1{font-size:28px}.home .hero h1{font-size:28px}}
-@container (max-width:520px){.card{padding:14px;border-radius:22px}.card.flush{padding:4px 14px}.fgrid{grid-template-columns:minmax(0,1fr)}.mss{gap:16px 14px}.msn b{font-size:30px}
+@media all{.card{padding:14px;border-radius:22px}.card.flush{padding:4px 14px}.fgrid{grid-template-columns:minmax(0,1fr)}.mss{gap:16px 14px}.msn b{font-size:30px}
  .ovl{align-items:flex-end;padding:0}.dlg,.dlg.wide{width:100%;border-radius:30px 30px 0 0;max-height:90%;animation:up .42s var(--spring)}.dlg::before{content:"";width:40px;height:5px;border-radius:99px;background:var(--well2);margin:9px auto -4px;flex:none}.ovl.out .dlg{animation:down .2s ease-in forwards}.sh-f{padding-bottom:22px}.sh-f .btn{flex:1}
  .rw .r .btn.sm{padding:7px 11px}.rw.pt{grid-template-columns:auto minmax(0,1fr)}.rw.pt .r{grid-column:2;justify-content:flex-start}.rw:has(>.ageb){grid-template-columns:auto minmax(0,1fr)}.rw:has(>.ageb) .r{grid-column:2;justify-content:flex-start}
  .rw.lk:has(>.mi) .r{flex-direction:column;align-items:flex-end;gap:5px}
@@ -540,7 +540,7 @@ html.app,html.app body{height:100%;margin:0;overflow:hidden;background:var(--bg)
 .app .psb{height:var(--sat,0px);padding:0}.app .psb>*{display:none}
 .app .pnav{bottom:calc(12px + var(--sab,0px))}
 .app .pbody{padding-bottom:calc(24px + var(--sab,0px))}
-.app .pscr:has(.pnav) .pbody{padding-bottom:calc(108px + var(--sab,0px))}
+.app .pscr.hasnav .pbody{padding-bottom:calc(108px + var(--sab,0px))}
 .app .pbody.momb{padding-bottom:0}.app .momb .dock{padding-bottom:calc(12px + var(--sab,0px))}
 .app .pbody.obp{padding-bottom:calc(8px + var(--sab,0px))}
 .app .pushb{top:calc(var(--sat,0px) + 6px)}
@@ -588,4 +588,24 @@ button.docrow{width:100%;text-align:left;font:inherit;font-size:13px;color:inher
 /* the chat box of a drawing sits above the phone's own bottom edge */
 .app .momb .chat .dock{padding-bottom:calc(10px + var(--sab,0px))}
 /* a notice never covers the box a person is typing in */
-html.app:has(.momb .dock) #toast{bottom:calc(168px + var(--sab,0px))}
+html.app.docked #toast{bottom:calc(168px + var(--sab,0px))}
+/* ---------- smooth on a phone ----------
+   Measured on a Samsung M31 (mid-range, 60 Hz) with the phone's own frame statistics and real touches.
+   The glass, the splash, every entrance and every endless animation are the preview's. What makes the app smooth:
+   - the shell lets the phone's own web view draw straight to the screen (lib/src/config.dart, kWebDirect):
+     at rest 26 → 60 frames a second, scrolling 28 → about 55, with nothing changed in the look;
+   - mobile.js gives the endless ambient motion its moments: ten seconds after the app opens or a finger lifts,
+     then it holds its pose (running for ever it kept two processor cores busy: a warm, slowing phone);
+   - photos in lists are small copies; rules that made the phone look through the whole screen again were rewritten;
+   - and ONE thing is different from the preview, below. */
+html.app .pbody{will-change:scroll-position}
+/* The one difference: a block still rises, fades in and settles exactly as approved, but it does not start out of
+   focus. That quarter-second of soft focus (a blur animated on every large block at once) was, alone, the stutter of
+   a screen opening: with it 46 frames of 100 ms or more in a round of the four main screens, without it 22, and 63%
+   more frames drawn. To have it back, delete this one line. */
+@keyframes rise{from{opacity:0;transform:translateY(18px) scale(.985)}}
+/* what arrives far below the fold of a phone arrives without its own cue: nobody sees it, and it is one layer less
+   for the phone to draw (the first twelve of a list, the first five sites of a street, keep theirs) */
+html.app .enter :is(.tlist,.rows,.stack,.dgal)>:nth-child(n+13),html.app .enter :is(.tlist,.rows,.stack,.dgal)>:nth-child(n+13) :is(.ageb,.cal,.mi,.av.lg,.sht,.eg,.el,.ed){animation:none}
+html.app .enter .street>:nth-child(n+6) :is(.eg,.el,.ed){animation:none}
+html.app .enter .street>:nth-child(n+6) .ei path,html.app .enter :is(.tlist,.rows,.stack,.dgal)>:nth-child(n+13) .ei path{animation:none;stroke-dasharray:none;stroke-dashoffset:0}

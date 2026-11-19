@@ -104,6 +104,7 @@ class TestDeskMomFiles(MomCommon, HttpCase):
         self.authenticate("t_coord", "t_coord")
         photo = self.url_open("/rvt/desk/point/%s/photo" % point.id)
         self.assertEqual((photo.status_code, photo.headers["Content-Type"]), (200, "image/png"))
+        self.assertEqual(self.url_open("/rvt/desk/point/%s/photo?size=thumb" % point.id).headers["Content-Type"], "image/jpeg")
         self.assertEqual(self.url_open("/rvt/desk/point/%s/photo?close=1" % point.id).status_code, 404, "no closing photo yet")
         document = self.url_open("/rvt/desk/mom/pdf?kind=mom&a=v%s&b=a%s" % (visit.id, self.ag_carp.id))
         self.assertEqual(document.status_code, 200)

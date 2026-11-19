@@ -8,6 +8,8 @@ from odoo.tools.mimetypes import guess_mimetype
 
 from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
 
+from odoo.addons.rvt_base.photos import sized
+
 from ..deps import Caller, caller, staff
 from ..errors import invalid, not_found
 
@@ -38,22 +40,23 @@ def revision_pdf(revision_id: int, who: Annotated[Caller, Depends(caller)], open
 
 
 @router.get("/files/point/{point_id}/photo", summary="A point's photo, or its closing photo")
-def point_photo(point_id: int, who: Annotated[Caller, Depends(caller)], close: int = 0):
+def point_photo(point_id: int, who: Annotated[Caller, Depends(caller)], close: int = 0, size: str = ""):
     point = _readable(who, "rvt.point", point_id).sudo()
     value = point.close_photo if close else point.photo
     if not value:
         raise not_found("No photo.")
-    content = value.content
+    # size=thumb for a list, size=view for a screen; without it, the photo as it was taken
+    content = sized(value.content, size)
     return Response(content=content, media_type=guess_mimetype(content, default="image/jpeg"),
                     headers={"Cache-Control": "private, max-age=3600"})
 
 
 @router.get("/files/question/{question_id}/photo", summary="The photo sent with a question")
-def question_photo(question_id: int, who: Annotated[Caller, Depends(caller)]):
+def question_photo(question_id: int, who: Annotated[Caller, Depends(caller)], size: str = ""):
     question = _readable(who, "rvt.drawing.question", question_id).sudo()
     if not question.photo:
         raise not_found("No photo.")
-    content = question.photo.content
+    content = sized(question.photo.content, size)
     return Response(content=content, media_type=guess_mimetype(content, default="image/jpeg"),
                     headers={"Cache-Control": "private, max-age=3600"})
 

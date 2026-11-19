@@ -566,7 +566,7 @@ SHEETS.ptview=(dev,s)=>{const x=ptOf(s.id);if(!x)return {title:'Point',body:empt
    ${ptBA(x,'en')}<div class="kv"><div><span>For</span><b>${esc(partyName(p,x))}${x.t&&TX[x.t]?' · '+esc(TX[x.t].n):''}</b></div><div><span>Raised</span><b>${by?esc(by)+' · ':''}${x.on!=null?fd(x.on)+' · ':''}${v?'visit '+v.no:x.legacy?'earlier MOM':'from the office'}</b></div>
    ${open?'':`<div><span>${x.doneBy?'Marked done':'Closed'}</span><b>${who?esc(who)+' · ':''}${x.closedOn!=null?fd(x.closedOn):''}</b></div>${x.note?`<div><span>Note</span><b>${esc(x.note)}</b></div>`:''}`}</div>`,
   foot:open?Bt('Back','close',null,'ghost')+(x.kind==='agency'&&agOf(x.party)?Bt('Remind','remind',x.party+'|'+p.id+'|Point '+x.n+': '+x.text,'wa','wa'):'')+(x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'gold'):Bt('Mark done','closept',x.id,'gold','check'))
-   :Bt('Back','close',null,'ghost')+Bt('Not right: open again','reopenpt',x.id,'','refresh')}};
+   :Bt('Back','close',null,'ghost')+Bt('Open again','reopenpt',x.id,'','refresh')}};
 SHEETS.sitepts=(dev,s)=>{const p=pOf(s.id),list=sitePts(p);return {title:'Points for the whole site',sub:p.name+' · not tied to one room',body:`<div class="rows">${list.map(x=>ptRow(x,dev)).join('')||empty('Nothing here.')}</div>`,foot:Bt('Close','close',null,'ghost')}};
 /* one searchable list for a long choice: who a point is for, which room it is in */
 function pickOpts(s){const p=pOf(s.pid);if(!p)return [];if(s.src==='area')return [['','Whole site','not tied to one room']].concat(p.ents.map(e=>[e.id,e.n,e.ty&&e.ty!==e.n?e.ty:'']));
@@ -811,7 +811,7 @@ function sheetHTML(dev){const s=dev.sheet;if(!s||!SHEETS[s.k]){dev._sk='';return
  return `<div class="ovl ${still?'still':''}" data-a="close"><div class="dlg ${o.wide?'wide':''}" role="dialog" aria-label="${esc(o.title)}"><header class="sh-h"><div><h3>${esc(o.title)}</h3>${o.sub?`<p>${esc(o.sub)}</p>`:''}</div><button type="button" class="xb" data-a="close" aria-label="Close">${ic('x')}</button></header><div class="sh-b" data-sc="sheet_${s.k}">${o.body}</div>${o.foot?`<footer class="sh-f">${o.foot}</footer>`:''}</div></div>${flashHTML(dev)}`}
 const pushHTML=dev=>dev.push?`<div class="pushb" aria-live="polite"><i>${LOGO}</i><div><b>${esc(dev.push.t)}<small>now</small></b><span class="gu">${esc(dev.push.x)}</span></div></div>`:'';
 function phone(dev,o){const fresh=dev._k!==o.key,n=dev.stack?dev.stack.length:1,dir=!fresh?'':n>(dev._n||1)?' push':n<(dev._n||1)?' pop':'';dev._k=o.key;dev._n=n;
- return `<div class="phone ${o.cls||''}"><div class="pscr scr"><div class="psb"><b>10:42</b>${o.url?`<span class="purl">${ic('lock')}${esc(o.url)}</span>`:'<i class="island"></i>'}<span class="psi">${UI.offline&&dev.id==='staff'?ic('off'):'<i class="sig"></i>'}<i class="bat"></i></span></div>
+ return `<div class="phone ${o.cls||''}"><div class="pscr scr${o.nav?' hasnav':''}${dev.splash?(dev.splash==='quick'?' sp spq':' sp'):''}"><div class="psb"><b>10:42</b>${o.url?`<span class="purl">${ic('lock')}${esc(o.url)}</span>`:'<i class="island"></i>'}<span class="psi">${UI.offline&&dev.id==='staff'?ic('off'):'<i class="sig"></i>'}<i class="bat"></i></span></div>
  ${o.bar||''}<div class="pbody ${o.bodyCls||''}${fresh?' enter'+dir:''}" data-sc="b_${o.key}">${o.body}</div>${o.nav||''}${pushHTML(dev)}${sheetHTML(dev)}${splashHTML(dev)}</div></div>`}
 const abar=(title,sub,o)=>{o=o||{};return `<header class="pab ${o.cls||''}">${o.back?`<button type="button" class="ib" data-a="back" aria-label="Back">${ic('back')}</button>`:''}${o.left||''}<div class="m">${sub&&o.subFirst?`<p>${sub}</p>`:''}<h1 class="${o.serif?'serif':''}">${title}</h1>${sub&&!o.subFirst?`<p>${sub}</p>`:''}</div>${o.right||''}</header>`};
 function bnav(dev,items,fab){const cur=dev.stack[0].s,b=n=>`<button type="button" data-a="nav" data-v="${n[0]}" ${cur===n[0]?'aria-current="page"':''}>${ic(n[2])}${n[3]?`<b>${n[3]}</b>`:''}<span>${esc(n[1])}</span></button>`,h=Math.ceil(items.length/2);
@@ -1174,6 +1174,8 @@ function restore(){try{const raw=localStorage.getItem(SKEY);if(!raw)return false
   OBU=Math.max(0,...Object.values(UI.devs).flatMap(d=>d.ob?d.ob.ents.map(e=>e.u||0):[]));UI.toast=null;return true}catch(e){return false}}
 
 /* ---------- motion that needs a script: sliding selectors, tap rings, confetti, count-ups ---------- */
+/* the clock the endless animations keep their phase by; a phone stops it while they rest */
+let tNow=()=>((performance.now()-T0)/1000).toFixed(2);
 const T0=performance.now(),RM=()=>UI.motion!=='on'&&matchMedia('(prefers-reduced-motion: reduce)').matches,SL={};let TAP=null;
 /* the opening: the same splash at the size of the whole window, once, before the log-in page */
 function intro(){if(RM())return;const old=document.getElementById('intro'),app=document.getElementById('app'),d=document.createElement('div');if(old)old.remove();d.id='intro';d.className='splash big';d.setAttribute('aria-hidden','true');d.innerHTML=splashInner(false);document.body.appendChild(d);
@@ -1202,7 +1204,7 @@ function afterRender(root){sliders(root);countUp(root);tapRing();
 function render(){({staff:['staff'],agency:['agency'],client:['client'],all:['staff','agency','client']}[UI.view]||[]).forEach(k=>{const d=UI.devs[k];if(!d.seen){d.seen=true;splash(d,UI.restored&&(d.signed||(k==='client'&&UI.linkMode)))}});
  const root=document.getElementById('app'),sc={},key=el=>{const d=el.closest('[data-dev]');return (d?d.dataset.dev:'')+':'+el.dataset.sc};
  root.querySelectorAll('[data-sc]').forEach(el=>{sc[key(el)]=[el.scrollTop,el.scrollLeft]});const ae=document.activeElement,fid=ae&&ae.id,ss=ae&&ae.selectionStart;
- root.style.setProperty('--t',((performance.now()-T0)/1000).toFixed(2));
+ root.style.setProperty('--t',tNow());
  root.innerHTML=shellHTML();
  root.querySelectorAll('[data-sc]').forEach(el=>{const s=sc[key(el)]||(BOOT&&SCROLL[key(el)]);if(s){el.scrollTop=s[0];el.scrollLeft=s[1]}});
  Object.values(UI.devs).forEach(d=>{if(d.toEnd){d.toEnd=false;const b=root.querySelector('.dv-'+d.id+' .pbody');if(b)b.scrollTop=b.scrollHeight}});afterRender(root);
@@ -1463,9 +1465,11 @@ const fmtSize=n=>n>=1e6?(n/1e6).toFixed(1)+' MB':Math.max(1,Math.round(n/1e3))+'
 async function pick(kind){const r=await local('pick',{kind});if(!r||r.cancelled)return null;const b64=await (await fetch(r.blob+'?b64=1')).text();return {name:r.name,size:r.size,b64}}
 const PHOTO_KEYS=['m_photo','rp_photo','cp_photo','aq_photo','ad_photo','ab_doc','ub_doc','py_proof'];
 const tog0=A.tog;A.tog=function(v,el,dev){if(!PHOTO_KEYS.includes(v))return tog0.call(A,v,el,dev);
- if(dev.f[v]&&APP.img[v]){dev.f[v]=false;delete APP.img[v];return}dev.f[v]=false;openSheet(dev,'picksrc',{key:v})};
+ if(dev.f[v]&&APP.img[v]){dev.f[v]=false;delete APP.img[v];return}
+ /* asked from inside a sheet (raise a point, close a point, a bill): that sheet comes back, with the photo, after the camera */
+ dev.f[v]=false;openSheet(dev,'picksrc',{key:v,back:dev.sheet&&dev.sheet.k!=='picksrc'?dev.sheet:null})};
 SHEETS.picksrc=function(dev,s){return {title:T('addphoto'),body:`<div class="langs">${Bt(T('camera'),'pickimg',s.key+'|camera','gold lg blk','cam')}${Bt(T('gallery'),'pickimg',s.key+'|gallery','lg blk','layers')}</div>`}};
-A.pickimg=function(v,el,dev){const [key,kind]=v.split('|');dev.sheet=null;pick(kind).then(g=>{if(g){APP.img[key]=g;dev.f[key]=true}render()}).catch(e=>{toast(e.message,'bad');render()})};
+A.pickimg=function(v,el,dev){const [key,kind]=v.split('|');dev.sheet=(dev.sheet&&dev.sheet.back)||null;pick(kind).then(g=>{if(g){APP.img[key]=g;dev.f[key]=true}render()}).catch(e=>{toast(e.message,'bad');render()})};
 A.pickpdf=function(v,el,dev){pick('pdf').then(g=>{if(!g)return;if(g.size>15e6){toast('That file is larger than 15 MB. Send it from the desk.','wait')}else{APP.pdf=g;dev.f.sa_file=true}render()}).catch(e=>{toast(e.message,'bad');render()})};
 A.droppdf=function(v,el,dev){APP.pdf=null;dev.f.sa_file=false};
 const sendappr0=SHEETS.sendappr;SHEETS.sendappr=function(dev,s){const o=sendappr0(dev,s),f=dev.f,p=APP.pdf,r=cur(dOf(s.id)),on=!!(f.sa_file&&p);
@@ -1488,13 +1492,13 @@ A.pdf=function(v){const [kind,a,b]=v.split('|');let path,title;
 /* the MOM of a project, cut by visit and by party: the real PDF, full screen */
 A.dopdf=function(v,el,dev){const f=dev.f,p=pOf(v),q=['party='+encodeURIComponent(f.pf_p||'all'),'state='+(f.pf_st==='all'?'all':'open')];if(f.pf_v)q.push('visit_id='+num(f.pf_v));dev.sheet=null;
  local('pdf/open',{path:API+'/files/project/'+num(v)+'/points-pdf?'+q.join('&'),title:f.pf_v&&visOf(f.pf_v)?'MOM · visit '+visOf(f.pf_v).no:'Points',sub:p?p.name:''}).catch(e=>toast(e.message,'bad'))};
-phOf=function(kind,x){const id=num(x.id);if(!id||+id>=LOCAL0)return '<span class="ph"></span>';const src=`${API}/files/${kind}/${id}/photo`;
+phOf=function(kind,x){const id=num(x.id);if(!id||+id>=LOCAL0)return '<span class="ph"></span>';const src=`${API}/files/${kind}/${id}/photo?size=thumb`;
  return `<span class="ph real" role="button" tabindex="0" data-a="photo" data-v="${kind}|${x.id}" aria-label="${esc(T('aphoto'))}" ${WEB?`data-asrc="${src}"`:`style="background-image:url(${src})"`}></span>`};
 ptPhoto=function(x,after){const id=num(x.id);if(!id||+id>=LOCAL0)return `<span class="ph full ${after?'aft':''}"></span>`;
- return `<img class="phv" alt="" role="button" tabindex="0" data-a="photo" data-v="point|${x.id}|${after?1:0}" ${WEB?'data-asrc':'src'}="${API}/files/point/${id}/photo${after?'?close=1':''}">`};
+ return `<img class="phv" alt="" role="button" tabindex="0" data-a="photo" data-v="point|${x.id}|${after?1:0}" ${WEB?'data-asrc':'src'}="${API}/files/point/${id}/photo?size=view${after?'&close=1':''}">`};
 A.photo=function(v,el,dev){const [a,b,c]=v.split('|');openSheet(dev,'photo',b?{kind:a,id:b,close:c==='1',back:dev.sheet&&dev.sheet.k!=='photo'?dev.sheet:null}:{kind:'point',id:a})};
 SHEETS.photo=function(dev,s){const x=s.kind==='point'?ptOf(s.id):null,b=s.kind==='bill'?billOf(s.id):null;
- return {title:b?(b.no||T('bills')):(x&&x.cphoto?tr(s.close?'after':'before',L()):T('aphoto'))+(x&&APP.role==='staff'?' · point '+x.n:''),sub:x?x.text:b?b.what:'',body:`<div class="phw"><img class="phv" alt="" ${WEB?'data-asrc':'src'}="${API}/files/${s.kind}/${num(s.id)}/${b?'document':'photo'}${s.close?'?close=1':''}"></div>`,foot:Bt(T('shut'),'close',null,'ghost')}};
+ return {title:b?(b.no||T('bills')):(x&&x.cphoto?tr(s.close?'after':'before',L()):T('aphoto'))+(x&&APP.role==='staff'?' · point '+x.n:''),sub:x?x.text:b?b.what:'',body:`<div class="phw"><img class="phv" alt="" ${WEB?'data-asrc':'src'}="${API}/files/${s.kind}/${num(s.id)}/${b?'document':'photo?size=view'+(s.close?'&close=1':'')}"></div>`,foot:Bt(T('shut'),'close',null,'ghost')}};
 /* a bill's document is the file that was uploaded, or nothing: never a made-up file name */
 const bill0=SHEETS.bill;SHEETS.bill=function(dev,s){const o=bill0(dev,s),b=billOf(s.id);
  o.body=o.body.replace(/<div class="docrow">[^]*?<\/div>/,b.doc&&+num(b.id)<LOCAL0?`<button type="button" class="docrow" data-a="billdoc" data-v="${b.id}">${ic('file')}<span><b>${b.doc==='pdf'?'PDF':'Photo'} of the bill</b> · open</span></button>`:'');return o};
@@ -1606,9 +1610,9 @@ intro=function(){};
 /* ---------- the phone speaks to the screens ---------- */
 window.__back=function(){const d=myDev();let done=true;
  if(d.sheet)d.sheet=null;else if(d.stack&&d.stack.length>1)d.stack.pop();else if(!APP.role&&d.si&&d.si.step!=='lang'&&d.si.step!=='staff')d.si.step=d.si.step==='otp'?'phone':'lang';else if(!APP.role&&d.si&&d.si.step==='staff'&&UI.lang.auth)d.si.step='phone';else done=false;
- if(done)render();return done};
-window.__pause=function(){save();stash()};
-window.__resume=function(away){if(!APP.role)return;if(APP.queue.length||UI.offline)pump();else reload(true);liveOpen()};
+ if(done){render();wakeSoon(900)}return done};
+window.__pause=function(){save();stash();restNow()};
+window.__resume=function(away){wakeSoon(300);if(!APP.role)return;if(APP.queue.length||UI.offline)pump();else reload(true);liveOpen()};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&APP.role&&!APP.busy&&!APP.queue.length&&Date.now()-APP.at>4000){reload(true);liveOpen()}});
 document.addEventListener('focusout',()=>{if(APP.stale)setTimeout(()=>{if(APP.stale&&!typing()){APP.stale=false;render()}},80)});
 
@@ -1631,6 +1635,31 @@ function liveOpen(){const L=DB.set&&DB.set.live;if(!APP.role||!L||LV.ws||UI.offl
 function liveShut(){clearTimeout(LV.r);clearTimeout(LV.t);clearInterval(LV.poll);LV.poll=null;const w=LV.ws;LV.ws=null;LV.on=false;if(w){try{w.close()}catch(e){}}}
 function liveStart(){liveOpen();if(LV.poll)return;LV.poll=setInterval(()=>{if(!APP.role||document.hidden||UI.offline)return;if(!LV.ws)liveOpen();if(!LV.on&&!APP.busy&&!APP.saving&&!APP.queue.length)reload(true)},10000)}
 
+/* ---------- smooth under the finger, and a phone that stays cool ----------
+   Nothing of the approved motion is taken away; it is given its moments. Measured on a Samsung M31:
+   - any endless animation, even the small pulsing dot, makes the phone draw the whole screen sixty times a second
+     for as long as it runs: about two processor cores, for ever (with all of them held: next to nothing). A phone
+     that does this through a working day runs warm and slows down;
+   - while a finger scrolls, the same motion takes frames away from the scroll.
+   So the endless ambient motion (the drifting colour field, the gold shimmer, the sheen, the moving grid, the
+   pulsing dots) plays for ten seconds whenever the app opens or a finger lifts, and then holds its pose until the
+   next touch; it holds at once while a finger is on the screen. Entrances, sheets, the splash and everything that
+   plays once are never touched. The clock those animations keep their phase by stops with them, so nothing jumps
+   when a screen is redrawn while they hold. */
+const AWAKE=10000;
+const REST={on:false,vt:0,since:performance.now(),h:null,held:new WeakSet()};
+const vclock=()=>REST.on?REST.vt:REST.vt+(performance.now()-REST.since)/1000;
+const endless=fn=>{try{document.getAnimations().forEach(a=>{const tm=a.effect&&a.effect.getTiming&&a.effect.getTiming();if(tm&&tm.iterations===Infinity)fn(a)})}catch(e){}};
+const holdStill=()=>endless(a=>{if(a.playState==='running'){a.pause();REST.held.add(a)}});
+function restNow(){clearTimeout(REST.h);if(REST.on)return;REST.vt=vclock();REST.on=true;holdStill()}
+function wakeSoon(ms){clearTimeout(REST.h);REST.h=setTimeout(()=>{if(REST.on){REST.on=false;REST.since=performance.now();endless(a=>{if(REST.held.has(a)&&a.playState==='paused'){REST.held.delete(a);a.play()}})}
+  REST.h=setTimeout(restNow,AWAKE)},ms)}
+tNow=function(){return vclock().toFixed(2)};
+const renderS=render;render=function(){renderS();document.documentElement.classList.toggle('docked',!!document.querySelector('.momb .dock'));if(REST.on)holdStill()};
+document.addEventListener('touchstart',restNow,{passive:true,capture:true});
+document.addEventListener('touchend',()=>wakeSoon(900),{passive:true,capture:true});document.addEventListener('touchcancel',()=>wakeSoon(900),{passive:true,capture:true});
+document.addEventListener('scroll',()=>{restNow();wakeSoon(350)},{passive:true,capture:true});   /* a fling goes on after the finger lifts */
+
 /* ---------- pull down at the top of a screen: read everything again ---------- */
 (function(){let y0=null,box=null,pull=0,busy=false;const ind=document.createElement('div');ind.id='ptr';ind.setAttribute('aria-hidden','true');ind.innerHTML='<i></i>';
  const put=(px,on)=>{if(!ind.parentNode)document.body.appendChild(ind);ind.style.transform=`translate(-50%,${Math.round(px)}px) rotate(${Math.round(px*4)}deg)`;ind.style.opacity=px>6?Math.min(1,px/50):0;ind.classList.toggle('on',!!on);ind.classList.toggle('go',px>=64)};
@@ -1649,13 +1678,20 @@ async function appBoot(){UI.devs.auth=newDev('auth',true);UI.devs.auth.si={step:
  try{APP.s=await local('session');if(APP.s.dead)APP.dead=APP.s.dead}catch(e){document.getElementById('app').innerHTML='<p style="padding:40px;font:600 15px system-ui;color:#fff">The app could not start. Close it and open it again.</p>';return}
  const h=document.documentElement;look();window.addEventListener('resize',fit);
  APP.saved=await kept('ui');if(APP.saved&&APP.saved.lang)Object.assign(UI.lang,APP.saved.lang);if(UI.lang.auth)UI.devs.auth.si.step='phone';
+ let later=null;
  if(APP.s.signed&&APP.s.me){APP.role=APP.s.me.role;UI.view=APP.role;UI.devs[APP.role].signed=true;
   const had=useKept(await kept('data_'+APP.role));
-  if(!(had&&APP.queue.length))try{await load()}catch(e){if(e.status===401){await local('logout',{});APP.role=null;UI.view='auth';APP.s.signed=false}else if(e.code==='OFFLINE'&&DB.today_date)setOffline(true);else if(!DB.today_date){APP.role=null;UI.view='auth';UI.offline=true}}}
- if(!APP.role)splash(UI.devs.auth,false);   /* a cold start opens with the approved splash; a session that comes back gets the short one */
+  const first=async()=>{try{await load()}catch(e){if(e.status===401){await local('logout',{});APP.role=null;UI.view='auth';APP.s.signed=false}else if(e.code==='OFFLINE'&&DB.today_date)setOffline(true);else if(!DB.today_date){APP.role=null;UI.view='auth';UI.offline=true}}};
+  /* with a copy kept on the phone, the screens open on it under the splash and the server is read meanwhile, so the
+     splash is seen whole instead of waiting behind the app's cover; without a copy there is nothing to open on yet */
+  if(had&&!APP.queue.length&&!WEB)later=first;else if(!(had&&APP.queue.length))await first()}
+ /* every cold start opens with the approved splash, whole; a session that comes back is read underneath it */
+ if(!WEB){const d0=UI.devs[APP.role||'auth'];d0.seen=true;splash(d0,false)}else if(!APP.role)splash(UI.devs.auth,false);   /* the link in a browser keeps the short one when it comes back */
  boot();
  document.addEventListener('click',e=>{const el=e.target.closest&&e.target.closest('[data-a]');if(el&&!el.disabled)haptic(el.classList.contains('gold')||el.classList.contains('fab')?'heavy':'')},true);
  if(window.visualViewport){const vv=window.visualViewport,full=vv.height;vv.addEventListener('resize',()=>h.classList.toggle('kb',vv.height<full-120))}
- local('ready',{}).catch(()=>{});if(APP.role){liveStart();if(APP.queue.length)pump()}}
+ /* the "welcome back" notice belongs to the screen, not on top of the splash: it comes when the splash has gone */
+ if(UI.toast&&!WEB){const t=UI.toast.t;UI.toast=null;clearTimeout(toast.h);setTimeout(()=>{if(APP.role){toast(t);render()}},4700)}
+ wakeSoon(5300);local('ready',{}).catch(()=>{});if(later){await later();render()}if(APP.role){liveStart();if(APP.queue.length)pump()}}
 
 appBoot();})();

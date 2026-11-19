@@ -232,6 +232,8 @@ function restore(){try{const raw=localStorage.getItem(SKEY);if(!raw)return false
   OBU=Math.max(0,...Object.values(UI.devs).flatMap(d=>d.ob?d.ob.ents.map(e=>e.u||0):[]));UI.toast=null;return true}catch(e){return false}}
 
 /* ---------- motion that needs a script: sliding selectors, tap rings, confetti, count-ups ---------- */
+/* the clock the endless animations keep their phase by; a phone stops it while they rest */
+let tNow=()=>((performance.now()-T0)/1000).toFixed(2);
 const T0=performance.now(),RM=()=>UI.motion!=='on'&&matchMedia('(prefers-reduced-motion: reduce)').matches,SL={};let TAP=null;
 /* the opening: the same splash at the size of the whole window, once, before the log-in page */
 function intro(){if(RM())return;const old=document.getElementById('intro'),app=document.getElementById('app'),d=document.createElement('div');if(old)old.remove();d.id='intro';d.className='splash big';d.setAttribute('aria-hidden','true');d.innerHTML=splashInner(false);document.body.appendChild(d);
@@ -260,7 +262,7 @@ function afterRender(root){sliders(root);countUp(root);tapRing();
 function render(){({staff:['staff'],agency:['agency'],client:['client'],all:['staff','agency','client']}[UI.view]||[]).forEach(k=>{const d=UI.devs[k];if(!d.seen){d.seen=true;splash(d,UI.restored&&(d.signed||(k==='client'&&UI.linkMode)))}});
  const root=document.getElementById('app'),sc={},key=el=>{const d=el.closest('[data-dev]');return (d?d.dataset.dev:'')+':'+el.dataset.sc};
  root.querySelectorAll('[data-sc]').forEach(el=>{sc[key(el)]=[el.scrollTop,el.scrollLeft]});const ae=document.activeElement,fid=ae&&ae.id,ss=ae&&ae.selectionStart;
- root.style.setProperty('--t',((performance.now()-T0)/1000).toFixed(2));
+ root.style.setProperty('--t',tNow());
  root.innerHTML=shellHTML();
  root.querySelectorAll('[data-sc]').forEach(el=>{const s=sc[key(el)]||(BOOT&&SCROLL[key(el)]);if(s){el.scrollTop=s[0];el.scrollLeft=s[1]}});
  Object.values(UI.devs).forEach(d=>{if(d.toEnd){d.toEnd=false;const b=root.querySelector('.dv-'+d.id+' .pbody');if(b)b.scrollTop=b.scrollHeight}});afterRender(root);
