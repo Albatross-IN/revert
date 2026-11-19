@@ -2,11 +2,12 @@
 Release 1, except opening a drawing and asking a question."""
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from pydantic import BaseModel
 
 from ..deps import Caller, agency
 from ..errors import not_found
+from ..snapshots import snapshot_response
 
 router = APIRouter(prefix="/agency", tags=["agency"])
 
@@ -31,10 +32,11 @@ def home(who: Annotated[Caller, Depends(agency)]):
 
 
 @router.get("/snapshot", summary="The agency's slice in the shape of the app's screens")
-def snapshot(who: Annotated[Caller, Depends(agency)]):
+def snapshot(who: Annotated[Caller, Depends(agency)], if_none_match: Annotated[str | None, Header()] = None,
+             accept_encoding: Annotated[str | None, Header()] = None):
     data = who.env["rvt.api"].agency_snapshot()
     data["me_info"] = who.user.rvt_api_me()
-    return data
+    return snapshot_response(data, if_none_match, accept_encoding)
 
 
 @router.post("/drawings/{drawing_id}/open", summary="The agency opened the drawing")

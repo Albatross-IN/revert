@@ -1,7 +1,5 @@
 """Staff. The app reads one snapshot and sends one operation per button, exactly as the desk does;
 the same model methods are also offered one by one."""
-import hashlib
-import json
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Response
@@ -10,6 +8,7 @@ from starlette.responses import JSONResponse
 
 from ..deps import Caller, staff
 from ..errors import invalid, not_found
+from ..snapshots import snapshot_response
 from .auth import client_link
 
 router = APIRouter(tags=["staff"])
@@ -102,14 +101,11 @@ def _media(who, args, key, media_key):
 
 # ---- the app's two calls ------------------------------------------------------
 @router.get("/staff/snapshot", summary="Everything the staff screens read, in one answer")
-def snapshot(who: Annotated[Caller, Depends(staff)], if_none_match: Annotated[str | None, Header()] = None):
+def snapshot(who: Annotated[Caller, Depends(staff)], if_none_match: Annotated[str | None, Header()] = None,
+             accept_encoding: Annotated[str | None, Header()] = None):
     data = who.env["rvt.desk"].with_context(rvt_app=True).snapshot()
     data["me_info"] = who.user.rvt_api_me()
-    body = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
-    etag = '"%s"' % hashlib.sha1(body.encode()).hexdigest()
-    if if_none_match == etag:
-        return Response(status_code=304, headers={"ETag": etag})
-    return Response(content=body, media_type="application/json", headers={"ETag": etag})
+    return snapshot_response(data, if_none_match, accept_encoding)
 
 
 @router.post("/staff/op", summary="One operation, as a button of the desk does it")

@@ -1141,13 +1141,18 @@ const num=v=>String(v==null?'':v).replace(/\D/g,'');
 
 /* ---------- talking to the phone and to the server ---------- */
 class Refused extends Error{constructor(status,body){super(((body||{}).error||{}).message||'Something went wrong.');this.status=status;this.code=((body||{}).error||{}).code||'';this.body=body||{}}}
-async function ask(url,method,body,again){let r;const head=body===undefined?{}:{'Content-Type':'application/json'};
+/* ``tag``: the mark of the copy the app holds. The server then answers "the same" with nothing else,
+   and the answer comes back as {__same:true}. A fresh answer carries its own mark as __etag. */
+async function ask(url,method,body,again,tag){let r;const head=body===undefined?{}:{'Content-Type':'application/json'};
  if(WEB&&WEB.access&&url.indexOf('/api/')===0)head.Authorization='Bearer '+WEB.access;
+ if(tag)head['If-None-Match']=tag;
  try{r=await fetch(url,{method:method||'GET',headers:head,body:body===undefined?undefined:JSON.stringify(body)})}
  catch(e){throw new Refused(503,{error:{code:'OFFLINE',message:'No connection.'}})}
- if(r.status===401&&WEB&&!again){await webEnter();return ask(url,method,body,true)}
+ if(r.status===401&&WEB&&!again){await webEnter();return ask(url,method,body,true,tag)}
+ if(r.status===304)return {__same:true};
  let j=null;try{j=await r.json()}catch(e){}
- if(!r.ok)throw new Refused(r.status,j);return j}
+ if(!r.ok)throw new Refused(r.status,j);
+ const mark=r.headers.get('ETag');if(mark&&j&&typeof j==='object')Object.defineProperty(j,'__etag',{value:mark});return j}
 const local=(name,body,method)=>WEB?webLocal(name,body):ask('/local/'+name,method||(body===undefined?'GET':'POST'),body);
 const api=(method,path,body)=>ask(API+path,method,body);
 const keep=(key,value)=>WEB?wset(key,value):fetch('/local/store/'+key,{method:'PUT',body:JSON.stringify(value)}).catch(()=>{});
@@ -1243,8 +1248,13 @@ notify=function(){};pushStaff=function(){};
 
 /* what is on the screen is also what is kept: the phone opens on it without network */
 const stash=()=>{clearTimeout(stash.h);stash.h=setTimeout(()=>{if(APP.role&&DB.today_date)keep('data_'+APP.role,{DB,queue:APP.queue,ids:APP.ids,masters:APP.masters})},500)};
-async function load(){const s=await api('GET',SNAP[APP.role]);applySnapshot(s);APP.at=Date.now();setOffline(false);stash()}
-async function reload(quiet){try{await load();render()}catch(e){if(e.code==='OFFLINE')setOffline(true);else if(e.status===401)return signedOut();else if(!quiet)toast(e.message,'bad');render()}}
+/* ``force`` after anything was sent or refused: the screen may hold a change the server did not take,
+   and only a full answer puts it right. A passive refresh (coming back to the app) asks "the same?" first. */
+async function load(force){const tag=!force&&APP.etag&&APP.etagFor===APP.role&&DB.today_date?APP.etag:null;
+ const s=await ask(API+SNAP[APP.role],'GET',undefined,false,tag);
+ if(s&&s.__same){APP.at=Date.now();setOffline(false);return}
+ APP.etag=(s&&s.__etag)||null;APP.etagFor=APP.role;applySnapshot(s);APP.at=Date.now();setOffline(false);stash()}
+async function reload(quiet,force){try{await load(force);render()}catch(e){if(e.code==='OFFLINE')setOffline(true);else if(e.status===401)return signedOut();else if(!quiet)toast(e.message,'bad');render()}}
 function setOffline(v){v=!!v;if(!!UI.offline===v)return;UI.offline=v;clearInterval(APP.timer);if(v){APP.timer=setInterval(pump,12000);if(APP.queue.length)APP.held=true}markQueue()}
 
 /* ---------- the outbox: in order, one at a time; kept on the phone until it has gone ---------- */
@@ -1258,7 +1268,7 @@ async function pump(){if(APP.busy||!APP.role)return;if(!APP.queue.length){if(UI.
   try{const r=await api(o.m,mapIds(o.p),mapIds(o.b));if(o.tmp&&r&&r.id)APP.ids[o.tmp]=r.id;APP.queue.shift();sent++}
   catch(e){if(e.code==='OFFLINE'){setOffline(true);break}if(e.status===401){APP.busy=false;return signedOut()}failed=e;APP.queue.length=0}}
  const offline=UI.offline&&APP.queue.length;
- if(!offline){try{await load();remapUI()}catch(e){if(e.code==='OFFLINE')setOffline(true);else failed=failed||e}}
+ if(!offline){try{await load(true);remapUI()}catch(e){if(e.code==='OFFLINE')setOffline(true);else failed=failed||e}}
  APP.busy=false;delete document.documentElement.dataset.sync;if(offline)APP.held=true;markQueue();stash();
  if(failed)toast(failed.message,'bad');else if(sent&&!offline&&APP.held){APP.held=false;toast(`Back online · ${plural(sent,'change')} sent.`)}
  if(APP.queue.length&&!UI.offline)return pump();render()}
@@ -1329,7 +1339,7 @@ function obPayload(ob){const p=ob.pid?pOf(ob.pid):null,on=obTrades(ob),ticks=[];
 A.obfinish=function(v,el,dev){const ob=dev.ob;if(!ob||APP.saving)return;if(!ob.name.trim())return toast('Give the project a name first.','wait');
  if(UI.offline)return toast('Onboarding needs the network. Your entries stay here until it is back.','wait');
  const was=!!(ob.pid&&pOf(ob.pid)&&pOf(ob.pid).onb);APP.saving=true;document.documentElement.dataset.sync='1';
- api('POST','/staff/op',{name:'onboard',args:obPayload(ob)}).then(async r=>{await load();dev.ob=null;dev.stack=[{s:'projects'}];openProj(dev,r.pid,'picture');flash(dev,was?'Saved':'Project started','check',!was);
+ api('POST','/staff/op',{name:'onboard',args:obPayload(ob)}).then(async r=>{await load(true);dev.ob=null;dev.stack=[{s:'projects'}];openProj(dev,r.pid,'picture');flash(dev,was?'Saved':'Project started','check',!was);
    const p=pOf(r.pid);toast(`${p?p.name:'Project'}: ${plural(r.nl,'work line')} and ${plural(r.nd,'drawing')} added${r.inv?' · '+plural(r.inv,'invitation')+' '+sent():''}.`)})
   .catch(e=>toast(e.message,'bad')).finally(()=>{APP.saving=false;delete document.documentElement.dataset.sync;render()})};
 
@@ -1395,7 +1405,7 @@ A.signout=function(v,el,dev){APP.queue.length&&!confirmLeave()?0:local('logout',
 const confirmLeave=()=>{if(APP.leave)return true;APP.leave=true;toast(plural(APP.queue.length,'change')+' not sent yet. Tap Sign out again to leave anyway.','wait');setTimeout(()=>APP.leave=false,6000);return false};
 function signedOut(){if(WEB){APP.dead=APP.dead||'This link is no longer valid. Ask the Revert office for a new one.';APP.role=null;return render()}
  ['staff','agency','client'].forEach(k=>{forget('data_'+k);UI.devs[k]=newDev(k,true);UI.devs[k].seen=true});UI.devs.agency.stack=[{s:'home'}];UI.devs.client.stack=[{s:'home'}];forget('ui');
- APP.role=null;APP.queue=[];APP.ids={};APP.s.signed=false;APP.s.me=null;DB=seed();UI.view='auth';const d=UI.devs.auth;d.si={step:UI.lang.auth?'phone':'lang'};d.f.st_pw='';d.f.si_otp='';d.sheet=null;setOffline(false);render()}
+ APP.role=null;APP.queue=[];APP.ids={};APP.etag=null;APP.s.signed=false;APP.s.me=null;DB=seed();UI.view='auth';const d=UI.devs.auth;d.si={step:UI.lang.auth?'phone':'lang'};d.f.st_pw='';d.f.si_otp='';d.sheet=null;setOffline(false);render()}
 async function enter(me,fresh){APP.s.me=me;APP.s.signed=true;APP.role=me.role;UI.view=me.role;const dev=UI.devs[me.role];dev.signed=true;dev.seen=true;
  if(fresh){dev.stack=[{s:me.role==='staff'?'today':'home'}];dev.sheet=null;dev._k=''}
  const had=useKept(await kept('data_'+me.role));
@@ -1431,8 +1441,8 @@ A.plang=function(v,el,dev){const k=APP.role==='client'?'client':'agency';UI.lang
 A.alang=A.plang;A.clang=function(v,el,dev){A.plang(UI.lang.client==='en'?'gu':'en',el,dev)};
 A.theme=function(){A.pset('theme='+(APP.s.prefs.theme==='dark'?'light':'dark'))};
 A.psend=function(){pump();toast(UI.offline?T('offline'):'Sending…','wait')};
-A.prefresh=function(){reload().then(()=>{if(!UI.offline)toast('Up to date.')})};
-A.pclear=function(v,el,dev){if(APP.queue.length)return toast(plural(APP.queue.length,'change')+' still waiting to go. Send them first.','wait');forget('ui');forget('data_'+APP.role);dev.f={};toast('Cleared. The app reads everything again.');reload()};
+A.prefresh=function(){reload(false,true).then(()=>{if(!UI.offline)toast('Up to date.')})};
+A.pclear=function(v,el,dev){if(APP.queue.length)return toast(plural(APP.queue.length,'change')+' still waiting to go. Send them first.','wait');forget('ui');forget('data_'+APP.role);dev.f={};toast('Cleared. The app reads everything again.');reload(false,true)};
 A.pdevout=function(v){api('DELETE','/me/devices/'+v).then(()=>{APP.devices=null;render()}).catch(e=>toast(e.message,'bad'))};
 SHEETS.chpw=function(dev){const f=dev.f;return {title:'Change password',sub:'Other devices are signed out',body:fld('Present password',`<input class="inp" id="staff_pw_old" data-m="pw_old" type="password" value="${esc(f.pw_old||'')}">`)+fld('New password',`<input class="inp" id="staff_pw_new" data-m="pw_new" type="password" value="${esc(f.pw_new||'')}">`,'At least 8 characters.'),foot:cancelB()+Bt('Change','dochpw',null,'gold','check')}};
 A.dochpw=function(v,el,dev){const f=dev.f;api('PUT','/me/password',{old:f.pw_old||'',new:f.pw_new||''}).then(()=>{f.pw_old=f.pw_new='';dev.sheet=null;APP.devices=null;toast('Password changed.');render()}).catch(e=>{toast(e.message,'bad');render()})};

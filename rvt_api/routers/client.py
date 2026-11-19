@@ -2,11 +2,12 @@
 client's drawings. Approve, ask for a change, mark an item done."""
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from pydantic import BaseModel
 
 from ..deps import Caller, client
 from ..errors import forbidden, not_found
+from ..snapshots import snapshot_response
 
 router = APIRouter(prefix="/client", tags=["client"])
 
@@ -32,10 +33,11 @@ def home(who: Annotated[Caller, Depends(client)]):
 
 
 @router.get("/snapshot", summary="The client's slice in the shape of the app's screens")
-def snapshot(who: Annotated[Caller, Depends(client)]):
+def snapshot(who: Annotated[Caller, Depends(client)], if_none_match: Annotated[str | None, Header()] = None,
+             accept_encoding: Annotated[str | None, Header()] = None):
     data = who.env["rvt.api"].client_snapshot(who.project_id or None)
     data["me_info"] = who.user.rvt_api_me()
-    return data
+    return snapshot_response(data, if_none_match, accept_encoding)
 
 
 @router.post("/drawings/{drawing_id}/open", summary="The client opened the drawing")

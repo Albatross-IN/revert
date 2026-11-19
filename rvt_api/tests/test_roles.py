@@ -41,6 +41,13 @@ class TestRoles(ApiCase):
         self.assertTrue(snap["features"]["drawings"] and snap["features"]["mom"] and snap["features"]["wa"])
         same = self.get("/staff/snapshot", token, headers={"If-None-Match": answer.headers["ETag"]})
         self.assertEqual(same.status_code, 304, "nothing changed: nothing is sent again")
+        weak = self.get("/staff/snapshot", token, headers={"If-None-Match": "W/" + answer.headers["ETag"]})
+        self.assertEqual(weak.status_code, 304, "a proxy that compresses marks the tag as weak")
+        self.assertEqual(answer.headers.get("Content-Encoding"), "gzip", "the largest answer travels compressed")
+        plain = self.get("/staff/snapshot", token, headers={"Accept-Encoding": "identity"})
+        self.assertNotIn("Content-Encoding", plain.headers)
+        self.assertEqual(plain.json()["me"], snap["me"])
+        self.assertEqual(plain.headers["ETag"], answer.headers["ETag"], "one tag for both forms")
         line = self.line(self.project, "Kitchen", "civ")
         done = self.post("/staff/op", {"name": "set_line", "args": {"line": "l%s" % line.id, "state": "work"}}, token)
         self.assertEqual(done.status_code, 200, done.text)
@@ -310,6 +317,21 @@ class TestRoles(ApiCase):
         self.env.transaction.invalidate_ormcache()
         again = self.post("/auth/refresh", {"refresh_token": client["refresh_token"]})
         self.assertEqual(again.json()["me"]["role"], "client", again.text)
+
+    def test_agency_and_client_snapshots_say_when_nothing_changed(self):
+        tags = {}
+        for phone, path in ((self.carp_phone, "/agency/snapshot"), (self.client_phone, "/client/snapshot")):
+            token = self.otp(phone)["access_token"]
+            first = self.get(path, token)
+            self.assertEqual(first.status_code, 200, first.text)
+            self.assertTrue(first.json()["projects"])
+            tags[path] = (token, first.headers["ETag"])
+            self.assertEqual(self.get(path, token, headers={"If-None-Match": first.headers["ETag"]}).status_code, 304)
+        self.add("One more for the carpenter", partner=self.ag_carp)
+        token, tag = tags["/agency/snapshot"]
+        again = self.get("/agency/snapshot", token, headers={"If-None-Match": tag})
+        self.assertEqual(again.status_code, 200, "something changed: the new state is sent")
+        self.assertNotEqual(again.headers["ETag"], tag)
 
     def test_staff_are_refused_the_other_apps(self):
         token = self.token(self.coordinator)
