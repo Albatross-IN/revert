@@ -8,6 +8,8 @@ from odoo.addons.rvt_project.models.rvt_picture import day_month, plural
 _logger = logging.getLogger(__name__)
 
 LANG_OF = {"gu_IN": "gu", "hi_IN": "hi"}
+# on a test copy: the numbers that are really messaged (see test_numbers)
+TEST_NUMBERS = "rvt.notify_test_numbers"
 # staff are told in the app (and by a push once the app is there), never on WhatsApp
 STAFF_EVENTS = ("drawing_approval_needed", "drawing_question")
 
@@ -44,8 +46,24 @@ class RvtNotify(models.AbstractModel):
         return self.env["ir.config_parameter"].sudo().get_bool("rvt.notify_sending_on", False) and not self.is_test_copy()
 
     @api.model
-    def _held_reason(self):
+    def test_numbers(self):
+        """On a test copy only: the mobile numbers that are really messaged, so a flow can be tried on the
+        team's own phones (system parameter ``rvt.notify_test_numbers``, commas between the numbers).
+        Empty, the usual case: nothing leaves a test copy. On the live database the parameter means nothing."""
+        if not self.is_test_copy():
+            return set()
+        raw = self.env["ir.config_parameter"].sudo().get_str(TEST_NUMBERS, "")
+        return {number for number in (e164(part) for part in re.split(r"[,;\n]+", raw)) if number}
+
+    @api.model
+    def _held_reason(self, number=None):
+        """Why a message to this number stays here, or False when it may leave."""
         if self.is_test_copy():
+            listed = self.test_numbers()
+            if number and number in listed:
+                return False
+            if listed:
+                return self.env._("Test copy of the database: this number is not one of its test numbers.")
             return self.env._("Test copy of the database: nothing is sent from it.")
         if not self.env["ir.config_parameter"].sudo().get_bool("rvt.notify_sending_on", False):
             return self.env._("Sending is off in Setup.")
@@ -147,9 +165,7 @@ class RvtNotify(models.AbstractModel):
                 Log.create(dict(base, user_id=user.id, name=user.name, lang="en", text=text, state="in_app"))
                 self._push(user, event, text, record)
             return 0
-        held = self._held_reason()
-        account = False if held else self._account()
-        document = None
+        account = document = None
         sent = 0
         for partner in recipients.sudo():
             text = self.render(event, record, partner, values)
@@ -161,9 +177,12 @@ class RvtNotify(models.AbstractModel):
             if not number:
                 Log.create(dict(row, state="no_number", reason=self.env._("No mobile number on the contact.")))
                 continue
+            held = self._held_reason(number)
             if held:
                 Log.create(dict(row, state="held", reason=held))
                 continue
+            if account is None:
+                account = self._account() or False
             if not account:
                 Log.create(dict(row, state="failed", reason=self.env._("No WhatsApp number is paired.")))
                 continue

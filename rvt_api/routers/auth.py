@@ -87,8 +87,9 @@ def otp_request(data: OtpRequest, env: Annotated[Environment, Depends(odoo_env)]
     Notify = env["rvt.notify"]
     sent = Notify.send("otp", None, person, code=code)
     answer = {"sent": bool(sent), "expires_in": 600, "role": role}
-    if Notify.is_test_copy():
-        # a test copy never sends: show the code so the app can be tried on it. Never on the live database.
+    if not sent and Notify.is_test_copy():
+        # a test copy sends only to its test numbers: for every other number the code is shown, so the app
+        # can be tried. Never on the live database.
         answer["test_code"] = code
     elif not sent:
         raise ApiError(503, "NOT_SENT", "The code could not be sent on WhatsApp just now. Try again in a minute.", rollback=False)

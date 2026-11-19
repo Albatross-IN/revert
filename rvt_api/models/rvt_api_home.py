@@ -141,7 +141,8 @@ class RvtApi(models.AbstractModel):
             "features": dict(Desk._features(), bills=False),
             "masters": {"trades": masters["trades"], "default_trades": [], "etypes": [], "extras": [], "presets": [], "dtypes": []},
             "set": {"approval": config["release_needs_approval"], "clientConfirm": config["client_points_need_confirmation"],
-                    "lim": {"open": 2, "q": 1, "bill": 3, "stuck": 7}, "sending": self.env["rvt.notify"].sending_on(), "number": ""},
+                    "lim": {"open": 2, "q": 1, "bill": 3, "stuck": 7}, "sending": self.env["rvt.notify"].sending_on(), "number": "",
+                    "testcopy": self.env["rvt.notify"].is_test_copy(), "testsend": bool(self.env["rvt.notify"].test_numbers())},
             "staff": [], "agencies": [], "projects": [], "drawings": [], "visits": [], "points": [], "bills": [], "wa": [],
             "today": [], "mytasks": [], "company": self.env.company.name, "prefix": "", "admin": False,
         }

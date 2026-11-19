@@ -29,6 +29,10 @@ class TestNotify(MomCommon):
         """As on production: not a test copy, the switch on, a number paired. The connector itself is replaced."""
         self.icp.set_bool("database.is_neutralized", False)
         self.icp.set_bool("rvt.notify_sending_on", True)
+        self.fake_connector()
+
+    def fake_connector(self):
+        """A number is paired, and what would leave is collected in self.sent."""
         self.sent = []
         Notify = type(self.Notify)
         self.patch(Notify, "_account", lambda self_: self.env["res.partner"].browse(1))
@@ -79,6 +83,28 @@ class TestNotify(MomCommon):
         self.assertIn("Test copy", row.reason)
         self.assertEqual(row.text, "યાદ અપાવવા · Shah Residence: Please share where the work stands.")
         self.assertEqual((row.project_id, row.sent_by_id), (self.project, self.coordinator))
+
+    def test_a_test_copy_messages_only_its_test_numbers(self):
+        """The team tries a flow on its own phones: the listed numbers get the message, everybody else is held."""
+        self.assertTrue(self.Notify.is_test_copy())
+        self.assertEqual(self.Notify.test_numbers(), set(), "nobody, until somebody lists numbers")
+        self.icp.set_str("rvt.notify_test_numbers", "98244 18830, 09876543210; not a number")
+        self.assertEqual(self.Notify.test_numbers(), {"+919824418830", "+919876543210"})
+        self.assertFalse(self.Notify.sending_on(), "the switch in Setup still reads off on a test copy")
+        self.fake_connector()
+        count = self.project.with_user(self.coordinator).rvt_invite([self.ag_carp.id], self.client_contact.ids)
+        self.assertEqual(count, 2, "both were invited; one message really left")
+        self.assertEqual([s[1] for s in self.sent], ["+919824418830"])
+        rows = {row.phone: row for row in self.logs("invite")}
+        self.assertEqual(rows["+919824418830"].state, "sent")
+        self.assertEqual(rows["+919825070011"].state, "held")
+        self.assertIn("not one of its test numbers", rows["+919825070011"].reason)
+        # on the live database the list means nothing: the switch in Setup decides
+        self.icp.set_bool("database.is_neutralized", False)
+        self.assertEqual(self.Notify.test_numbers(), set())
+        self.project.with_user(self.coordinator).rvt_remind("Open EL-01.", agency_id=self.ag_carp.id)
+        self.assertEqual(self.logs("remind").reason, "Sending is off in Setup.")
+        self.assertEqual(len(self.sent), 1)
 
     def test_switch_off_holds(self):
         self.icp.set_bool("database.is_neutralized", False)

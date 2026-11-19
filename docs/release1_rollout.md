@@ -60,6 +60,8 @@ Run as on `deploy_production.md`: root on the server, `erp` owns the files.
    - `database.is_neutralized` is **absent**. Its presence marks a test copy, and nothing is ever
      sent from a test copy, whatever the switch says.
    - `rvt.notify_sending_on` stays **off** until step 8 is done.
+   - `rvt.notify_test_numbers` belongs to test copies (the few numbers of our own that a test copy may
+     message). The live database ignores it; it need not be there.
    - nginx: `client_max_body_size 30m` on the site (drawings up to 25 MB, bills up to 15 MB), and
      gzip on for `application/json` (the staff snapshot is about 120 KB plain).
 8. **WhatsApp.** Build and start the helper service (`open_whatsapp_connector/sidecar`, see its
@@ -82,7 +84,7 @@ Run as on `deploy_production.md`: root on the server, `erp` owns the files.
 | Release one test drawing to a staff member's own number | the message arrives; opening the link marks "opened" in the desk |
 | "Copy link" on a pilot project's Client tab | the link opens that project in a phone browser without sign-in |
 | Message log (Setup → WhatsApp) | "sent", not "held" |
-| Module tests | were run before the release on a copy: 164 pass (`/rvt_base,/rvt_project,/rvt_drawing,/rvt_mom,/rvt_notify,/rvt_desk,/rvt_api,/rvt_bill`). Never run tests on the live database |
+| Module tests | were run before the release on a copy: 168 pass (`/rvt_base,/rvt_project,/rvt_drawing,/rvt_mom,/rvt_notify,/rvt_desk,/rvt_api,/rvt_bill`). Never run tests on the live database |
 
 ## 5. The app
 

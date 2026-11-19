@@ -1,3 +1,5 @@
+import re
+
 from odoo.tests import new_test_user, tagged
 
 from .common import PASSWORD, ApiCase
@@ -91,6 +93,24 @@ class TestAuth(ApiCase):
         again = self.otp(self.carp_phone)
         self.assertEqual(again["me"]["id"], me["id"], "the same account the next time")
         self.assertRefused(self.post("/auth/login", {"login": user.login, "password": ""}), 401)
+
+    def test_a_test_number_gets_its_code_on_whatsapp(self):
+        """A test copy with test numbers: a listed number is really messaged, so its code is not shown."""
+        Notify, sent = type(self.env["rvt.notify"]), []
+        self.patch(Notify, "_account", lambda self_: self.env["res.partner"].browse(1))
+        self.patch(Notify, "_wa_send_text", lambda self_, account, number, text: sent.append((number, text)) or True)
+        self.env["ir.config_parameter"].sudo().set_str("rvt.notify_test_numbers", self.carp_phone)
+        body = self.post("/auth/otp/request", {"phone": self.carp_phone}).json()
+        self.assertTrue(body["sent"])
+        self.assertNotIn("test_code", body, "the code went to the phone, as on the live database")
+        self.assertEqual([number for number, _text in sent], ["+919824418830"])
+        code = re.search(r"\b(\d{4})\b", sent[0][1]).group(1)
+        session = self.post("/auth/otp/verify", {"phone": self.carp_phone, "code": code, "device": {"uid": "m31"}})
+        self.assertEqual(session.json()["me"]["role"], "agency")
+        # a number that is not listed is shown its code, as before
+        other = self.post("/auth/otp/request", {"phone": self.elec_phone}).json()
+        self.assertEqual((other["sent"], len(other["test_code"])), (False, 4))
+        self.assertEqual(len(sent), 1)
 
     def test_client_signs_in_with_a_code(self):
         session = self.otp(self.client_phone)

@@ -29,6 +29,9 @@ PATCHES = {
         ("const isPrincipal=()=>has(me(),'principal');", "const isPrincipal=()=>has(me(),'principal')||has(me(),'owner');"),
     ],
     "shell.js": [
+        # what a notice says about a message: a test copy holds it, or sends it to its test numbers only
+        ("const sent=()=>DB.set.sending?'sent on WhatsApp':'held: sending is off in Setup';",
+         "const sent=()=>DB.set.sending?'sent on WhatsApp':DB.set.testcopy?(DB.set.testsend?'test copy: only its test numbers get it':'held: this is a test copy'):'held: sending is off in Setup';"),
         # the preview's demo hint has no place in the product
         ("return toast('Only the principal approves a release. Switch “Signed in as” to Pranav to try it.','wait')",
          "return toast('Only the principal approves a release.','wait')"),
@@ -51,7 +54,7 @@ PATCHES = {
         ("<td>${m.held?pill('held','wait'):pill('sent','ok')}</td>",
          "<td>${pill(m.st||(m.held?'held':'sent'),({sent:'ok',held:'wait',failed:'bad','no number':'bad','in the app':'plain'})[m.st||(m.held?'held':'sent')])}${m.why?`<div class=\"t2\">${esc(m.why)}</div>`:''}</td>"),
         ("<div><span>Dedicated number</span><b class=\"mono\">${s.number}</b></div><div><span>Connector</span><b class=\"c-ok\">paired · caps per minute and per day stay on</b></div>",
-         "<div><span>Dedicated number</span><b class=\"mono\">${s.number||'—'}</b></div><div><span>Connector</span>${s.number?'<b class=\"c-ok\">paired · caps per minute and per day stay on</b>':'<b class=\"c-wait\">no number is paired yet</b>'}</div>${s.testcopy?'<div><span>This database</span><b class=\"c-wait\">test copy · nothing is ever sent from it</b></div>':''}"),
+         "<div><span>Dedicated number</span><b class=\"mono\">${s.number||'—'}</b></div><div><span>Connector</span>${s.number?'<b class=\"c-ok\">paired · caps per minute and per day stay on</b>':'<b class=\"c-wait\">no number is paired yet</b>'}</div>${s.testcopy?`<div><span>This database</span><b class=\"c-wait\">${s.testsend?'test copy · only these numbers get messages: '+s.testlist.join(', '):'test copy · nothing is ever sent from it'}</b></div>`:''}"),
         # Today lists the hand-made tasks assigned to me (plan P3), not the first five of my projects
         ("const tasks=ps.flatMap(p=>p.tasks.map(t=>[p,t])).slice(0,5).map(([p,t])=>",
          "const tasks=(DB.mytasks||[]).map(t=>[{name:t.p},{n:t.n,stage:t.stage,subs:t.subs,id:t.id}]).map(([p,t])=>"),

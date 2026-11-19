@@ -5,7 +5,7 @@ function toast(t,k){UI.toast={t,k:k||'ok'};clearTimeout(toast.h);toast.h=setTime
 function splash(dev,quick){dev.splash=quick?'quick':true;dev.spT=performance.now();dev._k='';clearTimeout(dev.sh);dev.sh=setTimeout(()=>{dev.splash=false;document.querySelectorAll('.dv-'+dev.id+' .splash').forEach(e=>e.remove())},quick?2900:5300)}
 function flash(dev,t,i,party){dev.flash={t,i};if(i==='stamp'||party)dev.party=true;clearTimeout(dev.fh);dev.fh=setTimeout(()=>{dev.flash=null;document.querySelectorAll('.flash').forEach(e=>e.remove())},1600)}
 const openSheet=(dev,k,o)=>{dev.sheet=Object.assign({k},o||{})};
-const sent=()=>DB.set.sending?'sent on WhatsApp':'held: sending is off in Setup';
+const sent=()=>DB.set.sending?'sent on WhatsApp':DB.set.testcopy?(DB.set.testsend?'test copy: only its test numbers get it':'held: this is a test copy'):'held: sending is off in Setup';
 function openProj(dev,pid,tab){dev.pid=+pid;if(tab)dev.ptab=tab;dev.vid='';if(dev.phone){if(!(top(dev).s==='project'&&top(dev).id==pid))dev.stack.push({s:'project',id:+pid})}else dev.sec='projects'}
 function openDwg(dev,id){const d=dOf(id);if(dev.phone){if(!(top(dev).s==='dwg'&&top(dev).id===id))dev.stack.push({s:'dwg',id})}
  else{dev.sec='drawings';dev.drawer=id;dev.dmine='all';dev.dtab=d.st==='awaiting'?'awaiting':d.st==='approved'?'release':d.st==='released'?'released':'draw'}}

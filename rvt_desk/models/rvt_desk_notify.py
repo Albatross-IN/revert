@@ -22,8 +22,11 @@ class RvtDesk(models.AbstractModel):
         env = self.env
         Notify = env["rvt.notify"]
         config = env["rvt.config"]
+        listed = sorted(Notify.test_numbers())
         data["set"].update({
             "sending": Notify.sending_on(), "number": Notify.number(), "testcopy": Notify.is_test_copy(),
+            # a test copy may really message its test numbers (rvt.notify_test_numbers), and nobody else
+            "testsend": bool(listed), "testlist": listed,
         })
         templates = {}
         for template in env["rvt.notify.template"].sudo().search([]):

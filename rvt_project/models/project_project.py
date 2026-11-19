@@ -225,6 +225,20 @@ class ProjectProject(models.Model):
         return out
 
     @api.model
+    def _rvt_client_card_with(self, phone):
+        """The client contact card that already carries this mobile number, on any project. A person met
+        again on a second project keeps that one card: they sign in to the app by the number, and one
+        sign-in must show every project of theirs."""
+        tail = re.sub(r"\D", "", phone or "")[-10:]
+        if len(tail) < 10:
+            return self.env["res.partner"]
+        cards = self.env["res.partner"].sudo().search([("phone", "like", tail[-4:])]).filtered(
+            lambda p: re.sub(r"\D", "", p.phone or "")[-10:] == tail)
+        on_projects = self.sudo().with_context(active_test=False).search(
+            [("rvt_client_contact_ids", "in", cards.ids)]).rvt_client_contact_ids
+        return (cards & on_projects).sorted("id")[:1]
+
+    @api.model
     def _rvt_onboard_client_vals(self, vals, project):
         Partner = self.env["res.partner"].sudo()
         out = {}
@@ -252,7 +266,7 @@ class ProjectProject(models.Model):
                     if person and row.get("phone") and row["phone"] != person.phone:
                         person.phone = row["phone"]
                 elif (row.get("name") or "").strip():
-                    person = Partner.create({
+                    person = self._rvt_client_card_with(row.get("phone")) or Partner.create({
                         "name": row["name"].strip(), "phone": row.get("phone") or False,
                         "parent_id": client.id if client else False, "type": "contact"})
                 else:
@@ -260,13 +274,19 @@ class ProjectProject(models.Model):
                 contacts |= person
         phone = (vals.get("client_phone") or "").strip()
         if client and not contacts:
-            # the first contact is the client in person: the name without "Mr." and the number given
-            person = Partner.create({
+            # the first contact is the client in person: the name without "Mr." and the number given.
+            # A number we already know is that person's card, whatever name was typed this time.
+            person = self._rvt_client_card_with(phone or client.phone) or Partner.create({
                 "name": HONORIFIC.sub("", client.name) or client.name, "phone": phone or client.phone or False,
                 "parent_id": client.id, "type": "contact"})
             contacts = person
         elif phone and contacts and "client_contacts" not in vals and contacts[0].phone != phone:
-            contacts[0].phone = phone
+            known = self._rvt_client_card_with(phone)
+            if known and known != contacts[0]:
+                # the corrected number is somebody we know: the project moves to that card
+                contacts = known | contacts[1:]
+            else:
+                contacts[0].phone = phone
         if contacts != project.rvt_client_contact_ids:
             out["rvt_client_contact_ids"] = [(6, 0, contacts.ids)]
         return out

@@ -202,6 +202,25 @@ class TestOnboard(RvtCommon):
             "client_contacts": [{"id": contact.id}, {"name": "Hetal Shah", "phone": "+91 98250 70012"}]})
         self.assertEqual(project.rvt_client_contact_ids.mapped("name"), ["Nirav Shah", "Hetal Shah"])
 
+    def test_a_client_met_again_keeps_one_card(self):
+        """The same mobile number on a second project is the same person: one contact card, so the one
+        sign-in by that number shows both projects."""
+        first, _ = self.onboard()
+        card = first.rvt_client_contact_ids
+        second, _ = self.onboard(name="Shah Farmhouse", client_name="Nirav Shah (farm)", client_phone="98250 70011")
+        self.assertNotEqual(second.rvt_client_id, first.rvt_client_id, "the client is as typed for this project")
+        self.assertEqual(second.rvt_client_contact_ids, card, "the person is the card we already have")
+        # a number corrected to one we know moves the project to that card and leaves the other card alone
+        third, _ = self.onboard(name="Patel Office", client_name="Mr. Jatin Patel", client_phone="98250 70055")
+        other = third.rvt_client_contact_ids
+        self.assertNotEqual(other, card)
+        self.Project.with_user(self.coordinator).rvt_onboard({"project_id": third.id, "client_phone": "+91 98250 70011"})
+        self.assertEqual(third.rvt_client_contact_ids, card)
+        self.assertEqual(other.phone, "98250 70055")
+        # the same number written another way is not a change of person
+        self.Project.with_user(self.coordinator).rvt_onboard({"project_id": first.id, "client_phone": "9825070011"})
+        self.assertEqual(first.rvt_client_contact_ids, card)
+
     def test_team_is_revert_staff_only(self):
         """A stray id from a client (the system user, an agency person) never lands on a team."""
         system = self.env.ref("base.user_root")

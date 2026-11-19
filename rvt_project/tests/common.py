@@ -48,6 +48,11 @@ class RvtCommon(TransactionCase):
 
         cls.Project = env["project.project"]
         cls.preset_3bhk = env.ref("rvt_base.preset_3bhk")
+        # a client is one card per mobile number. A copy of a live database may hold a card with the
+        # number of these fixtures' client; inside the test it gives the number up.
+        digits = lambda phone: "".join(c for c in phone or "" if c.isdigit())[-10:]
+        Partner.with_context(active_test=False).search([("phone", "like", "700")]).filtered(
+            lambda p: digits(p.phone).startswith("98250700")).write({"phone": False})
 
     @classmethod
     def onboard_vals(cls, **extra):
