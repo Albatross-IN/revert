@@ -44,8 +44,11 @@ Run as on `deploy_production.md`: root on the server, `erp` owns the files.
    `/opt/erp/venv`.
 3. **One restart** (announced), so the service sees the new modules.
 4. **Install**, in one run, with the service's own configuration:
-   `odoo-bin -c /etc/erp/odoo20.conf -d <host> -i rvt_bill --stop-after-init --no-http`
-   (`rvt_bill` pulls every other `rvt_*` module and the copied ones). Then restart once more.
+   `odoo-bin -c /etc/erp/odoo20.conf -d <host> -i rvt_bill,identity,web_theme_glass,web_glass_workspace -u revert_customizations --stop-after-init --no-http`
+   (`rvt_bill` pulls every other `rvt_*` module, the WhatsApp connector and the two API modules;
+   the three look-and-feel modules are named because nothing depends on them; the `-u` brings the
+   earlier module to the branch's version where it is behind). Then restart once more.
+   The same can be done from Apps on the running service: update the list, install the four, upgrade the one.
 5. **Roles.** `APPLY=1 … shell < tools/assign_roles.py`. Open the desk as each role once.
 6. **The earlier MOM.** Dry run first (`… shell < tools/etl_mom.py`), read the report, then
    `APPLY=1 MAP=<csv> …`. Keep the verification report with the release notes. Run it again with
