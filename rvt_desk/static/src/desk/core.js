@@ -57,7 +57,7 @@ const sheetNo=d=>d.code+'-'+String(d.no).padStart(2,'0');
 const cur=d=>d.revs[d.revs.length-1];
 const ptOf=id=>DB.points.find(x=>x.id===id);
 /* photos: the preview draws a placeholder; the desk and the app show the real one (they replace these two) */
-let phOf=(kind,x)=>'<span class="ph"></span>';
+let phOf=(kind,x,after)=>`<span class="ph ${after?'aft':''}"></span>`;
 let ptPhoto=(x,after)=>`<span class="ph full ${after?'aft':''}"></span>`;
 /* questions on drawings nobody has answered yet, on the projects I see */
 const openQs=()=>{const ps=myProjects().map(p=>p.id);return DB.drawings.filter(d=>ps.includes(d.pid)).reduce((n,d)=>n+d.q.filter(q=>!q.ans).length,0)};

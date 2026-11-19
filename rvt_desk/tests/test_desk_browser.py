@@ -48,6 +48,26 @@ TOUR = """
         act('savecell');
         await until(() => !document.documentElement.dataset.sync, 'the change to reach the server');
         await sleep(300);
+        // the MOM log: a point raised from the desk, with its room chosen from the list, is one line of the table
+        const click = el => { if (!el) throw new Error('nothing to click'); el.dispatchEvent(new MouseEvent('click', {bubbles: true})); };
+        act('ui', 'ptab=mom'); await sleep(200);
+        click(q('.card [data-a="raise"]')); await sleep(200);
+        click(q('.ovl [data-a="doraise"]')); await sleep(100);
+        if (!q('.ovl [data-a="doraise"]')) throw new Error('a point without text or room must not be taken');
+        type('desk_rp_text', 'Tour point: check the platform height');
+        click(q('.ovl [data-a="pick"][data-v^="area|"]')); await sleep(200);
+        type('desk_pk_q', 'kit'); await sleep(200);
+        if (document.querySelectorAll('.pklist [data-a="pickset"]').length !== 1) throw new Error('the search should leave the kitchen alone');
+        click(q('.pklist [data-a="pickset"]')); await sleep(200);
+        click(q('.ovl [data-a="doraise"]'));
+        await until(() => !document.documentElement.dataset.sync && !q('.ovl'), 'the point to reach the server');
+        await sleep(300);
+        const heads = [...document.querySelectorAll('.ptlog thead th')].map(t => t.textContent).join('|');
+        if (heads !== 'No|Visit|Area|Point|For|Raised by|On|Due|Photo|Status|') throw new Error('the log has other columns: ' + heads);
+        const line = [...document.querySelectorAll('.ptlog tbody tr')].find(r => /Tour point/.test(r.textContent));
+        if (!line) throw new Error('the point is not a line of the log');
+        const cells = [...line.children].map(c => c.textContent.trim());
+        if (cells[0] !== '1' || cells[1] !== 'office' || !/^Kitchen/.test(cells[2])) throw new Error('the line reads: ' + cells.join(' | '));
         console.log('test successful');
     } catch (e) {
         console.error('desk tour: ' + e.message);

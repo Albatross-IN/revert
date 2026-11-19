@@ -526,3 +526,9 @@ button.note{border:0;font:inherit;color:inherit;text-align:left;width:100%;curso
 .rw.lk>.r .ph{margin-left:0}
 .qb .ph.real{display:block;width:150px;height:112px;margin:7px 0 1px;border-radius:12px}.qb .ph.real::after{display:none}
 .ovl.still,.ovl.still .dlg,.ovl.still .sh-b>*{animation:none!important}
+/* a point's photos as small pictures, and the desk's log of points */
+.pths{display:inline-flex;gap:5px;vertical-align:middle;flex:none}.pths .ph{width:40px;height:40px;margin:0;border-radius:10px}.pths .ph::after{display:none}
+.pths .ph.aft{box-shadow:0 0 0 2px var(--ok)}.pths .ph.aft:not(.real){filter:hue-rotate(95deg) saturate(1.2)}
+.tb.ptlog td{vertical-align:top;padding-top:9px;padding-bottom:9px}.tb.ptlog th{position:sticky;top:0}.tb.ptlog .nw{white-space:nowrap}
+.tb.ptlog td.ptc{min-width:230px;max-width:460px}.tb.ptlog .tx{font-weight:650}.tb.ptlog tr.closed .tx{color:var(--mute)}.tb.ptlog .lkm:hover .tx{color:var(--pri-t)}
+.tb.ptlog td .t2{margin-top:2px}.tb.ptlog .pths{vertical-align:top}.tb.ptlog .kn{margin-top:1px}.tb.ptlog .due{white-space:nowrap}

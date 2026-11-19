@@ -128,11 +128,27 @@ function dwgDetail(d,dev){const p=pOf(d.pid),r=cur(d),s=DS[d.st],w=p.lines.filte
   ${card('Revisions',`<span class="mu f12">receivers only ever see the current one</span>`,`<div class="tls">${revs}</div>`)}</div>`}
 
 /* ---------- points and MOM ---------- */
+/* a point's photos as small pictures: the one taken when it was raised and, once it is closed, the one taken after.
+   On the desk the larger picture shows while the pointer rests on one; on a phone a tap opens it. */
+const ptThumbs=x=>x.photo||x.cphoto?`<span class="pths">${x.photo?phOf('point',x):''}${x.cphoto?phOf('point',x,1):''}</span>`:'';
+/* the desk's log of points: one line per point, as the MOM register was always kept (number, visit, area, what, for whom,
+   who raised it and when, by when, the photo, where it stands), with the photo to look at without opening anything */
+function ptTable(list,dev,o){o=o||{};if(!list.length)return empty('Nothing here.');
+ const line=x=>{const p=pOf(x.pid),v=x.vid?visOf(x.vid):null,open=x.st==='open',late=open&&x.due!=null&&x.due<0;
+  return `<tr class="${x.st}"><td class="ar">${kn(x.n)}</td><td class="nw">${v?'Visit '+v.no:x.legacy?'earlier':'office'}</td>${o.proj?`<td>${esc(p.name)}</td>`:''}<td>${x.e?esc(entN(p,x.e)):'<span class="mu">Whole site</span>'}${x.t&&TX[x.t]?`<div class="t2">${esc(TX[x.t].n)}</div>`:''}</td>
+   <td class="ptc"><span class="lkm" role="button" tabindex="0" data-a="ptview" data-v="${x.id}"><span class="tx">${esc(x.text)}</span></span>${x.fresh&&open&&x.vid&&x.kind!=='staff'?' '+pill('new','gold'):''}${!open&&x.note?`<div class="t2 c-ok">${esc(x.note)}</div>`:open&&x.kind==='client'&&!x.confirmed?'<div class="t2 c-wait">not shown to the client until the office confirms</div>':x.pending?'<div class="t2 c-wait">saved on the phone · waiting to go</div>':''}</td>
+   <td><b class="pty k-${x.kind}">${esc(partyName(p,x))}</b></td><td>${x.by?esc(stf(x.by).n):''}</td><td class="nw">${x.on!=null?fd(x.on):v?fd(v.date):''}</td>
+   <td class="nw">${open?`<span class="due ${dueCls(x.due)}">${dueW(x.due)}</span>`:x.closedOn!=null?`<span class="mu">closed ${fd(x.closedOn)}</span>`:''}</td><td>${ptThumbs(x)}</td>
+   <td>${open?(x.kind==='client'&&!x.confirmed?pill('to confirm','wait'):late?pill('past date','bad'):pill('open','work')):pill(x.doneBy?'done':'closed','ok','check')}${x.doneBy?`<div class="t2">${esc(x.doneBy)}</div>`:''}</td>
+   <td class="ar nw">${!open||o.ro?'':x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'sm gold'):Bt('Close','closept',x.id,'sm')}</td></tr>`};
+ return `<div class="tw"><table class="tb ptlog"><thead><tr><th class="ar">No</th><th>Visit</th>${o.proj?'<th>Project</th>':''}<th>Area</th><th>Point</th><th>For</th><th>Raised by</th><th>On</th><th>Due</th><th>Photo</th><th>Status</th><th></th></tr></thead><tbody>${list.map(line).join('')}</tbody></table></div>`}
+/* the same points: a log table on the desk, rows on a phone */
+const ptList=(list,dev,o)=>dev&&!dev.phone?ptTable(list,dev,o):`<div class="rows">${list.map(x=>ptRow(x,dev,o)).join('')||empty('Nothing here.')}</div>`;
 function ptRow(x,dev,o){o=o||{};const p=pOf(x.pid),nm=partyName(p,x),v=x.vid?visOf(x.vid):null;
- return `<div class="rw pt ${x.st}">${kn(x.n)}<div class="m lkm" role="button" tabindex="0" data-a="ptview" data-v="${x.id}"><div class="t1"><span class="tx">${esc(x.text)}</span>${x.photo||x.cphoto?ic('cam','mu'):''}</div>
+ return `<div class="rw pt ${x.st}">${kn(x.n)}<div class="m lkm" role="button" tabindex="0" data-a="ptview" data-v="${x.id}"><div class="t1"><span class="tx">${esc(x.text)}</span></div>
   <div class="t2">${x.fresh&&x.st==='open'&&x.vid&&x.kind!=='staff'?pill('new','gold')+' ':''}<b class="pty k-${x.kind}">${esc(nm)}</b>${x.e?' · '+esc(entN(p,x.e)):''}${o.proj?' · '+esc(p.name):''}${v?' · visit '+v.no:x.legacy?'':' · raised from the office'}${x.legacy?' · moved from the earlier MOM':''}</div>
   ${x.st==='closed'?`<div class="t2 c-ok">${ic('check')}${x.doneBy?'done by '+esc(x.doneBy)+' · ':'closed '}${fd(x.closedOn)}${x.note?' · '+esc(x.note):''}${x.photo&&x.cphoto?' · before and after':''}</div>`:x.kind==='client'&&!x.confirmed?`<div class="t2 c-wait">${ic('eye')}not shown to the client until the office confirms</div>`:x.pending?`<div class="t2 c-wait">${ic('off')}saved on the phone · waiting to go</div>`:''}</div>
-  <div class="r">${x.st==='open'?`<span class="due ${dueCls(x.due)}">${dueW(x.due)}</span>${x.sent&&x.kind!=='staff'?`<span class="tick" title="sent">${ic('check')}${ic('check')}</span>`:''}${o.ro?'':x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'sm gold'):Bt('Close','closept',x.id,'sm')}`:''}</div></div>`}
+  <div class="r">${ptThumbs(x)}${x.st==='open'?`<span class="due ${dueCls(x.due)}">${dueW(x.due)}</span>${x.sent&&x.kind!=='staff'?`<span class="tick" title="sent">${ic('check')}${ic('check')}</span>`:''}${o.ro?'':x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'sm gold'):Bt('Close','closept',x.id,'sm')}`:''}</div></div>`}
 function forOptions(p){const o=[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))].map(a=>[a,agN(a).split(' ')[0],'agency']);o.push(['client','Client','client']);
  [...new Set([p.principal,...p.designers,...p.coords])].forEach(s=>o.push([s,stf(s).n,'staff']));return o}
 function momCapture(v,dev){const p=pOf(v.pid),f=dev.f,opts=forOptions(p);if(f.m_vendor)opts.push(['vendor',f.m_vendor,'vendor']);if(!opts.some(o=>o[0]===f.m_for))f.m_for=opts[0][0];if(f.m_due==null)f.m_due=2;if(f.m_area&&!p.ents.some(e=>e.id===f.m_area))f.m_area=null;
@@ -141,8 +157,8 @@ function momCapture(v,dev){const p=pOf(v.pid),f=dev.f,opts=forOptions(p);if(f.m_
  const sendKeys=[...new Set(here.filter(x=>x.st==='open'&&x.kind==='agency').map(x=>x.party))],freshOf=k=>here.filter(x=>x.party===k&&x.st==='open'&&x.fresh).length,allOf=k=>here.filter(x=>x.party===k&&x.st==='open').length;
  const pend=here.filter(x=>x.pending).length+UI.outbox.length;
  return `<div class="momc"><div class="momh"><div><div class="lbl">Visit ${v.no} · ${fdw(v.date)}</div><h2 class="serif">${esc(p.name)}</h2></div>${UI.offline?`<span class="pill wait">${ic('off')}offline · ${pend} waiting to go</span>`:`<span class="pill ok">${ic('check')}saved</span>`}</div>
-  ${earlier.length?`<details class="earlier" ${f.m_early===false?'':'open'}><summary><span class="lbl">Open from earlier</span><span class="f12">${Object.keys(grp).map(k=>`${esc(k.replace(/^(Mr\.|Mrs\.|Dr\.)\s*/,'').split(' ')[0])} <b>${grp[k].length}</b>`).join(' · ')}</span></summary><div class="rows">${earlier.map(x=>ptRow(x,dev)).join('')}</div></details>`:''}
-  <div class="lbl mt">This visit · ${plural(here.length,'point')}</div><div class="rows">${here.length?here.map(x=>ptRow(x,dev)).join(''):`<div class="empty sm">${ic('mom')}<span>Write the first point below. Under ten seconds each.</span></div>`}</div>
+  ${earlier.length?`<details class="earlier" ${f.m_early===false?'':'open'}><summary><span class="lbl">Open from earlier</span><span class="f12">${Object.keys(grp).map(k=>`${esc(k.replace(/^(Mr\.|Mrs\.|Dr\.)\s*/,'').split(' ')[0])} <b>${grp[k].length}</b>`).join(' · ')}</span></summary>${ptList(earlier,dev)}</details>`:''}
+  <div class="lbl mt">This visit · ${plural(here.length,'point')}</div>${here.length?ptList(here,dev):`<div class="rows"><div class="empty sm">${ic('mom')}<span>Write the first point below. Under ten seconds each.</span></div></div>`}
   <div class="dock"><div class="composer"><div class="pickrow">${pickBtn(dev,'for','m_for',p.id,forLabel(p,f.m_for,f.m_vendor),'user',v.id)}${pickBtn(dev,'area','m_area',p.id,areaLabel(p,f.m_area),'pin')}</div>
    <p class="keep">${ic('lock')}<span>Both stay for the next points, until you change them.</span></p>
    <div class="ctext">${fin(dev,'m_text','Type or speak the point…')}<button type="button" class="ib ${f.m_photo?'on':''}" data-a="tog" data-v="m_photo" aria-label="Photo" aria-pressed="${!!f.m_photo}">${ic('cam')}</button></div>

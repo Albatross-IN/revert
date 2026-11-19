@@ -121,8 +121,27 @@ wrapA('billto',v=>{const [id,to]=v.split('|');sync('bill_to',{bill:id,to})});
 const bill0=SHEETS.bill;SHEETS.bill=function(dev,s){const o=bill0(dev,s),b=billOf(s.id),id=String(b.id).replace(/\D/g,'');
  o.body=o.body.replace(/<div class="docrow">[^]*?<\/div>/,b.doc&&+id<9e6?`<a class="docrow" href="/rvt/desk/bill/${id}/document" target="_blank" rel="noopener">${ic('file')}<span><b>${b.doc==='pdf'?'PDF':'Photo'} of the bill</b> · open</span></a>`:'');return o};
 const digits=v=>String(v==null?'':v).replace(/\D/g,'');
-phOf=function(kind,x){const id=digits(x.id);if(!id||+id>=LOCAL0)return '<span class="ph"></span>';
- return `<span class="ph real" role="button" tabindex="0" data-a="photo" data-v="${kind}|${x.id}" aria-label="Open the photo" title="Open the photo" style="background-image:url(/rvt/desk/${kind}/${id}/photo?size=thumb)"></span>`};
+phOf=function(kind,x,after){const id=digits(x.id);if(!id||+id>=LOCAL0)return `<span class="ph ${after?'aft':''}"></span>`;
+ const q=after?'&close=1':'',cap=(x.text||'')+(kind==='point'&&x.photo&&x.cphoto?(after?' · after':' · before'):'');
+ /* data-big and data-cap: the larger picture and its line, shown while the pointer rests on the small one (photoHover below) */
+ return `<span class="ph real ${after?'aft':''}" role="button" tabindex="0" data-a="photo" data-v="${kind}|${x.id}${after?'|1':''}" data-big="/rvt/desk/${kind}/${id}/photo?size=view${q}" data-cap="${esc(cap)}" aria-label="${after?'Photo after: open':'Photo: open'}" style="background-image:url(/rvt/desk/${kind}/${id}/photo?size=thumb${q})"></span>`};
+/* The pointer rests on a small photo: the larger one shows beside it, with what the point says, as the earlier MOM
+   register did. One floating box outside the screens, so no card or table cuts it off; it never takes the pointer. */
+const photoHover=(()=>{let box=null,cur=null;const hide=()=>{cur=null;if(box)box.hidden=true};
+ /* the box takes its size from the photo (as large as fits: 560 wide, 72% of the window high), then goes beside the small
+    photo, to its left when there is room, and never off the window. It shows once the picture is there. */
+ const show=()=>{if(!box||!cur)return;const img=box.firstChild;if(!img.naturalWidth)return;
+  const k=Math.min(Math.min(560,innerWidth*.42)/img.naturalWidth,Math.min(innerHeight*.72,660)/img.naturalHeight,1),w=Math.round(img.naturalWidth*k),h=Math.round(img.naturalHeight*k);
+  img.style.width=w+'px';img.style.height=h+'px';box.style.width=Math.max(w+18,230)+'px';box.hidden=false;
+  const r=cur.getBoundingClientRect(),q=box.getBoundingClientRect();
+  box.style.left=Math.round(r.left-q.width-16>=10?r.left-q.width-16:Math.min(r.right+16,innerWidth-q.width-10))+'px';box.style.top=Math.round(Math.max(12,Math.min(r.top+r.height/2-q.height/2,innerHeight-q.height-12)))+'px'};
+ document.addEventListener('mouseover',e=>{const el=e.target.closest&&e.target.closest('.ph.real[data-big]');if(!el)return hide();if(el===cur)return;
+  if(!box){box=document.createElement('div');box.id='phover';box.hidden=true;box.setAttribute('aria-hidden','true');box.innerHTML='<img alt=""><p></p>';document.body.appendChild(box);box.firstChild.addEventListener('load',show)}
+  const img=box.firstChild;cur=el;box.lastChild.textContent=el.dataset.cap||'';box.lastChild.hidden=!el.dataset.cap;
+  if(img.dataset.src!==el.dataset.big){box.hidden=true;img.removeAttribute('src');img.dataset.src=el.dataset.big;img.src=el.dataset.big}else show()});
+ document.addEventListener('scroll',hide,true);document.addEventListener('mousedown',hide,true);document.addEventListener('keydown',hide,true);return {hide}})();
+/* a redraw takes the small photo away from under the pointer: the large one goes with it */
+const renderD=render;render=function(){photoHover.hide();renderD()};
 ptPhoto=function(x,after){const id=digits(x.id);if(!id||+id>=LOCAL0)return `<span class="ph full ${after?'aft':''}"></span>`;
  return `<img class="phv" alt="${after?'After':'Photo'}" role="button" tabindex="0" data-a="photo" data-v="point|${x.id}|${after?1:0}" src="/rvt/desk/point/${id}/photo?size=view${after?'&close=1':''}">`};
 A.photo=function(v,el,dev){const [a,b,c]=String(v).split('|'),s=b?{kind:a,id:b,close:c==='1'}:{kind:'point',id:a};s.back=dev.sheet&&dev.sheet.k!=='photo'?dev.sheet:null;openSheet(dev,'photo',s)};
