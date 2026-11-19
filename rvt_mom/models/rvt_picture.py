@@ -13,6 +13,46 @@ class ProjectProject(models.Model):
     rvt_point_ids = fields.One2many("rvt.point", "project_id", string="Points")
     rvt_visit_ids = fields.One2many("rvt.visit", "project_id", string="Visits")
 
+    @api.model
+    def _rvt_party_of(self, key):
+        """A party as the screens name it ("a12", "client", "s7", "v:Name") in the shape the PDFs take."""
+        key = str(key or "")
+        number = lambda ref: int("".join(ch for ch in ref if ch.isdigit()) or 0)
+        if key in ("", "all"):
+            return False
+        if key.startswith("v:"):
+            return {"kind": "vendor", "name": key[2:]}
+        if key == "client":
+            return {"kind": "client"}
+        if key.startswith("a"):
+            return {"kind": "agency", "partner_id": number(key)}
+        if key.startswith("s"):
+            return {"kind": "staff", "user_id": number(key)}
+        return False
+
+    def rvt_points_pdf(self, visit_id=None, party=None, state="open"):
+        """The points of this project as a PDF: one visit or all of them, one party or all, open or all.
+        Returns (file name, bytes)."""
+        self.ensure_one()
+        self._rvt_check_staff()
+        self.check_access("read")
+        project = self.sudo()
+        visit = self.env["rvt.visit"].sudo().browse(visit_id or 0).exists()
+        if visit and visit.project_id != project:
+            visit = visit.browse()
+        state = state if state in ("open", "closed", "all") else "open"
+        pdf = self.env["ir.actions.report"].sudo()._render_qweb_pdf(
+            "rvt_mom.action_report_points", project.ids,
+            data={"visit_id": visit.id or False, "party": party or False, "state": state})[0]
+        name = "%s - %s" % ("MOM" if visit else "Points", project.name)
+        if visit:
+            name += " - visit %s" % visit.number
+        if party:
+            who = party.get("name") or self.env["res.partner"].sudo().browse(party.get("partner_id") or 0).name \
+                or self.env["res.users"].sudo().browse(party.get("user_id") or 0).name or party.get("kind")
+            name += " - %s" % who
+        return "%s.pdf" % name.replace("/", "-"), pdf
+
     def _rvt_picture_ctx(self):
         ctx = super()._rvt_picture_ctx()
         points = self.env["rvt.point"].sudo().search([("project_id", "=", self.id)], order="due_date, number")

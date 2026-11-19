@@ -1,4 +1,5 @@
 import base64
+from urllib.parse import unquote
 
 from odoo.tests import tagged
 
@@ -39,6 +40,9 @@ class TestRoles(ApiCase):
         self.assertEqual(snap["me_info"]["role"], "staff")
         self.assertIn(self.project.id, [p["id"] for p in snap["projects"]])
         self.assertTrue(snap["features"]["drawings"] and snap["features"]["mom"] and snap["features"]["wa"])
+        live = snap["set"]["live"]
+        self.assertEqual((live["ch"], bool(live["v"])), (self.env["rvt.live"].channel(), True), "what an open screen listens to")
+        self.assertIsInstance(snap["notes"], list)
         same = self.get("/staff/snapshot", token, headers={"If-None-Match": answer.headers["ETag"]})
         self.assertEqual(same.status_code, 304, "nothing changed: nothing is sent again")
         weak = self.get("/staff/snapshot", token, headers={"If-None-Match": "W/" + answer.headers["ETag"]})
@@ -136,6 +140,12 @@ class TestRoles(ApiCase):
         self.add("One", partner=self.ag_carp, visit=visit)
         self.assertEqual(self.get("/files/visit/%s/pdf?partner_id=%s" % (visit.id, self.ag_carp.id), token).status_code, 200)
         self.assertEqual(self.get("/files/project/%s/open-points" % self.project.id, token).status_code, 200)
+        by_agency = self.get("/files/project/%s/points-pdf?party=a%s&state=all" % (self.project.id, self.ag_carp.id), token)
+        self.assertEqual((by_agency.status_code, by_agency.headers["Content-Type"]), (200, "application/pdf"))
+        self.assertIn("Points - Shah Residence - Mahadev Furniture.pdf", unquote(by_agency.headers["Content-Disposition"]))
+        by_visit = self.get("/files/project/%s/points-pdf?visit_id=%s" % (self.project.id, visit.id), token)
+        self.assertIn("MOM - Shah Residence - visit %s.pdf" % visit.number, unquote(by_visit.headers["Content-Disposition"]))
+        self.assertRefused(self.get("/files/project/%s/points-pdf" % self.project.id, self.otp(self.carp_phone)["access_token"]), 403)
         # a photo sent ahead, then used to close a point; the same upload twice is one file
         self.env.flush_all()
         sent = self.url_open("/api/rvt/v1/media", data={"client_uid": "photo-77"}, files={"file": ("site.png", base64.b64decode(PNG), "image/png")},
@@ -176,6 +186,16 @@ class TestRoles(ApiCase):
         question = self.env["rvt.drawing.question"].browse(asked.json()["id"])
         self.assertEqual((question.partner_id, question.asked_by_name, question.via), (self.ag_carp, "Bherubhai Suthar", "app"))
         self.assertEqual(self.get("/files/question/%s/photo" % question.id, token).status_code, 200)
+        # its own point, marked done with a photo of the finished work
+        self.assertRefused(self.post("/agency/points/%s/done" % self.mine.id, {"note": "done"}, token), 422)
+        done = self.post("/agency/points/%s/done" % self.mine.id, {"note": "Loft fixed", "photo": PNG}, token)
+        self.assertEqual((done.status_code, done.json()), (200, {"ok": True}), done.text)
+        self.assertEqual((self.mine.state, self.mine.close_note, self.mine.closed_by_partner_id.name), ("closed", "Loft fixed", "Bherubhai Suthar"))
+        self.assertEqual(self.get("/files/point/%s/photo?close=1" % self.mine.id, token).status_code, 200)
+        row = next(p for p in self.get("/agency/snapshot", token).json()["points"] if p["id"] == "pt%s" % self.mine.id)
+        self.assertEqual((row["st"], row["cphoto"], row["doneBy"]), ("closed", True, "Bherubhai Suthar"))
+        self.assertRefused(self.post("/agency/points/%s/done" % self.theirs.id, {"photo": PNG}, token), 403)
+        self.assertEqual(self.post("/me/notifications/seen", {}, token).json(), {"ok": True})
         # what belongs to another agency, to the client or to staff is refused
         self.assertRefused(self.post("/agency/drawings/%s/open" % self.electrical.id, {}, token), 403)
         self.assertRefused(self.get("/files/revision/%s" % self.electrical.released_revision_id.id, token), 403)

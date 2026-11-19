@@ -14,7 +14,8 @@ with Revert Architects. In Gujarati, Hindi or English.
 - **Drawings**: tap a drawing to open it full screen. You always get the latest revision.
   Revert sees that you opened it.
 - **A doubt?** Open the drawing, type your question, add a photo from site, tap Send.
-- **Your points**: what Revert noted for you on a site visit, with the date.
+- **Your points**: what Revert noted for you on a site visit, with the date. Tap a point to see it whole, with its photo.
+- **Work finished?** Open the point, take a photo of the finished work, tap **Mark as done**. Revert sees the photo beside the first one.
 
 ## Bills
 - You upload a bill only when Revert asks. The request shows on Home under "Revert asks".

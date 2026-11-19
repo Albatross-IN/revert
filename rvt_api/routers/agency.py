@@ -1,5 +1,5 @@
-"""The agency app: its points, the drawings released to it, its lines on each site. Read-only in
-Release 1, except opening a drawing and asking a question."""
+"""The agency app: its points, the drawings released to it, its lines on each site. It reads, and it
+does three things: opens a drawing, asks a question on it, and marks its own point done with a photo."""
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header
@@ -14,6 +14,12 @@ router = APIRouter(prefix="/agency", tags=["agency"])
 
 class Ask(BaseModel):
     text: str
+    media_id: int | None = None
+    photo: str | None = None
+
+
+class Done(BaseModel):
+    note: str = ""
     media_id: int | None = None
     photo: str | None = None
 
@@ -51,3 +57,12 @@ def ask(drawing_id: int, data: Ask, who: Annotated[Caller, Depends(agency)]):
     drawing = _drawing(who, drawing_id)
     photo = who.env["rvt.api.media"]._take(who.user, data.media_id) if data.media_id else data.photo
     return {"id": drawing.rvt_ask(who.partner, data.text, photo=photo, via="app", person_name=who.partner.name)}
+
+
+@router.post("/points/{point_id}/done", summary="The agency marks its own point done, with a photo of the finished work")
+def point_done(point_id: int, data: Done, who: Annotated[Caller, Depends(agency)]):
+    point = who.env["rvt.point"].browse(point_id).exists()
+    if not point:
+        raise not_found()
+    photo = who.env["rvt.api.media"]._take(who.user, data.media_id) if data.media_id else data.photo
+    return {"ok": point.rvt_agency_done(data.note, photo, who.partner)}

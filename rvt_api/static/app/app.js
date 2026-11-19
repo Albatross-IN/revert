@@ -18,6 +18,10 @@ const fd=o=>{const d=dt(o);return d.getUTCDate()+' '+MON[d.getUTCMonth()]};
 const fdw=o=>DOW[dt(o).getUTCDay()]+' '+fd(o);
 const dueW=o=>o==null?'no date':o===0?'today':o===1?'tomorrow':o===-1?'yesterday':o>1&&o<7?DOW[dt(o).getUTCDay()]:fd(o);
 const days=n=>n<=0?'today':n===1?'1 day':n+' days';
+/* a date typed the short way, day month year: "25 11 26", "25/11", "251126" → days from today; null when it is not a date */
+const parseDMY=s=>{s=String(s||'').trim();const m=s.match(/^(\d{1,2})[\s\/.\-]+(\d{1,2})(?:[\s\/.\-]+(\d{2}|\d{4}))?$/)||s.match(/^(\d{2})(\d{2})(\d{2}|\d{4})?$/);if(!m)return null;
+ let y=m[3]?+m[3]:dt(0).getUTCFullYear();if(y<100)y+=2000;const d=Date.UTC(y,+m[2]-1,+m[1]),c=new Date(d);if(c.getUTCDate()!==+m[1]||c.getUTCMonth()!==+m[2]-1)return null;return Math.round((d-BASE)/864e5)};
+const fdmy=o=>{const d=dt(o),z=n=>String(n).padStart(2,'0');return z(d.getUTCDate())+' '+z(d.getUTCMonth()+1)+' '+String(d.getUTCFullYear()).slice(2)};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const inr=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
 const plural=(n,w,pl)=>n+' '+(n===1?w:(pl||w+'s'));
@@ -65,6 +69,13 @@ const dOf=id=>DB.drawings.find(d=>d.id===id);
 const sheetNo=d=>d.code+'-'+String(d.no).padStart(2,'0');
 const cur=d=>d.revs[d.revs.length-1];
 const ptOf=id=>DB.points.find(x=>x.id===id);
+/* photos: the preview draws a placeholder; the desk and the app show the real one (they replace these two) */
+let phOf=(kind,x)=>'<span class="ph"></span>';
+let ptPhoto=(x,after)=>`<span class="ph full ${after?'aft':''}"></span>`;
+/* questions on drawings nobody has answered yet, on the projects I see */
+const openQs=()=>{const ps=myProjects().map(p=>p.id);return DB.drawings.filter(d=>ps.includes(d.pid)).reduce((n,d)=>n+d.q.filter(q=>!q.ans).length,0)};
+/* my notifications that I have not looked at yet */
+const newNotes=()=>(DB.notes||[]).filter(n=>!n.seen).length;
 const billOf=id=>DB.bills.find(b=>b.id===id);
 const visOf=id=>DB.visits.find(v=>v.id===id);
 const paid=b=>b.pay.reduce((s,x)=>s+x.amount,0);
@@ -74,7 +85,7 @@ const partyKey=x=>x.kind==='agency'?x.party:x.kind==='client'?'client':x.kind===
 /* who may see a project: owners and the principal see all; others by team; a project not yet onboarded stays visible as today */
 let canSee=(u,p)=>has(u,'owner')||has(u,'principal')||!p.onb||p.designers.includes(u.id)||p.coords.includes(u.id);
 const myProjects=()=>DB.projects.filter(p=>canSee(me(),p));
-const agProjects=a=>DB.projects.filter(p=>p.onb&&p.plan.some(x=>x.ag===a)||p.lines.some(l=>l.ag===a));
+let agProjects=a=>DB.projects.filter(p=>p.onb&&p.plan.some(x=>x.ag===a)||p.lines.some(l=>l.ag===a));
 
 const LS={ns:['Not started','ns'],wait:['Waiting','wait'],work:['Working','work'],done:['Done','done']};
 const DS={to_draw:['To draw','plain'],in_progress:['In progress','work'],awaiting:['Awaiting approval','wait'],approved:['Approved · to release','gold'],released:['Released','ok']};
@@ -198,9 +209,12 @@ const OP={
  ask(d,by,byName,text,photo,via){d.q.push({id:'q'+(++DB.seq.q),by,byName,via:via||'app',text,photo:!!photo,on:0,ans:null})},
  answer(d,qid,text){const q=d.q.find(x=>x.id===qid);q.ans=text;q.ansBy=UI.user;q.ansOn=0},
  addPoint(o){const p=pOf(o.pid),n=Math.max(0,...DB.points.filter(x=>x.pid===p.id).map(x=>x.n))+1;
-  const x=Object.assign({id:'pt'+(++DB.seq.ptid),n,vid:null,t:null,e:null,dwg:null,photo:false,st:'open',closedBy:null,closedOn:null,note:'',sent:0,fresh:true,by:UI.user,pending:false},o);
+  const x=Object.assign({id:'pt'+(++DB.seq.ptid),n,vid:null,t:null,e:null,dwg:null,photo:false,st:'open',closedBy:null,closedOn:null,note:'',sent:0,fresh:true,by:UI.user,pending:false,on:0,doneBy:null,cphoto:false},o);
   x.confirmed=x.kind!=='client'||!DB.set.clientConfirm;if(x.kind==='agency'&&!x.t){const pl=p.plan.find(q=>q.ag===x.party);x.t=pl?pl.t:null}DB.points.push(x);return x},
  closePoint(x,note,photo,by){Object.assign(x,{st:'closed',closedBy:by||UI.user,closedOn:0,note:note||'',cphoto:!!photo})},
+ reopenPoint(x){Object.assign(x,{st:'open',closedBy:null,closedOn:null,note:'',cphoto:false,doneBy:null})},
+ /* the agency marks its own point done, with a photo of the finished work; the office can open it again */
+ agencyDone(x,note,photo,name){Object.assign(x,{st:'closed',closedBy:null,closedOn:0,note:note||'',cphoto:!!photo,doneBy:name||''})},
  confirmPoint(x){const p=pOf(x.pid);x.confirmed=true;x.sent=1;x.fresh=false;notify('client_item','client:'+p.id,{site:p.name,text:x.text,date:fd(x.due)})},
  sendParty(v,key){const p=pOf(v.pid),ps=DB.points.filter(x=>x.vid===v.id&&partyKey(x)===key&&x.st==='open');if(!ps.length)return 0;
   const fresh=ps.filter(x=>x.fresh).length;ps.forEach(x=>{x.sent++;x.fresh=false});
@@ -212,6 +226,7 @@ const OP={
  reviewBill(b,ok,reason){const p=pOf(b.pid);if(ok){b.st='accepted';notify('bill_accepted',b.ag,{site:p.name,what:b.what})}else{b.st='returned';b.reason=reason;notify('bill_returned',b.ag,{site:p.name,reason})}},
  pay(b,o){const p=pOf(b.pid);b.pay.push(Object.assign({on:0,proof:false},o));b.st=paid(b)>=b.amount?'paid':'part_paid';notify('bill_paid',b.ag,{site:p.name,what:b.what,state:BS[b.st][0]})},
  remind(to,pid,text){const p=pOf(pid);notify('remind',to==='client'?'client:'+pid:to,{site:p.name,text})},
+ seenNotes(){(DB.notes||[]).forEach(n=>{n.seen=true})},
 };
 
 /* ---------- words the agency and the client read (en · gu · hi). Gujarati and Hindi need a native check before release. ---------- */
@@ -229,6 +244,11 @@ const STR={
  reason:{en:'Reason',gu:'કારણ',hi:'कारण'},again:{en:'Upload again',gu:'ફરી અપલોડ કરો',hi:'फिर अपलोड करें'},waiting4:{en:'Waiting for',gu:'રાહ',hi:'प्रतीक्षा'},noq:{en:'Type your question',gu:'તમારો પ્રશ્ન લખો',hi:'अपना सवाल लिखें'},
  c_wait:{en:'Waiting for you',gu:'તમારી રાહ જોઈ રહ્યું છે',hi:'आपकी प्रतीक्षा में'},c_dw:{en:'Your drawings',gu:'તમારા ડ્રોઇંગ',hi:'आपकी ड्रॉइंग'},c_none:{en:'Nothing needed from you right now.',gu:'અત્યારે તમારી પાસેથી કંઈ જોઈતું નથી.',hi:'अभी आपसे कुछ नहीं चाहिए।'},
  c_approve:{en:'Approve',gu:'મંજૂર કરો',hi:'मंज़ूर करें'},c_change:{en:'Ask for a change',gu:'ફેરફાર માટે કહો',hi:'बदलाव के लिए कहें'},c_approved:{en:'Approved by you',gu:'તમે મંજૂર કર્યું',hi:'आपने मंज़ूर किया'},c_note:{en:'What would you like changed?',gu:'શું ફેરફાર કરવો છે?',hi:'क्या बदलना चाहेंगे?'},
+ before:{en:'Before',gu:'પહેલાં',hi:'पहले'},after:{en:'After',gu:'પછી',hi:'बाद में'},pt_photo:{en:'Photo',gu:'ફોટો',hi:'फ़ोटो'},pt_done:{en:'Mark as done',gu:'કામ પૂરું થયું',hi:'काम पूरा हुआ'},
+ pt_proof:{en:'Add a photo of the finished work',gu:'પૂરા થયેલા કામનો ફોટો ઉમેરો',hi:'पूरे हुए काम की फ़ोटो जोड़ें'},pt_note:{en:'Note (optional)',gu:'નોંધ (જરૂરી નથી)',hi:'नोट (ज़रूरी नहीं)'},
+ pt_sent:{en:'Marked done. Revert will have a look.',gu:'પૂર્ણ તરીકે નોંધાયું. Revert જોઈ લેશે.',hi:'पूरा दर्ज हुआ। Revert देख लेगा।'},pt_closed:{en:'Done recently',gu:'હાલમાં પૂરા થયેલા',hi:'हाल में पूरे हुए'},
+ pt_room:{en:'Room',gu:'રૂમ',hi:'कमरा'},pt_site:{en:'Whole site',gu:'આખી સાઇટ',hi:'पूरी साइट'},pt_from:{en:'From Revert',gu:'Revert તરફથી',hi:'Revert की ओर से'},pt_no:{en:'Point',gu:'મુદ્દો',hi:'बिंदु'},
+ q_photo:{en:'Photo attached',gu:'ફોટો જોડાયો',hi:'फ़ोटो जुड़ी'},q_hint:{en:'Type here, or send a photo',gu:'અહીં લખો, અથવા ફોટો મોકલો',hi:'यहाँ लिखें, या फ़ोटो भेजें'},q_only:{en:'Photo',gu:'ફોટો',hi:'फ़ोटो'},
  c_look:{en:'Please have a look',gu:'કૃપા કરીને જુઓ',hi:'कृपया देखें'},c_done:{en:'Mark as done',gu:'થઈ ગયું',hi:'हो गया'},c_hi:{en:'Welcome',gu:'સ્વાગત છે',hi:'स्वागत है'},c_sub:{en:'Your home, one step at a time.',gu:'તમારું ઘર, એક એક પગલે.',hi:'आपका घर, एक-एक क़दम।'}};
 const tr=(k,l)=>(STR[k]||{})[l]||(STR[k]||{}).en||k;
 
@@ -319,6 +339,20 @@ const chips=(dev,k,opts,cls)=>`<div class="chips ${cls||''}">${opts.map(o=>`<but
 const fld=(label,inner,hint)=>`<div class="fld"><label>${esc(label)}</label>${inner}${hint?`<small>${esc(hint)}</small>`:''}</div>`;
 const tog=(dev,k,label,icon)=>`<button type="button" class="chip tg" data-a="tog" data-v="${k}" aria-pressed="${!!dev.f[k]}">${ic(icon||'check')}${esc(label)}</button>`;
 const dueCls=(o,st)=>st==='closed'?'mu':o<0?'c-bad':o<=1?'c-wait':'c-ink2';
+/* a date: quick choices, or any date typed as day month year (dd mm yy) */
+const DMYHINT='Type the date as day month year, for example 25 11 26.';
+function dueChips(dev,k,opts,cls){const f=dev.f,own=!!f[k+'_c'],typed=f[k+'_t']||'',o=parseDMY(typed);
+ /* in a row that scrolls sideways the typed date comes first, so it is never out of sight */
+ const quick=opts.map(x=>`<button type="button" class="chip" data-a="set" data-v="${k}=${x[0]}" aria-pressed="${!own&&String(f[k])===String(x[0])}">${esc(x[1])}</button>`).join(''),other=`<button type="button" class="chip" data-a="duec" data-v="${k}" aria-pressed="${own}">${ic('clock')}${own&&o!=null?esc(fd(o)):'Date'}</button>`,side=/scroll/.test(cls||'');
+ return `<div class="duew"><div class="chips ${cls||''}">${side?other+quick:quick+other}</div>
+  ${own?`<div class="dmy"><input class="inp" id="${dev.id}_${k}_t" data-m="${k}_t" data-ri="1" value="${esc(typed)}" placeholder="dd mm yy" inputmode="numeric" autocomplete="off" aria-label="Date, as day month year"><span class="f12 ${typed&&o==null?'c-bad':'mu'}">${typed&&o!=null?esc(fdw(o))+' '+dt(o).getUTCFullYear()+(o<0?' · past':''):'e.g. 25 11 26'}</span></div>`:''}</div>`}
+const dueOf=(f,k)=>{if(f[k+'_c']){const o=parseDMY(f[k+'_t']);return o==null?NaN:o}return +f[k]};
+const forLabel=(p,k,vendor)=>k==='vendor'?(vendor||'Vendor'):k==='client'?(p.client.n||'Client'):agOf(k)?agN(k):k?(stf(k).full||stf(k).n):'Choose';
+const areaLabel=(p,id)=>id==null?'Choose the room':id===''?'Whole site':entN(p,id)||'Choose the room';
+const pickBtn=(dev,src,key,pid,label,icon,vendor)=>`<button type="button" class="pickb ${src==='area'&&dev.f[key]==null?'need':''}" data-a="pick" data-v="${src}|${key}|${pid}|${vendor||''}">${ic(icon)}<span><small>${src==='area'?'Area':'For'}</small><b>${esc(label)}</b></span>${ic('down')}</button>`;
+/* a point's photos: the one taken when it was raised and, once it is done, the one taken after */
+const ptBA=(x,L)=>!x.photo&&!x.cphoto?'':`<div class="ba ${x.photo&&x.cphoto?'pair':''}">${x.photo?`<figure><figcaption>${x.cphoto?tr('before',L):tr('pt_photo',L)}${x.on!=null?' · '+fd(x.on):''}</figcaption>${ptPhoto(x,0)}</figure>`:''}${x.cphoto?`<figure><figcaption>${tr('after',L)}${x.closedOn!=null?' · '+fd(x.closedOn):''}</figcaption>${ptPhoto(x,1)}</figure>`:''}</div>`;
+const sitePts=p=>DB.points.filter(x=>x.pid===p.id&&x.st==='open'&&!x.e);
 const pbar=(a,b,c)=>`<div class="bar ${c||''}"><i style="width:${b?Math.round(a/b*100):0}%"></i></div>`;
 const money=(n,cls)=>isOwner()?`<b class="num ${cls||''}">${inr(n)}</b>`:`<span class="lockd" title="Amounts are visible to the owner only">${ic('lock')}owner only</span>`;
 const stPill=p=>{const s=STATUS[picture(p).status];return pill(s[0],s[1])};
@@ -354,7 +388,10 @@ function statusCard(p,pic){const s=STATUS[pic.status],g=pic.progress,share=g.wk[
   <p>${bl.length?esc(bl.slice(0,2).map(b=>b.text).join(' · '))+(bl.length>2?' · +'+(bl.length-2)+' more':''):'No blocker. Work, drawings and points are moving.'}</p></div>${elev(p.kind,share,{cls:'lg'})}</div></section>`}
 function workView(p,dev){const v=dev.wv==='grid'?'grid':'plan';
  return card('Work',`<div class="seg sm"><button data-a="ui" data-v="wv=plan" aria-pressed="${v==='plan'}">${ic('layers')}Plan</button><button data-a="ui" data-v="wv=grid" aria-pressed="${v==='grid'}">${ic('grid')}Schedule</button></div>`,
-  v==='plan'?`<p class="t2 hint">Each room shows its trades as dots. Tap a room to change them.</p>${planView(p,dev)}${planLegend()}`:`<p class="t2 hint">Rooms down, trades across. Tap a cell to change it.</p>${gridBlock(p,dev)}`)}
+  (v==='plan'?`<p class="t2 hint">Each room shows its trades as dots. Tap a room to change them.</p>${planView(p,dev)}${planLegend()}`:`<p class="t2 hint">Rooms down, trades across. Tap a cell to change it.</p>${gridBlock(p,dev)}`)+siteNote(p))}
+/* points raised for the whole site carry no room, so no cell can show them: they are named under the plan */
+function siteNote(p){const s=sitePts(p);if(!s.length)return '';const by={};s.forEach(x=>{const k=partyName(p,x);by[k]=(by[k]||0)+1});
+ return `<button type="button" class="note wait lkn" data-a="sheet" data-v="sitepts|${p.id}">${ic('flag')}<span><b>${plural(s.length,'open point')} for the whole site</b>, not tied to one room: ${esc(Object.keys(by).map(k=>k+' '+by[k]).join(' · '))}</span>${ic('chev')}</button>`}
 function pictureBlock(p,dev){const pic=picture(p),w=pic.week,nt=dev.nt||'revert';
  const tabs=[['revert','Revert'],['agencies','Agencies'],['client','Client']].map(t=>`<button data-a="ui" data-v="nt=${t[0]}" aria-pressed="${nt===t[0]}">${t[1]}<i>${pic.next[t[0]].length}</i></button>`).join('');
  return `<div class="stack">${statusCard(p,pic)}
@@ -407,23 +444,24 @@ function dwgDetail(d,dev){const p=pOf(d.pid),r=cur(d),s=DS[d.st],w=p.lines.filte
    ${x.client&&x.client.dec==='change'?`<div class="note bad sm">${ic('edit')}<span>Change asked by ${esc(x.client.by)} on ${fd(x.client.on)}, ${x.client.at}: “${esc(x.client.note)}”</span></div>`:''}</div></div>`).join('');
  const qs=d.q.map(q=>`<div class="q"><div class="qb in"><div class="lbl">${esc(q.byName)} · ${q.by==='client'?'client':esc(agN(q.by))} · ${fd(q.on)}${q.via==='office'?' · logged from a call':''}</div>${esc(q.text)}${q.photo?phOf('question',q):''}</div>
    ${q.ans?`<div class="qb out"><div class="lbl">${esc(stf(q.ansBy).n)} · ${fd(q.ansOn)}</div>${esc(q.ans)}</div>`:`<div class="qa">${fin(dev,'ans_'+q.id,'Type the answer…')}${Bt('Answer','answer',d.id+'|'+q.id,'sm gold')}</div>`}</div>`).join('');
+ const nq=d.q.filter(q=>!q.ans).length,qcard=card('Questions'+(nq?` <span class="cnt bad">${nq} to answer</span>`:''),Bt('Log a question from a call','sheet','logq|'+d.id,'sm ghost','plus'),qs||empty('No question on this drawing.','info'),nq?'hot':'');
  return `<div class="stack dd"><div class="ddh"><button type="button" class="shtb" data-a="view" data-v="${d.id}" aria-label="View the sheet">${sht(d,'md')}</button><div class="m"><div class="lbl">${sheetNo(d)} · ${d.t?esc(TX[d.t].n):'General set'}</div><h2 class="serif">${esc(d.title)}</h2><div class="t2">${esc(p.name)} · drawn by ${esc(stf(d.ds).n)} · ${d.st==='released'?'released '+fd(r.relOn):'due '+fdw(d.due)}</div>
    <div class="chips ro">${pill(s[0],s[1])}${d.forClient?pill('for client','gold'):''}${d.needsApproval?pill('client approves','plain'):''}</div></div></div>
-  <div class="actbar">${act}</div>
+  <div class="actbar">${act}</div>${nq?qcard:''}
   ${w.length?`<div class="note wait">${ic('pause')}<span><b>${plural(w.length,'work line')} waiting</b> for this drawing: ${esc(w.map(l=>entN(p,l.e)+' ('+TX[l.t].s+')').join(', '))}</span></div>`:''}${cd}
   ${d.st==='released'?card('Sent to',`<span class="mu f12">${r.rc.filter(x=>x.opened!=null).length} of ${r.rc.length} opened</span>`,`<div class="rows">${rc}</div>`):''}
-  ${card('Questions',Bt('Log a question from a call','sheet','logq|'+d.id,'sm ghost','plus'),qs||empty('No question on this drawing.','info'))}
+  ${nq?'':qcard}
   ${card('Revisions',`<span class="mu f12">receivers only ever see the current one</span>`,`<div class="tls">${revs}</div>`)}</div>`}
 
 /* ---------- points and MOM ---------- */
 function ptRow(x,dev,o){o=o||{};const p=pOf(x.pid),nm=partyName(p,x),v=x.vid?visOf(x.vid):null;
- return `<div class="rw pt ${x.st}">${kn(x.n)}<div class="m"><div class="t1"><span class="tx">${esc(x.text)}</span>${x.photo?`<span class="phb" role="button" tabindex="0" data-a="photo" data-v="${x.id}" aria-label="Open the photo">${ic('cam','mu')}</span>`:''}</div>
+ return `<div class="rw pt ${x.st}">${kn(x.n)}<div class="m lkm" role="button" tabindex="0" data-a="ptview" data-v="${x.id}"><div class="t1"><span class="tx">${esc(x.text)}</span>${x.photo||x.cphoto?ic('cam','mu'):''}</div>
   <div class="t2">${x.fresh&&x.st==='open'&&x.vid&&x.kind!=='staff'?pill('new','gold')+' ':''}<b class="pty k-${x.kind}">${esc(nm)}</b>${x.e?' · '+esc(entN(p,x.e)):''}${o.proj?' · '+esc(p.name):''}${v?' · visit '+v.no:x.legacy?'':' · raised from the office'}${x.legacy?' · moved from the earlier MOM':''}</div>
-  ${x.st==='closed'?`<div class="t2 c-ok">${ic('check')}closed ${fd(x.closedOn)}${x.note?' · '+esc(x.note):''}</div>`:x.kind==='client'&&!x.confirmed?`<div class="t2 c-wait">${ic('eye')}not shown to the client until the office confirms</div>`:x.pending?`<div class="t2 c-wait">${ic('off')}saved on the phone · waiting to go</div>`:''}</div>
+  ${x.st==='closed'?`<div class="t2 c-ok">${ic('check')}${x.doneBy?'done by '+esc(x.doneBy)+' · ':'closed '}${fd(x.closedOn)}${x.note?' · '+esc(x.note):''}${x.photo&&x.cphoto?' · before and after':''}</div>`:x.kind==='client'&&!x.confirmed?`<div class="t2 c-wait">${ic('eye')}not shown to the client until the office confirms</div>`:x.pending?`<div class="t2 c-wait">${ic('off')}saved on the phone · waiting to go</div>`:''}</div>
   <div class="r">${x.st==='open'?`<span class="due ${dueCls(x.due)}">${dueW(x.due)}</span>${x.sent&&x.kind!=='staff'?`<span class="tick" title="sent">${ic('check')}${ic('check')}</span>`:''}${o.ro?'':x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'sm gold'):Bt('Close','closept',x.id,'sm')}`:''}</div></div>`}
 function forOptions(p){const o=[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))].map(a=>[a,agN(a).split(' ')[0],'agency']);o.push(['client','Client','client']);
  [...new Set([p.principal,...p.designers,...p.coords])].forEach(s=>o.push([s,stf(s).n,'staff']));return o}
-function momCapture(v,dev){const p=pOf(v.pid),f=dev.f,opts=forOptions(p);if(f.m_vendor)opts.push(['vendor',f.m_vendor,'vendor']);if(!f.m_for)f.m_for=opts[0][0];if(f.m_due==null)f.m_due=2;if(!f.m_area)f.m_area=(p.ents[0]||{id:''}).id;
+function momCapture(v,dev){const p=pOf(v.pid),f=dev.f,opts=forOptions(p);if(f.m_vendor)opts.push(['vendor',f.m_vendor,'vendor']);if(!opts.some(o=>o[0]===f.m_for))f.m_for=opts[0][0];if(f.m_due==null)f.m_due=2;if(f.m_area&&!p.ents.some(e=>e.id===f.m_area))f.m_area=null;
  const here=DB.points.filter(x=>x.vid===v.id),earlier=DB.points.filter(x=>x.pid===p.id&&x.st==='open'&&x.vid!==v.id&&!(x.kind==='staff')),grp={};
  earlier.forEach(x=>{const k=partyName(p,x);(grp[k]=grp[k]||[]).push(x)});
  const sendKeys=[...new Set(here.filter(x=>x.st==='open'&&x.kind==='agency').map(x=>x.party))],freshOf=k=>here.filter(x=>x.party===k&&x.st==='open'&&x.fresh).length,allOf=k=>here.filter(x=>x.party===k&&x.st==='open').length;
@@ -431,14 +469,16 @@ function momCapture(v,dev){const p=pOf(v.pid),f=dev.f,opts=forOptions(p);if(f.m_
  return `<div class="momc"><div class="momh"><div><div class="lbl">Visit ${v.no} · ${fdw(v.date)}</div><h2 class="serif">${esc(p.name)}</h2></div>${UI.offline?`<span class="pill wait">${ic('off')}offline · ${pend} waiting to go</span>`:`<span class="pill ok">${ic('check')}saved</span>`}</div>
   ${earlier.length?`<details class="earlier" ${f.m_early===false?'':'open'}><summary><span class="lbl">Open from earlier</span><span class="f12">${Object.keys(grp).map(k=>`${esc(k.replace(/^(Mr\.|Mrs\.|Dr\.)\s*/,'').split(' ')[0])} <b>${grp[k].length}</b>`).join(' · ')}</span></summary><div class="rows">${earlier.map(x=>ptRow(x,dev)).join('')}</div></details>`:''}
   <div class="lbl mt">This visit · ${plural(here.length,'point')}</div><div class="rows">${here.length?here.map(x=>ptRow(x,dev)).join(''):`<div class="empty sm">${ic('mom')}<span>Write the first point below. Under ten seconds each.</span></div>`}</div>
-  <div class="dock"><div class="composer"><div class="cr"><span class="lbl">For</span><div class="chips scroll">${opts.map(o=>`<button type="button" class="chip k-${o[2]}" data-a="set" data-v="m_for=${o[0]}" aria-pressed="${f.m_for===o[0]}">${esc(o[1])}</button>`).join('')}<button type="button" class="chip" data-a="sheet" data-v="vendor|${v.id}">${ic('plus')}Vendor</button></div></div>
-   <div class="cr"><span class="lbl">Area</span><div class="chips scroll">${p.ents.map(e=>`<button type="button" class="chip" data-a="set" data-v="m_area=${e.id}" aria-pressed="${f.m_area===e.id}">${esc(e.n)}</button>`).join('')}</div></div>
+  <div class="dock"><div class="composer"><div class="pickrow">${pickBtn(dev,'for','m_for',p.id,forLabel(p,f.m_for,f.m_vendor),'user',v.id)}${pickBtn(dev,'area','m_area',p.id,areaLabel(p,f.m_area),'pin')}</div>
+   <p class="keep">${ic('lock')}<span>Both stay for the next points, until you change them.</span></p>
    <div class="ctext">${fin(dev,'m_text','Type or speak the point…')}<button type="button" class="ib ${f.m_photo?'on':''}" data-a="tog" data-v="m_photo" aria-label="Photo" aria-pressed="${!!f.m_photo}">${ic('cam')}</button></div>
-   <div class="cr"><span class="lbl">Due</span>${chips(dev,'m_due',[[0,'Today'],[1,'Tmrw'],[2,dueW(2)],[5,dueW(5)],[7,fd(7)]],'scroll')}${Bt('Add','addpt',v.id,'gold','plus')}</div></div>
+   <div class="cr dt"><span class="lbl">Due</span>${dueChips(dev,'m_due',[[0,'Today'],[1,'Tmrw'],[2,dueW(2)],[5,dueW(5)],[7,fd(7)]],'scroll')}${Bt('Add','addpt',v.id,'gold','plus')}</div></div>
   <div class="sendbar"><span class="lbl">Send on WhatsApp</span><div class="chips">${sendKeys.map(k=>`<button type="button" class="btn sm wa" data-a="sendparty" data-v="${v.id}|${k}">${ic('wa')}<span>${esc(agN(k).split(' ')[0])} (${freshOf(k)||allOf(k)})${freshOf(k)?'':' ✓'}</span></button>`).join('')||'<span class="mu f12">Points for an agency appear here to send.</span>'}
    ${sendKeys.length>1?Bt('All','sendall',v.id,'sm wa','send'):''}${Bt('PDF','pdf','mom|'+v.id+'|all','sm ghost','file')}${v.st==='open'?Bt('Finish visit','finishvisit',v.id,'sm pri','check'):''}</div></div></div></div>`}
-function pdfDoc(kind,a,b){ /* mom|vid|party  ·  open|pid */
+function pdfDoc(kind,a,b,o){ /* mom|vid|party  ·  open|pid  ·  points|pid|party (o.v visit, o.st open or all) */
  let p,title,meta,rows;
+ if(kind==='points'){o=o||{};p=pOf(a);const v=o.v?visOf(o.v):null;rows=DB.points.filter(x=>x.pid===p.id&&(!v||x.vid===v.id)&&(b==='all'||partyKey(x)===b)&&(o.st==='all'||x.st==='open'));title=v?'Minutes of meeting':'Points';
+  meta=[['Project',p.name],['Visit',v?v.no+' · '+fdw(v.date):'All visits'],['For',b==='all'?'All parties':rows[0]?partyName(p,rows[0]):''],[o.st==='all'?'Points':'Open',rows.length]]}else
  if(kind==='mom'){const v=visOf(a);p=pOf(v.pid);rows=DB.points.filter(x=>x.vid===v.id&&(b==='all'||partyKey(x)===b));title='Minutes of meeting';meta=[['Project',p.name],['Visit',v.no+' · '+fdw(v.date)],['For',b==='all'?'All parties':agN(b)],['Present',v.att.join(', ')]]}
  else{p=pOf(a);rows=DB.points.filter(x=>x.pid===p.id&&x.st==='open');title='Open points';meta=[['Project',p.name],['As on',fdw(0)],['Open',rows.length],['Site',p.area]]}
  return `<div class="pdf"><div class="pdfh"><div class="pl">${LOGO}</div><div><b>${title}</b><span>Revert Architects · Ahmedabad</span></div></div><div class="pdfm">${meta.map(m=>`<div><span>${m[0]}</span><b>${esc(m[1])}</b></div>`).join('')}</div>
@@ -474,7 +514,7 @@ SHEETS.cell=(dev,s)=>{const p=pOf(s.pid),l=p.lines.find(x=>x.id===s.lid),f=dev.f
   if(f.c_cause==='trade')cause+=fld('Which trade',fsel(dev,'c_ref',p.plan.filter(x=>x.t!==l.t).map(x=>[x.t,TX[x.t].n+(x.ag?' · '+agN(x.ag):' · undecided')]),'Choose the trade'));
   if(f.c_cause==='material'||f.c_cause==='other')cause+=fld('Note',fin(dev,'c_note',f.c_cause==='material'?'Which material, from whom':'What is it waiting for'))}
  return {title:entN(p,l.e)+' · '+TX[l.t].n,sub:p.name,body:`<div class="stseg">${['ns','work','wait','done'].map(k=>`<button type="button" class="c-btn ${k}" data-a="set" data-v="c_st=${k}" aria-pressed="${f.c_st===k}">${LI[k]?ic(LI[k]):'<i class="ring"></i>'}<span>${LS[k][0]}</span></button>`).join('')}</div>${cause}
-  ${fld('Agency on this line',fsel(dev,'c_ag',DB.agencies.map(a=>[a.id,a.n+(a.tr.includes(l.t)?'':' (other trade)')]),pl.ag?'As the project: '+agN(pl.ag):'Undecided for the project'),'Change it only when this room has a different agency, e.g. a second carpenter for the kitchen.')}
+  ${fld('Agency on this line',fsel(dev,'c_ag',DB.agencies.filter(a=>a.tr.includes(l.t)||a.id===f.c_ag||a.id===pl.ag).map(a=>[a.id,a.n+(a.tr.includes(l.t)?'':' (other trade)')]),pl.ag?'As the project: '+agN(pl.ag):'Undecided for the project'),'Change it only when this room has a different agency, e.g. a second carpenter for the kitchen.')}
   ${pts.length?`<div class="lbl mt">Open points on this cell</div><div class="rows">${pts.map(x=>ptRow(x,dev)).join('')}</div>`:''}`,foot:cancelB()+Bt('Save','savecell',s.pid+'|'+s.lid,'gold','check')}};
 
 SHEETS.room=(dev,s)=>{const p=pOf(s.pid),e=p.ents.find(x=>x.id===s.eid),ls=p.lines.filter(l=>l.e===e.id),pts=DB.points.filter(x=>x.pid===p.id&&x.st==='open'&&x.e===e.id),done=ls.filter(l=>l.st==='done').length;
@@ -483,10 +523,14 @@ SHEETS.room=(dev,s)=>{const p=pOf(s.pid),e=p.ents.find(x=>x.id===s.eid),ls=p.lin
 SHEETS.quick=(dev,s)=>{const ps=myProjects(),f=dev.f,p=pOf(f.q_pid);return {title:'What do you want to do?',sub:'Pick the site, then the act',body:`<div class="chips">${ps.map(x=>`<button type="button" class="chip" data-a="set" data-v="q_pid=${x.id}" aria-pressed="${String(f.q_pid)===String(x.id)}">${esc(x.name)}</button>`).join('')}</div>
   <div class="qgrid"><button type="button" class="qtile" data-a="qgo" data-v="mom"><span class="mi brz">${ic('mom')}</span><div>Start MOM<small>visit ${p?p.visitNo+1:''} · points with photos</small></div></button><button type="button" class="qtile" data-a="qgo" data-v="raise"><span class="mi">${ic('plus')}</span><div>Raise a point<small>from the office, no visit</small></div></button>
   <button type="button" class="qtile" data-a="qgo" data-v="bill" ${p&&p.onb?'':'disabled'}><span class="mi">${ic('bill')}</span><div>Ask for a bill<small>the agency uploads against it</small></div></button><button type="button" class="qtile" data-a="qgo" data-v="new"><span class="mi">${ic('folder')}</span><div>New project<small>onboard in six steps</small></div></button></div>`}};
-SHEETS.assign=(dev,s)=>{const p=pOf(s.pid),f=dev.f,a=agOf(f.a_ag),ls=p.lines.filter(l=>l.t===s.t).length;
- return {title:'Decide the '+TX[s.t].n.toLowerCase()+' agency',sub:p.name+' · applies to '+plural(ls,'work line'),body:fld('Agency',fsel(dev,'a_ag',DB.agencies.slice().sort((x,y)=>y.tr.includes(s.t)-x.tr.includes(s.t)).map(x=>[x.id,x.n+(x.tr.includes(s.t)?'':' · other trade')]),'Undecided'))
+SHEETS.assign=(dev,s)=>{const p=pOf(s.pid),f=dev.f,a=agOf(f.a_ag),ls=p.lines.filter(l=>l.t===s.t).length,was=(planOf(p,s.t)||{}).ag,tn=TX[s.t].n.toLowerCase();
+ /* only the agencies that do this trade; one chosen earlier from another trade stays in the list so it is not lost */
+ const list=DB.agencies.filter(x=>x.tr.includes(s.t)||x.id===was||x.id===f.a_ag).sort((x,y)=>x.n.localeCompare(y.n));
+ return {title:'Decide the '+tn+' agency',sub:p.name+' · applies to '+plural(ls,'work line'),body:(list.length?fld('Agency',fsel(dev,'a_ag',list.map(x=>[x.id,x.n+(x.tr.includes(s.t)?'':' · other trade')]),'Undecided'),'Only the agencies that do '+tn+' are listed.')
+   :`<div class="note wait">${ic('users')}<span>No agency does ${esc(tn)} yet. Add one here; all agencies are kept in Setup › Agencies on the desk.</span></div>`)
+  +`<div class="chips"><button type="button" class="chip" data-a="newagency" data-v="${s.pid}|${s.t}">${ic('plus')}New ${esc(tn)} agency</button></div>`
   +(a?`<div class="note ok">${ic('wa')}<span>MOM points and drawings for this trade go to <b>${esc(a.people.map(x=>x.n).join(', '))}</b> on WhatsApp, in ${({gu:'Gujarati',hi:'Hindi',en:'English'})[a.lang]}.</span></div>`
-   :fld('Decide by',chips(dev,'a_by',[[3,fd(3)],[7,fd(7)],[14,fd(14)]]),'Past this date the project shows a blocker to the coordinators and the owner.')),foot:cancelB()+Bt('Save','saveassign',s.pid+'|'+s.t,'gold','check')}};
+   :fld('Decide by',dueChips(dev,'a_by',[[3,fd(3)],[7,fd(7)],[14,fd(14)]]),'Past this date the project shows a blocker to the coordinators and the owner.')),foot:cancelB()+Bt('Save','saveassign',s.pid+'|'+s.t,'gold','check')}};
 
 SHEETS.sendappr=(dev,s)=>{const d=dOf(s.id),f=dev.f,r=cur(d);return {title:(DB.set.approval?'Send for approval · ':'Release · ')+sheetNo(d),sub:d.title+' · revision '+r.n,body:
   `<button type="button" class="drop ${f.sa_file?'on':''}" data-a="tog" data-v="sa_file">${ic(f.sa_file?'file':'plus')}<span>${f.sa_file?`<b>${sheetNo(d)}_rev${r.n}.pdf</b> · 1.4 MB · tap to remove`:'Choose the PDF'}</span></button>`
@@ -509,11 +553,38 @@ SHEETS.release=(dev,s)=>{const d=dOf(s.id),p=pOf(d.pid),f=dev.f,own=d.t&&planOf(
 
 SHEETS.logq=(dev,s)=>{const d=dOf(s.id),p=pOf(d.pid);return {title:'Log a question from a call',sub:sheetNo(d)+' '+d.title,body:fld('Asked by',fsel(dev,'lq_by',[...[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))].map(a=>[a,agN(a)]),['client',p.client.n+' (client)']],'Choose'))+fld('Question',fin(dev,'lq_text','What did they ask')),foot:cancelB()+Bt('Save','dologq',d.id,'gold','check')}};
 
-SHEETS.point=(dev,s)=>{const p=pOf(s.pid),f=dev.f;return {title:'Raise a point',sub:p.name+' · from the office, without a visit',body:fld('For',`<div class="chips">${forOptions(p).map(o=>`<button type="button" class="chip k-${o[2]}" data-a="set" data-v="rp_for=${o[0]}" aria-pressed="${f.rp_for===o[0]}">${esc(o[1])}</button>`).join('')}</div>`)
-  +fld('What is needed',fin(dev,'rp_text','e.g. Choose the kitchen platform stone'))+fld('Area',fsel(dev,'rp_area',p.ents.map(e=>[e.id,e.n]),'No single room'))+fld('By',chips(dev,'rp_due',[[0,'Today'],[1,'Tomorrow'],[2,dueW(2)],[5,dueW(5)],[7,fd(7)]]))
+SHEETS.point=(dev,s)=>{const p=pOf(s.pid),f=dev.f;return {title:'Raise a point',sub:p.name+' · from the office, without a visit',body:`<div class="pickrow">${pickBtn(dev,'for','rp_for',p.id,forLabel(p,f.rp_for),'user')}${pickBtn(dev,'area','rp_area',p.id,areaLabel(p,f.rp_area),'pin')}</div>`
+  +fld('What is needed',fin(dev,'rp_text','e.g. Choose the kitchen platform stone'))+fld('By',dueChips(dev,'rp_due',[[0,'Today'],[1,'Tomorrow'],[2,dueW(2)],[5,dueW(5)],[7,fd(7)]]))
   +`<div class="chips">${tog(dev,'rp_photo','Add a photo','cam')}</div>`+(f.rp_for==='client'&&DB.set.clientConfirm?`<div class="note wait">${ic('eye')}Client points wait for the office to confirm before the client sees them (a setting).</div>`:''),foot:cancelB()+Bt('Add point','doraise',p.id,'gold','plus')}};
 SHEETS.vendor=(dev,s)=>({title:'Point for a vendor',sub:'A supplier or anyone outside the project’s agencies',body:fld('Name',fin(dev,'vn','e.g. Asian Tiles')),foot:cancelB()+Bt('Use','dovendor',null,'gold')});
-SHEETS.closept=(dev,s)=>{const x=ptOf(s.id),p=pOf(x.pid);return {title:'Close point '+x.n,sub:partyName(p,x)+' · '+x.text,body:fld('Closing note',fin(dev,'cp_note','e.g. Done, checked on site'))+`<div class="chips">${tog(dev,'cp_photo','Add a photo','cam')}</div>`,foot:cancelB()+Bt('Close point','doclose',x.id,'gold','check')}};
+SHEETS.closept=(dev,s)=>{const x=ptOf(s.id),p=pOf(x.pid);return {title:'Close point '+x.n,sub:partyName(p,x)+' · '+x.text,body:fld('Closing note',fin(dev,'cp_note','e.g. Done, checked on site'))+`<div class="chips">${tog(dev,'cp_photo','Add a photo of the finished work','cam')}</div>`+(x.photo?`<div class="note">${ic('cam')}<span>This point has a photo from when it was raised. A photo added now is shown beside it as before and after.</span></div>`:''),foot:cancelB()+Bt('Close point','doclose',x.id,'gold','check')}};
+/* one point, whole: what was asked, of whom, where; the photo taken then and the photo taken when it was done */
+SHEETS.ptview=(dev,s)=>{const x=ptOf(s.id);if(!x)return {title:'Point',body:empty('This point is not there any more.','info'),foot:Bt('Close','close',null,'ghost')};
+ const p=pOf(x.pid),v=x.vid?visOf(x.vid):null,open=x.st==='open',by=x.by?stf(x.by).n:'',who=x.doneBy?x.doneBy+' · '+partyName(p,x):x.closedBy==='client'?p.client.n:x.closedBy?stf(x.closedBy).n:'';
+ return {title:'Point '+x.n,sub:p.name+' · '+(x.e?entN(p,x.e):'whole site'),wide:!!(x.photo&&x.cphoto),
+  body:`<p class="ptx">${esc(x.text)}</p><div class="chips ro">${open?pill('open','work'):pill('closed','ok','check')}${open&&x.due!=null?`<span class="pill ${x.due<0?'bad':x.due<=1?'wait':'plain'}">${ic('clock')}by ${esc(dueW(x.due))}</span>`:''}${x.kind==='client'&&!x.confirmed?pill('not confirmed yet','wait','eye'):''}${x.pending?pill('waiting to go','wait','off'):''}</div>
+   ${ptBA(x,'en')}<div class="kv"><div><span>For</span><b>${esc(partyName(p,x))}${x.t&&TX[x.t]?' · '+esc(TX[x.t].n):''}</b></div><div><span>Raised</span><b>${by?esc(by)+' · ':''}${x.on!=null?fd(x.on)+' · ':''}${v?'visit '+v.no:x.legacy?'earlier MOM':'from the office'}</b></div>
+   ${open?'':`<div><span>${x.doneBy?'Marked done':'Closed'}</span><b>${who?esc(who)+' · ':''}${x.closedOn!=null?fd(x.closedOn):''}</b></div>${x.note?`<div><span>Note</span><b>${esc(x.note)}</b></div>`:''}`}</div>`,
+  foot:open?Bt('Back','close',null,'ghost')+(x.kind==='agency'&&agOf(x.party)?Bt('Remind','remind',x.party+'|'+p.id+'|Point '+x.n+': '+x.text,'wa','wa'):'')+(x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'gold'):Bt('Mark done','closept',x.id,'gold','check'))
+   :Bt('Back','close',null,'ghost')+Bt('Not right: open again','reopenpt',x.id,'','refresh')}};
+SHEETS.sitepts=(dev,s)=>{const p=pOf(s.id),list=sitePts(p);return {title:'Points for the whole site',sub:p.name+' · not tied to one room',body:`<div class="rows">${list.map(x=>ptRow(x,dev)).join('')||empty('Nothing here.')}</div>`,foot:Bt('Close','close',null,'ghost')}};
+/* one searchable list for a long choice: who a point is for, which room it is in */
+function pickOpts(s){const p=pOf(s.pid);if(!p)return [];if(s.src==='area')return [['','Whole site','not tied to one room']].concat(p.ents.map(e=>[e.id,e.n,e.ty&&e.ty!==e.n?e.ty:'']));
+ const o=[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))].map(a=>[a,agN(a),p.plan.filter(x=>x.ag===a).map(x=>TX[x.t].n).join(', ')]);o.push(['client',p.client.n||'Client','Client']);
+ [...new Set([p.principal,...p.designers,...p.coords])].filter(Boolean).forEach(u=>o.push([u,stf(u).full||stf(u).n,'Revert'+(roleLabel(stf(u))?' · '+roleLabel(stf(u)):'')]));return o}
+SHEETS.pick=(dev,s)=>{const q=(dev.f.pk_q||'').trim().toLowerCase(),all=pickOpts(s),list=all.filter(o=>!q||(o[1]+' '+o[2]).toLowerCase().includes(q)),now=dev.f[s.key];
+ return {title:s.src==='area'?'Which room':'Who is it for',sub:pOf(s.pid).name+' · '+plural(all.length,'choice'),body:`<div class="pksearch">${ic('search')}<input class="inp" id="${dev.id}_pk_q" data-m="pk_q" data-ri="1" value="${esc(dev.f.pk_q||'')}" placeholder="Search" autocomplete="off" aria-label="Search"></div>
+  <div class="rows pklist">${list.map(o=>`<button type="button" class="rw lk ck" data-a="pickset" data-v="${esc(o[0])}" aria-pressed="${now!=null&&String(now)===String(o[0])}"><i class="box">${ic('check')}</i><div class="m"><div class="t1">${esc(o[1])}</div>${o[2]?`<div class="t2">${esc(o[2])}</div>`:''}</div></button>`).join('')||empty('Nothing matches.','search')}</div>
+  ${s.src==='for'&&s.vendor?`<button type="button" class="btn blk" data-a="sheet" data-v="vendor|${s.vendor}">${ic('plus')}<span>A vendor outside the project</span></button>`:''}`}};
+/* notifications: what reached me, newest first; a tap goes to the thing itself */
+const NOTEI={drawing_question:'info',drawing_approval_needed:'check',point_done:'cam',bill_submitted:'bill',drawing_released:'dwg',drawing_client:'dwg',mom_party_pdf:'mom',client_item:'hand',remind:'bell',invite:'user',bill_asked:'bill',bill_returned:'bill',bill_accepted:'bill',bill_paid:'bill'};
+SHEETS.notes=(dev,s)=>{const list=DB.notes||[],fresh=s.fresh||[];return {title:'Notifications',sub:fresh.length?plural(fresh.length,'new one')+' since you last looked':'What reached you, newest first',
+ body:`<div class="rows">${list.map(n=>`<button type="button" class="rw lk nt ${fresh.includes(n.id)?'unr':''}" data-a="noteopen" data-v="${n.id}"><span class="mi">${ic(NOTEI[n.ev]||'bell')}</span><div class="m"><div class="t1"><span class="tx">${esc(n.text)}</span></div><div class="t2">${n.on===0?'today':fd(n.on)} · ${esc(n.at||'')}${fresh.includes(n.id)?' · <b class="c-bad">new</b>':''}</div></div><div class="r">${n.ref?ic('chev','mu'):''}</div></button>`).join('')||empty('Nothing has reached you yet.','bell')}</div>`,foot:Bt('Close','close',null,'ghost')}};
+/* the MOM of a project as a PDF: every visit or one, every party or one agency, open points or all of them */
+SHEETS.mompdf=(dev,s)=>{const p=pOf(s.id),f=dev.f,vs=DB.visits.filter(v=>v.pid===p.id).sort((a,b)=>b.no-a.no),pts=DB.points.filter(x=>x.pid===p.id),keys=[...new Set(pts.map(partyKey))];
+ const n=pts.filter(x=>(!f.pf_v||x.vid===f.pf_v)&&(!f.pf_p||partyKey(x)===f.pf_p)&&(f.pf_st==='all'||x.st==='open')).length;
+ return {title:'MOM as a PDF',sub:p.name,body:fld('Visit',fsel(dev,'pf_v',vs.map(v=>[v.id,'Visit '+v.no+' · '+fdw(v.date)]),'All visits, and points raised from the office'))+fld('For',fsel(dev,'pf_p',keys.map(k=>[k,partyName(p,pts.find(x=>partyKey(x)===k))]).sort((a,b)=>a[1].localeCompare(b[1])),'All parties'),'Choose one agency for its own list.')
+  +fld('Points',chips(dev,'pf_st',[['open','Open only'],['all','Open and closed']]))+`<div class="note">${ic('file')}<span><b>${plural(n,'point')}</b> in this PDF, each with its own number in this project. A closed point shows its photo before and after.</span></div>`,foot:cancelB()+Bt('Open the PDF','dopdf',p.id,'gold','file')}};
 SHEETS.offerdone=(dev,s)=>{const p=pOf(s.pid),l=p.lines.find(x=>x.id===s.lid);return {title:'Mark the work done?',sub:entN(p,l.e)+' · '+TX[l.t].n,body:`<div class="note ok">${ic('check')}That was the last open point on this cell. If the work itself is finished, mark the line done now.</div>`,foot:Bt('Not yet','close',null,'ghost')+Bt('Mark done','markdone',s.pid+'|'+s.lid,'gold','check')}};
 
 SHEETS.askbill=(dev,s)=>{const f=dev.f,p=pOf(f.ab_pid||s.pid),ags=p?[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))]:[];
@@ -533,10 +604,10 @@ SHEETS.bill=(dev,s)=>{const b=billOf(s.id),p=pOf(b.pid),f=dev.f,st=BS[b.st],own=
   ${b.no?`<div class="docrow">${ic('file')}<span><b>${esc(b.no)}.jpg</b> · photographed bill</span></div>`:''}
   ${b.pay.length?`<div class="lbl mt">Payments</div><div class="rows">${b.pay.map(x=>`<div class="rw"><div class="m"><div class="t1">${money(x.amount,'c-ok')}</div><div class="t2">${fd(x.on)} · paid by <b>${x.by==='client'?'the client':'Revert'}</b> · ${esc(x.mode)}${x.proof?' · proof attached':''}${x.by==='revert'&&b.billedTo==='client'?' · <span class="c-wait">to recover from the client</span>':''}</div></div></div>`).join('')}</div>`:''}${act}`,foot:foot||Bt('Close','close',null,'ghost')}};
 
-SHEETS.pdf=(dev,s)=>({title:s.kind==='mom'?'MOM PDF':'Open points PDF',sub:'What the party receives on WhatsApp',wide:true,body:pdfDoc(s.kind,s.a,s.b),foot:Bt('Close','close',null,'ghost')});
+SHEETS.pdf=(dev,s)=>({title:s.kind==='open'?'Open points PDF':'MOM PDF',sub:s.kind==='points'?'The points of the project, as chosen':'What the party receives on WhatsApp',wide:true,body:pdfDoc(s.kind,s.a,s.b,s),foot:Bt('Close','close',null,'ghost')});
 SHEETS.view=(dev,s)=>{const d=dOf(s.id);return {title:sheetNo(d)+' '+d.title,sub:pOf(d.pid).name,wide:true,body:dwgPaper(d),foot:Bt('Close','close',null,'ghost')}};
 SHEETS.addtrade=(dev,s)=>({title:'Add a trade',sub:'Setup · trades',body:fld('Name',fin(dev,'nt_n','e.g. Modular kitchen'))+fld('Name in Gujarati',fin(dev,'nt_gu','ગુજરાતી'))+fld('Name in Hindi',fin(dev,'nt_hi','हिंदी')),foot:cancelB()+Bt('Add','doaddtrade',null,'gold','plus')});
-SHEETS.addagency=(dev,s)=>({title:'Add an agency',sub:'Setup · agencies and their people',body:fld('Firm name',fin(dev,'na_n','e.g. Vishwakarma Wood Works'))+fld('Trade',fsel(dev,'na_t',TRADES.map(t=>[t.id,t.n]),'Choose'))+fld('Contact person',fin(dev,'na_p','Name'))+fld('WhatsApp number',fin(dev,'na_ph','98xxx xxxxx',1))+fld('Language',chips(dev,'na_l',[['gu','ગુજરાતી'],['hi','हिंदी'],['en','English']])),foot:cancelB()+Bt('Add','doaddagency',null,'gold','plus')});
+SHEETS.addagency=(dev,s)=>({title:'Add an agency',sub:s.back?'It is kept in Setup › Agencies and can be chosen on every project':'Setup · agencies and their people',body:fld('Firm name',fin(dev,'na_n','e.g. Vishwakarma Wood Works'))+fld('Trade',fsel(dev,'na_t',TRADES.map(t=>[t.id,t.n]),'Choose'))+fld('Contact person',fin(dev,'na_p','Name'))+fld('WhatsApp number',fin(dev,'na_ph','98xxx xxxxx',1))+fld('Language',chips(dev,'na_l',[['gu','ગુજરાતી'],['hi','हिंदी'],['en','English']])),foot:cancelB()+Bt('Add','doaddagency',null,'gold','plus')});
 
 /* ---------- onboarding: one guided screen, six steps (phase1_adoption §5.2). It calls the same two methods the API will: proposal and onboard. ---------- */
 let OBU=0;
@@ -616,7 +687,7 @@ function obApply(ob){let p=ob.pid?pOf(ob.pid):null;const fresh=!p,was=p&&p.onb;
    a glass navbar on top, frosted panes on the colour field, one strong focus card. List on the left, the record on the right. */
 const DNAV=[['today','Today','home'],['projects','Projects','folder'],['drawings','Drawings','dwg'],['mom','MOM','mom'],['bills','Bills','bill'],['review','Review','review'],['setup','Setup','setup']];
 function deskCounts(){const ps=myProjects().filter(p=>p.onb).map(p=>p.id);return {today:todayFor(me()).length,projects:myProjects().length,drawings:DB.drawings.filter(d=>ps.includes(d.pid)&&d.st!=='released').length,
- mom:DB.points.filter(x=>ps.includes(x.pid)&&x.st==='open').length,bills:DB.bills.filter(b=>ps.includes(b.pid)&&['submitted','asked','accepted','part_paid'].includes(b.st)).length}}
+ q:openQs(),mom:DB.points.filter(x=>ps.includes(x.pid)&&x.st==='open').length,bills:DB.bills.filter(b=>ps.includes(b.pid)&&['submitted','asked','accepted','part_paid'].includes(b.st)).length}}
 function deskLogin(dev){const u=me();return `<div class="bw"><div class="bw-bar"><i></i><i></i><i></i><div class="url">${ic('lock')}erp.revert.co.in/office/login</div></div><div class="scr"><div class="desk"><div class="dlogin enter">
   <section class="ink dl-art"><div class="tbr"><span>Revert Desk</span><span>${fdw(0)}</span></div><div class="dl-logo">${LOGO}</div><p class="atag">Architecture · Interior · Green Building</p><h1 class="serif">Every site, <em>drawn</em> and up to date.</h1>
    <p class="hnext">Set a project up once. After that there are two daily acts: releasing a drawing, and writing a point on site. The picture of every project follows from those.</p>${street(DB.projects,workShare,p=>p.area).replace(/data-a="proj"/g,'tabindex="-1"')}</section>
@@ -626,8 +697,8 @@ function deskHTML(dev){if(!dev.signed)return deskLogin(dev);const u=me(),c=deskC
  const body={today:deskToday,projects:deskProjects,drawings:deskDrawings,mom:deskMom,bills:deskBills,review:deskReview,setup:deskSetup,onboard:d=>`<div class="pad">${obWizard(d)}</div>`}[dev.sec](dev);
  return `<div class="bw"><div class="bw-bar"><i></i><i></i><i></i><div class="url">${ic('lock')}erp.revert.co.in/office</div></div>
  <div class="scr"><div class="desk"><header class="gnav"><button type="button" class="gn-home" data-a="nav" data-v="today" aria-label="Home">${ic('home')}</button><div class="gn-app">${LOGO}</div>
-  <nav class="gn-menu" aria-label="Revert Desk">${DNAV.map(n=>`<button type="button" data-a="nav" data-v="${n[0]}" ${sec===n[0]?'aria-current="page"':''}>${ic(n[2])}<span>${n[1]}</span>${c[n[0]]?`<b>${c[n[0]]}</b>`:''}</button>`).join('')}</nav>
-  <div class="gn-r"><span class="gn-co"><i></i>Revert Architects</span><div class="gn-u">${av(u.n)}<div><b>${esc(u.full)}</b><small>${roleLabel(u)}</small></div></div><button type="button" class="ib gn-out" data-a="signout" aria-label="Log out" title="Log out">${ic('out')}</button></div></header>
+  <nav class="gn-menu" aria-label="Revert Desk">${DNAV.map(n=>`<button type="button" data-a="nav" data-v="${n[0]}" ${sec===n[0]?'aria-current="page"':''}>${ic(n[2])}<span>${n[1]}</span>${c[n[0]]?`<b>${c[n[0]]}</b>`:''}${n[0]==='drawings'&&c.q?`<b class="q" title="${plural(c.q,'question')} waiting for an answer">${c.q} ?</b>`:''}</button>`).join('')}</nav>
+  <div class="gn-r"><span class="gn-co"><i></i>Revert Architects</span><div class="gn-u">${av(u.n)}<div><b>${esc(u.full)}</b><small>${roleLabel(u)}</small></div></div><button type="button" class="ib gn-bell" data-a="notes" aria-label="Notifications" title="Notifications">${ic('bell')}${newNotes()?'<i class="ndot"></i>':''}</button><button type="button" class="ib gn-out" data-a="signout" aria-label="Log out" title="Log out">${ic('out')}</button></div></header>
   <main class="dmain${fresh?' enter':''}" data-sc="dmain_${dev.sec}">${body}</main></div>${sheetHTML(dev)}</div></div>`}
 const dhead=(title,sub,right)=>`<header class="dh"><div><h1 class="serif">${title}</h1>${sub?`<p>${sub}</p>`:''}</div><div class="dhr">${right||''}</div></header>`;
 const tabsH=(dev,key,list)=>`<div class="tabs" role="tablist">${list.map(t=>`<button type="button" role="tab" data-a="ui" data-v="${key}=${t[0]}" aria-selected="${(dev[key]||list[0][0])===t[0]}">${esc(t[1])}${t[2]!=null?`<i>${t[2]}</i>`:''}</button>`).join('')}</div>`;
@@ -658,9 +729,9 @@ function projTab(p,dev){const t=dev.ptab||'picture',pic=picture(p),dws=DB.drawin
  if(t==='mom'){const v=dev.vid&&visOf(dev.vid);if(v&&v.pid===p.id)return `<div class="stack">${Bt('All visits','ui','vid=','sm ghost','back')}${momCapture(v,dev)}</div>`;
   const f=dev.mf||'open',list=pts.filter(x=>f==='all'||x.st===f).sort((a,b)=>b.n-a.n),vs=DB.visits.filter(x=>x.pid===p.id).sort((a,b)=>b.no-a.no);
   return `<div class="stack">${card('Visits',Bt('Start MOM','startmom',p.id,'sm gold','plus'),`<div class="rows">${vs.map(x=>{const n=pts.filter(q=>q.vid===x.id);return `<div class="rw"><span class="cal"><i>${MON[dt(x.date).getUTCMonth()]}</i><b>${dt(x.date).getUTCDate()}</b></span><div class="m"><div class="t1">Visit ${x.no} ${x.st==='open'?pill('open','work'):''}</div><div class="t2">by ${esc(stf(x.by).n)} · ${plural(n.length,'point')} · ${n.filter(q=>q.st==='open').length} open · present: ${esc(x.att.join(', '))}</div></div><div class="r">${Bt('PDF','pdf','mom|'+x.id+'|all','sm ghost','file')}${Bt('Open','ui','vid='+x.id,'sm')}</div></div>`}).join('')||empty('No visit yet. Start the first MOM.','mom')}</div>`)}
-   ${card('Points',`<div class="seg sm">${[['open','Open'],['closed','Closed'],['all','All']].map(o=>`<button data-a="ui" data-v="mf=${o[0]}" aria-pressed="${f===o[0]}">${o[1]}</button>`).join('')}</div>${Bt('PDF','pdf','open|'+p.id,'sm ghost','file')}${Bt('Raise point','raise',p.id,'sm','plus')}`,`<div class="rows">${list.map(x=>ptRow(x,dev)).join('')||empty('Nothing here.')}</div>`)}</div>`}
+   ${card('Points',`<div class="seg sm">${[['open','Open'],['closed','Closed'],['all','All']].map(o=>`<button data-a="ui" data-v="mf=${o[0]}" aria-pressed="${f===o[0]}">${o[1]}</button>`).join('')}</div>${Bt('PDF','mompdf',p.id,'sm ghost','file')}${Bt('Raise point','raise',p.id,'sm','plus')}`,`<div class="rows">${list.map(x=>ptRow(x,dev)).join('')||empty('Nothing here.')}</div>`)}</div>`}
  if(t==='client'){const un=pts.filter(x=>x.kind==='client'&&x.st==='open'&&!x.confirmed),cd=dws.filter(d=>d.forClient);
-  return `<div class="stack"><div class="two">${card('Client access','',`<div class="rows">${p.client.contacts.map((c,i)=>`<div class="rw"><div class="m"><div class="t1">${av(c.n,'sm')}<span>${esc(c.n)}</span></div><div class="t2">${esc(c.ph)} · ${c.inv?'<span class="c-ok">invited · app or link</span>':'not invited yet'}</div></div><div class="r">${c.inv?Bt('Copy link','copylink',p.id,'sm ghost','link'):Bt('Invite','invite',p.id+'|'+i,'sm wa','wa')}</div></div>`).join('')}</div>
+  return `<div class="stack"><div class="two">${card('Client access','',`<div class="rows">${p.client.contacts.map((c,i)=>`<div class="rw"><div class="m"><div class="t1">${av(c.n,'sm')}<span>${esc(c.n)}</span></div><div class="t2">${esc(c.ph)} · ${!c.inv?'not invited yet':c.invst&&c.invst!=='sent'?`<span class="c-wait">invitation ${esc(c.invst)}: it did not leave</span>`:'<span class="c-ok">invited · app or link</span>'}</div>${c.inv&&c.invwhy?`<div class="t2 c-wait">${esc(c.invwhy)}</div>`:''}</div><div class="r">${c.inv?Bt('Copy link','copylink',p.id,'sm ghost','link')+(c.invst&&c.invst!=='sent'?Bt('Invite again','invite',p.id+'|'+i,'sm wa','wa'):''):Bt('Invite','invite',p.id+'|'+i,'sm wa','wa')}</div></div>`).join('')}</div>
     <div class="note">${ic('eye')}The client sees two things only: the drawings marked for the client, and what Revert needs from them.</div>`)}
    ${card('Waiting for the client',Bt('Raise item','raiseclient',p.id,'sm','plus'),`<div class="rows">${nextRows(p,pic,{nt:'client'})}${un.map(x=>ptRow(x,dev)).join('')}</div>`)}</div>
    ${card('Drawings for the client','',`<div class="rows">${cd.map(d=>dwgRow(d,dev)).join('')||empty('No drawing is marked for the client.','dwg')}</div>`)}</div>`}
@@ -676,9 +747,9 @@ function deskProjects(dev){const ps=myProjects(),p=ps.find(x=>x.id===dev.pid)||p
 
 function deskDrawings(dev){const ps=myProjects().map(p=>p.id),mine=dev.dmine==='mine',all=DB.drawings.filter(d=>ps.includes(d.pid)&&(!mine||d.ds===UI.user));
  const G={draw:all.filter(d=>d.st==='to_draw'||d.st==='in_progress'),awaiting:all.filter(d=>d.st==='awaiting'),release:all.filter(d=>d.st==='approved'),released:all.filter(d=>d.st==='released'),unopened:all.filter(d=>d.st==='released'&&cur(d).rc.some(r=>r.opened==null)),q:all.filter(d=>d.q.some(q=>!q.ans))};
- const t=dev.dtab||'draw',list=G[t].slice().sort((a,b)=>t==='released'?cur(b).relOn-cur(a).relOn:a.due-b.due),d=list.find(x=>x.id===dev.drawer)||dOf(dev.drawer)||list[0];
+ const t=dev.dtab&&G[dev.dtab]?dev.dtab:(G.q.length?'q':'draw'),list=G[t].slice().sort((a,b)=>t==='released'?cur(b).relOn-cur(a).relOn:a.due-b.due),d=list.find(x=>x.id===dev.drawer)||dOf(dev.drawer)||list[0];
  return dhead('Drawings','All drawings across your projects. A drawing is released only through the system.',`<div class="seg sm">${[['all','All'],['mine','Mine']].map(o=>`<button data-a="ui" data-v="dmine=${o[0]}" aria-pressed="${(dev.dmine||'all')===o[0]}">${o[1]}</button>`).join('')}</div>`)
-  +tabsH(dev,'dtab',[['draw','To draw',G.draw.length],['awaiting','Awaiting approval',G.awaiting.length],['release','To release',G.release.length],['released','Released',G.released.length],['unopened','Not opened',G.unopened.length],['q','Questions',G.q.length]])
+  +tabsH(Object.assign({},dev,{dtab:t}),'dtab',[...(G.q.length?[['q','Questions to answer',G.q.length]]:[]),['draw','To draw',G.draw.length],['awaiting','Awaiting approval',G.awaiting.length],['release','To release',G.release.length],['released','Released',G.released.length],['unopened','Not opened',G.unopened.length],...(G.q.length?[]:[['q','Questions',0]])])
   +`<div class="split in"><aside class="sl" data-sc="dlist"><div class="rows sel">${list.map(x=>dwgRow(x,dev,true).replace('class="rw lk"',`class="rw lk ${d&&d.id===x.id?'cur':''}"`)).join('')||empty('Nothing in this list.')}</div></aside><section class="sd" data-sc="ddetail">${d?dwgDetail(d,dev):empty('Choose a drawing.','dwg')}</section></div>`}
 
 function deskMom(dev){const ps=myProjects().map(p=>p.id),pf=dev.mp?+dev.mp:0,pts=DB.points.filter(x=>ps.includes(x.pid)&&(!pf||x.pid===pf)),open=pts.filter(x=>x.st==='open'),f=dev.mf||'open';
@@ -735,8 +806,9 @@ function flashHTML(dev){const f=dev.flash;if(!f)return '';
    'quick' is the short one shown when the app comes back to where it was closed. */
 const splashInner=q=>`${skyline()}<div class="sp-in"><div class="sp-mark"><i class="ax h"></i><i class="ax v"></i><b class="gb g1">A</b><b class="gb g2">1</b><div class="sp-logo">${LOGOD}</div></div><i class="sp-dim"></i><p class="sp-tag">Architecture · Interior · Green Building</p><div class="sp-load"><span class="tkb">${Array.from({length:22},(x,i)=>`<i style="--i:${i}"></i>`).join('')}</span><small>${q?'Picking up where you left off':'Opening your sites'}</small></div></div>`;
 const splashHTML=dev=>{const q=dev.splash==='quick';return dev.splash?`<div class="splash ${q?'quick':''}" aria-hidden="true">${splashInner(q)}</div>`:''};
-function sheetHTML(dev){const s=dev.sheet;if(!s||!SHEETS[s.k])return flashHTML(dev);const o=SHEETS[s.k](dev,s);
- return `<div class="ovl" data-a="close"><div class="dlg ${o.wide?'wide':''}" role="dialog" aria-label="${esc(o.title)}"><header class="sh-h"><div><h3>${esc(o.title)}</h3>${o.sub?`<p>${esc(o.sub)}</p>`:''}</div><button type="button" class="xb" data-a="close" aria-label="Close">${ic('x')}</button></header><div class="sh-b" data-sc="sheet_${s.k}">${o.body}</div>${o.foot?`<footer class="sh-f">${o.foot}</footer>`:''}</div></div>${flashHTML(dev)}`}
+/* a sheet comes in once: redrawn while it is open (a letter typed in its search box, a choice tapped, new data arriving) it stays still */
+function sheetHTML(dev){const s=dev.sheet;if(!s||!SHEETS[s.k]){dev._sk='';return flashHTML(dev)}const o=SHEETS[s.k](dev,s),sk=s.k+'|'+(s.id==null?'':s.id)+'|'+(s.key||'')+'|'+(s.pid||''),still=dev._sk===sk;dev._sk=sk;
+ return `<div class="ovl ${still?'still':''}" data-a="close"><div class="dlg ${o.wide?'wide':''}" role="dialog" aria-label="${esc(o.title)}"><header class="sh-h"><div><h3>${esc(o.title)}</h3>${o.sub?`<p>${esc(o.sub)}</p>`:''}</div><button type="button" class="xb" data-a="close" aria-label="Close">${ic('x')}</button></header><div class="sh-b" data-sc="sheet_${s.k}">${o.body}</div>${o.foot?`<footer class="sh-f">${o.foot}</footer>`:''}</div></div>${flashHTML(dev)}`}
 const pushHTML=dev=>dev.push?`<div class="pushb" aria-live="polite"><i>${LOGO}</i><div><b>${esc(dev.push.t)}<small>now</small></b><span class="gu">${esc(dev.push.x)}</span></div></div>`:'';
 function phone(dev,o){const fresh=dev._k!==o.key,n=dev.stack?dev.stack.length:1,dir=!fresh?'':n>(dev._n||1)?' push':n<(dev._n||1)?' pop':'';dev._k=o.key;dev._n=n;
  return `<div class="phone ${o.cls||''}"><div class="pscr scr"><div class="psb"><b>10:42</b>${o.url?`<span class="purl">${ic('lock')}${esc(o.url)}</span>`:'<i class="island"></i>'}<span class="psi">${UI.offline&&dev.id==='staff'?ic('off'):'<i class="sig"></i>'}<i class="bat"></i></span></div>
@@ -754,10 +826,10 @@ const workShare=p=>{const n=p.lines.length;return !p.onb?null:n?p.lines.filter(l
 /* ---------- staff app ---------- */
 function staffHTML(dev){const u=me();
  if(!dev.signed)return phone(dev,{key:'si',cls:'p-auth',body:`<div class="auth">${authHero(1)}<h2 class="serif">Welcome back</h2>${fld('Login',`<input class="inp" id="st_login" value="${u.login}" readonly>`)}${fld('Password',`<input class="inp" id="st_pw" type="password" value="••••••••" readonly>`)}${Bt('Sign in','signin',null,'gold lg blk')}<div class="lbl mt ac">Demo · sign in as</div><div class="chips cen">${demoUsers()}</div><p class="mu f12 ac">Staff use their office login. The app covers every function of the desk.</p></div>`});
- const t=top(dev),c=deskCounts(),nav=bnav(dev,[['today','Today','home',c.today],['projects','Projects','folder'],['drawings','Drawings','dwg'],['mom','MOM','mom']],true);
+ const t=top(dev),c=deskCounts(),nq=openQs(),nav=bnav(dev,[['today','Today','home',c.today],['projects','Projects','folder'],['drawings','Drawings','dwg',nq||''],['mom','MOM','mom']],true);
  let bar='',body='',key=t.s+(t.id||''),hideNav=false,bodyCls='';
  if(t.s==='today'){const it=todayFor(u),first=it[0],ps=myProjects();
-  bar=abar(`Hello, ${esc(u.n)}`,fdw(0)+' · '+roleLabel(u),{cls:'hh',subFirst:1,serif:1,left:`<button type="button" class="avb" data-a="go" data-v="more" aria-label="Profile and more">${av(u.n,'lg')}</button>`,right:`<button type="button" class="ib" data-a="ui" data-v="tf=all" aria-label="Notifications">${ic('bell')}${it.length?'<i class="ndot"></i>':''}</button>`});
+  bar=abar(`Hello, ${esc(u.n)}`,fdw(0)+' · '+roleLabel(u),{cls:'hh',subFirst:1,serif:1,left:`<button type="button" class="avb" data-a="go" data-v="more" aria-label="Profile and more">${av(u.n,'lg')}</button>`,right:`<button type="button" class="ib" data-a="notes" aria-label="Notifications">${ic('bell')}${newNotes()?'<i class="ndot"></i>':''}</button>`});
   body=`<section class="ink hero"><div class="tbr"><span>Today</span><span>${plural(ps.length,'site')}</span></div><div class="hnum"><b data-cu="${it.length}">${it.length}</b><span>${it.length===1?'thing':'things'} to do<br>right now</span>${first?`<button type="button" class="btn brz" data-a="startq">${ic('play')}<span>Start</span></button>`:''}</div>
     ${first?`<p class="hnext"><span class="lbl">First</span>${esc(first.text)} · ${esc(first.p.name)}</p>`:'<p class="hnext">All clear. Nothing waits for you.</p>'}${street(ps,workShare,p=>p.onb?DB.points.filter(x=>x.pid===p.id&&x.st==='open').length+' open':'configure')}</section>
    <div class="sech"><h3>To do</h3>${weekChip(u)}</div>${todoList(dev,it)}`}
@@ -767,9 +839,10 @@ function staffHTML(dev){const u=me();
   bar=abar(esc(p.name),esc(p.label)+' · '+esc(p.area),{back:1,serif:1,right:`<button type="button" class="ib" data-a="onb" data-v="${p.id}" aria-label="Project configuration">${ic('setup')}</button>`})+tabsH(dev,'ptab',tabs);
   body=(!p.onb?`<div class="note gold">${ic('layers')}<span><b>Runs the earlier way.</b> Tap the settings icon to configure rooms, trades and drawings beside what is there.</span></div>`:'')+projTab(p,dev)}
  if(t.s==='dwg'){const d=dOf(t.id);hideNav=true;bar=abar(sheetNo(d),esc(pOf(d.pid).name),{back:1});body=dwgDetail(d,dev)}
- if(t.s==='drawings'){const ps=myProjects().map(p=>p.id),all=DB.drawings.filter(d=>ps.includes(d.pid)),G={draw:all.filter(d=>d.st==='to_draw'||d.st==='in_progress'),awaiting:all.filter(d=>d.st==='awaiting'),release:all.filter(d=>d.st==='approved'),released:all.filter(d=>d.st==='released'),unopened:all.filter(d=>d.st==='released'&&cur(d).rc.some(r=>r.opened==null))};
-  const k=dev.dtab&&G[dev.dtab]?dev.dtab:(isPrincipal()&&G.awaiting.length?'awaiting':'draw');dev.dtab=k;key+=k;
-  bar=abar('Drawings','released only through the system',{serif:1})+tabsH(dev,'dtab',[['draw','To draw',G.draw.length],['awaiting','To approve',G.awaiting.length],['release','To release',G.release.length],['released','Released',G.released.length],['unopened','Not opened',G.unopened.length]]);
+ if(t.s==='drawings'){const ps=myProjects().map(p=>p.id),all=DB.drawings.filter(d=>ps.includes(d.pid)),G={draw:all.filter(d=>d.st==='to_draw'||d.st==='in_progress'),awaiting:all.filter(d=>d.st==='awaiting'),release:all.filter(d=>d.st==='approved'),released:all.filter(d=>d.st==='released'),unopened:all.filter(d=>d.st==='released'&&cur(d).rc.some(r=>r.opened==null)),q:all.filter(d=>d.q.some(q=>!q.ans))};
+  /* questions waiting for an answer come first, and the screen opens on them */
+  const k=dev.dtab&&G[dev.dtab]&&(dev.dtab!=='q'||G.q.length)?dev.dtab:(G.q.length?'q':isPrincipal()&&G.awaiting.length?'awaiting':'draw');dev.dtab=k;key+=k;
+  bar=abar('Drawings',nq?plural(nq,'question')+' waiting for an answer':'released only through the system',{serif:1})+tabsH(dev,'dtab',[...(G.q.length?[['q','Questions',nq]]:[]),['draw','To draw',G.draw.length],['awaiting','To approve',G.awaiting.length],['release','To release',G.release.length],['released','Released',G.released.length],['unopened','Not opened',G.unopened.length]]);
   body=`<div class="card flush"><div class="rows">${G[k].slice().sort((a,b)=>a.due-b.due).map(d=>dwgRow(d,dev,true)).join('')||empty('Nothing in this list.')}</div></div>`}
  if(t.s==='mom'){const ps=myProjects(),ids=ps.map(p=>p.id),open=DB.points.filter(x=>ids.includes(x.pid)&&x.st==='open'),ov=DB.visits.filter(v=>ids.includes(v.pid)&&v.st==='open');
   bar=abar('Site visits','write a point, send it before you leave the room',{serif:1});
@@ -805,10 +878,11 @@ function agencyHTML(dev){const a=agOf(UI.agency),L=UI.lang.agency,T=k=>tr(k,L),g
  const dws=DB.drawings.filter(d=>d.st==='released'&&cur(d).rc.some(r=>r.to===a.id)),nw=dws.filter(d=>cur(d).rc.find(r=>r.to===a.id).opened==null),bills=DB.bills.filter(b=>b.ag===a.id),asks=bills.filter(b=>b.st==='asked'||b.st==='returned');
  const t=top(dev),nav=bnav(dev,[['home',T('home'),'home',pts.length+nw.length+asks.length||''],['sites',T('sites'),'folder'],['drawings',T('drawings'),'dwg',nw.length||''],['bills',T('bills'),'bill',asks.length||'']]);
  const myShare=p=>{const ls=p.lines.filter(l=>lineAg(p,l)===a.id);return ls.length?ls.filter(l=>l.st==='done').length/ls.length:0};
- const prow=x=>`<div class="rw">${calTile(x.due,L)}<div class="m"><div class="t1"><span class="tx">${esc(x.text)}</span></div><div class="t2">${esc(pOf(x.pid).name)}${x.e?' · '+esc(entN(pOf(x.pid),x.e)):''}</div></div>${x.photo?phOf('point',x):''}</div>`;
+ const prow=x=>`<button type="button" class="rw lk" data-a="go" data-v="point|${x.id}">${x.st==='closed'?`<span class="mi ok">${ic('check')}</span>`:calTile(x.due,L)}<div class="m"><div class="t1"><span class="tx">${esc(x.text)}</span></div><div class="t2">${esc(pOf(x.pid).name)}${x.e?' · '+esc(entN(pOf(x.pid),x.e)):''}${x.st==='closed'&&x.closedOn!=null?' · '+fd(x.closedOn):''}</div></div><div class="r">${x.photo?phOf('point',x):''}${ic('chev','mu')}</div></button>`;
+ const donePts=DB.points.filter(x=>x.kind==='agency'&&x.party===a.id&&x.st==='closed').sort((x,y)=>(y.closedOn||0)-(x.closedOn||0));
  const dcard=d=>{const r=cur(d),un=r.rc.find(x=>x.to===a.id).opened==null;return `<button type="button" class="dcard" data-a="adwg" data-v="${d.id}">${sht(d,'lg')}<div class="t1"><span class="tx">${esc(d.title)}</span>${un?pill(T('new'),'gold'):''}</div><div class="t2">${T('rev')} ${r.n} · ${esc(pOf(d.pid).name)}</div></button>`};
  const brow=b=>`<button type="button" class="rw lk" data-a="go" data-v="bill|${b.id}"><span class="mi">${ic('bill')}</span><div class="m"><div class="t1">${esc(b.what)}</div><div class="t2">${esc(pOf(b.pid).name)}${b.amount!=null?' · <b class="num">'+inr(b.amount)+'</b>':''}</div>${b.st==='returned'?`<div class="t2 c-bad">${T('reason')}: ${esc(b.reason)}</div>`:''}</div><div class="r">${pill(T(b.st),BS[b.st][1])}</div></button>`;
- let bar='',body='',key=t.s+(t.id||''),hide=false;
+ let bar='',body='',key=t.s+(t.id||''),hide=false,bodyCls='';
  if(t.s==='home'){bar=abar(`${T('hello')}, ${esc(a.people[0].n.split(' ')[0])}`,esc(a.n),{cls:'hh',subFirst:1,serif:1,left:av(a.n,'lg'),right:`<button type="button" class="ib" data-a="go" data-v="profile" aria-label="${T('lang')}">${ic('globe')}</button>`});
   body=`<section class="ink hero"><div class="tbr"><span>${fdw(0)}</span><span>${plural(ps.length,'site')}</span></div><div class="h3n"><button type="button" data-a="nav" data-v="home"><b data-cu="${pts.length}">${pts.length}</b><span>${T('points')}</span></button><button type="button" data-a="nav" data-v="drawings"><b data-cu="${nw.length}">${nw.length}</b><span>${T('newdw')}</span></button><button type="button" data-a="nav" data-v="bills"><b data-cu="${asks.length}">${asks.length}</b><span>${T('asks')}</span></button></div>
     ${street(ps,myShare,p=>{const ls=p.lines.filter(l=>lineAg(p,l)===a.id);return ls.filter(l=>l.st==='done').length+'/'+ls.length},'go')}</section>
@@ -820,17 +894,25 @@ function agencyHTML(dev){const a=agOf(UI.agency),L=UI.lang.agency,T=k=>tr(k,L),g
  if(t.s==='site'){const p=pOf(t.id),ls=p.lines.filter(l=>lineAg(p,l)===a.id);hide=true;bar=abar(esc(p.name),esc(p.address),{back:1,serif:1});
   body=`<div class="card solid"><header class="hd"><h3>${T('rooms')}</h3></header>${planView(p,dev,{ro:1,ag:a.id})}<div class="rows">${ls.map(l=>`<div class="rw"><div class="m"><div class="t1">${esc(entN(p,l.e))}</div><div class="t2">${esc(TX[l.t][L]||TX[l.t].n)}${l.st==='wait'&&l.cause==='drawing'&&dOf(l.ref)?' · '+T('waiting4')+': '+esc(dOf(l.ref).title):''}</div></div><div class="r">${pill(T(l.st),LS[l.st][1])}</div></div>`).join('')}</div></div>
    <div class="sech"><h3>${T('points')}</h3></div><div class="card flush solid"><div class="rows">${pts.filter(x=>x.pid===p.id).map(prow).join('')||empty(T('allclear'))}</div></div>
+   ${donePts.some(x=>x.pid===p.id)?`<div class="sech"><h3>${T('pt_closed')}</h3></div><div class="card flush solid"><div class="rows">${donePts.filter(x=>x.pid===p.id).slice(0,12).map(prow).join('')}</div></div>`:''}
    <div class="sech"><h3>${T('drawings')}</h3></div>${dws.some(d=>d.pid===p.id)?`<div class="dgal">${dws.filter(d=>d.pid===p.id).map(dcard).join('')}</div>`:`<div class="card solid">${empty(T('allclear'),'dwg')}</div>`}`}
+ if(t.s==='point'){const x=ptOf(t.id),p=x&&pOf(x.pid);hide=true;
+  if(!x||!p){bar=abar(T('points'),'',{back:1});body=`<div class="card solid">${empty(T('allclear'))}</div>`}
+  else{const open=x.st==='open',f=dev.f;bar=abar(T('pt_no')+' '+x.n,esc(p.name)+' · '+esc(x.e?entN(p,x.e):T('pt_site')),{back:1,right:open?'':pill(T('done'),'ok','check')});
+   body=`<div class="card solid"><div class="rw">${open?calTile(x.due,L):`<span class="mi ok">${ic('check')}</span>`}<div class="m"><div class="t1"><span class="tx ptx">${esc(x.text)}</span></div><div class="t2">${T('pt_from')}${x.on!=null?' · '+fd(x.on):''}${open&&x.due!=null?' · '+T('by')+' '+fd(x.due):''}</div></div></div>${ptBA(x,L)}</div>
+    ${open?`<div class="card solid"><header class="hd"><h3>${T('pt_done')}</h3></header><button type="button" class="drop ${f.ad_photo?'on':''}" data-a="tog" data-v="ad_photo">${ic(f.ad_photo?'check':'cam')}<span>${T('pt_proof')}${f.ad_photo?' ✓':''}</span></button>${fld(T('pt_note'),fin(dev,'ad_note',''))}${Bt(T('pt_done'),'agdone',x.id,'gold lg blk','check')}</div>`
+     :`<div class="note ok">${ic('check')}<span>${T('done')}${x.closedOn!=null?' · '+fd(x.closedOn):''}${x.doneBy?' · '+esc(x.doneBy):''}${x.note?' · '+esc(x.note):''}</span></div>`}`}}
  if(t.s==='drawings'){bar=abar(T('drawings'),T('current'),{serif:1});body=dws.length?`<div class="dgal">${dws.map(dcard).join('')}</div>`:`<div class="card solid">${empty(T('allclear'),'dwg')}</div>`}
- if(t.s==='dwg'){const d=dOf(t.id),r=cur(d),qs=d.q.filter(q=>q.by===a.id);hide=true;bar=abar(esc(d.title),sheetNo(d)+' · '+T('rev')+' '+r.n+' · '+esc(pOf(d.pid).name),{back:1});
-  body=`<div class="viewer">${dwgPaper(d)}</div><div class="note ok">${ic('check')}${T('current')} · ${fd(r.relOn)}</div>${qs.map(q=>`<div class="q"><div class="qb out"><div class="lbl">${T('yourq')} · ${fd(q.on)}</div>${esc(q.text)}${q.photo?phOf('question',q):''}</div>${q.ans?`<div class="qb in"><div class="lbl">Revert · ${esc(stf(q.ansBy).n)}</div>${esc(q.ans)}</div>`:''}</div>`).join('')}
-   <div class="composer"><div class="lbl">${T('ask')}</div><div class="ctext">${fin(dev,'aq',T('noq'))}<button type="button" class="ib ${dev.f.aq_photo?'on':''}" data-a="tog" data-v="aq_photo" aria-label="Photo">${ic('cam')}</button></div>${Bt(T('send'),'aask',d.id,'gold blk','send')}</div>`}
+ if(t.s==='dwg'){const d=dOf(t.id),r=cur(d),qs=d.q.filter(q=>q.by===a.id);hide=true;bodyCls='momb';bar=abar(esc(d.title),sheetNo(d)+' · '+T('rev')+' '+r.n+' · '+esc(pOf(d.pid).name),{back:1});
+  body=`<div class="momc chat"><div class="viewer">${dwgPaper(d)}</div><div class="note ok">${ic('check')}${T('current')} · ${fd(r.relOn)}</div>${qs.map(q=>`<div class="q"><div class="qb out"><div class="lbl">${T('yourq')} · ${fd(q.on)}</div>${esc(q.text)}${q.photo?phOf('question',q):''}</div>${q.ans?`<div class="qb in"><div class="lbl">Revert · ${esc(stf(q.ansBy).n)}</div>${esc(q.ans)}</div>`:''}</div>`).join('')}
+   <div class="dock"><div class="composer"><div class="lbl">${T('ask')}</div>${dev.f.aq_photo?`<button type="button" class="qph" data-a="tog" data-v="aq_photo">${ic('cam')}<span>${T('q_photo')}</span>${ic('x')}</button>`:''}
+    <div class="ctext">${fin(dev,'aq',T('q_hint'))}<button type="button" class="ib ${dev.f.aq_photo?'on':''}" data-a="tog" data-v="aq_photo" aria-label="${T('pt_photo')}">${ic('cam')}</button><button type="button" class="ib snd" data-a="aask" data-v="${d.id}" aria-label="${T('send')}">${ic('send')}</button></div></div></div></div>`}
  if(t.s==='bills'){bar=abar(T('bills'),'',{serif:1});body=`<div class="card flush solid"><div class="rows">${bills.map(brow).join('')||empty(T('nobills'),'bill')}</div></div>`}
  if(t.s==='bill'){const b=billOf(t.id),up=b.st==='asked'||b.st==='returned';hide=true;bar=abar(esc(b.what),esc(pOf(b.pid).name),{back:1,right:pill(T(b.st),BS[b.st][1])});
   body=up?(b.st==='returned'?`<div class="note bad">${ic('alert')}${T('reason')}: ${esc(b.reason)}</div>`:'')+`<div class="card solid">${fld(T('billno'),fin(dev,'ab_no','—'))}${fld(T('amount'),fin(dev,'ab_amt','₹',1))}<button type="button" class="drop ${dev.f.ab_doc?'on':''}" data-a="tog" data-v="ab_doc">${ic(dev.f.ab_doc?'file':'cam')}<span>${T('photo')}${dev.f.ab_doc?' ✓':''}</span></button>${Bt(T('submit'),'asubmit',b.id,'gold lg blk','check')}</div>`
    :`<div class="card solid"><div class="kv"><div><span>${T('billno')}</span><b>${esc(b.no||'—')}</b></div><div><span>${T('amount')}</span><b class="num">${inr(b.amount)}</b></div></div><div class="bsteps">${['submitted','accepted','part_paid','paid'].map(s=>{const order=['submitted','accepted','part_paid','paid'],on=order.indexOf(b.st)>=order.indexOf(s);return `<div class="${on?'on':''}"><i>${on?ic('check'):''}</i><span>${T(s)}</span></div>`}).join('')}</div></div>`}
  if(t.s==='profile'){hide=true;bar=abar(esc(a.n),esc(a.people.map(p=>p.n).join(', ')),{back:1,serif:1});body=card(T('lang'),'',`<div class="langs">${[['gu','ગુજરાતી'],['hi','हिंदी'],['en','English']].map(x=>`<button type="button" class="btn lg blk ${L===x[0]?'gold':''}" data-a="alang" data-v="${x[0]}"><span>${x[1]}</span></button>`).join('')}</div>`,'solid')+Bt(T('signout'),'signout',null,'blk','out')}
- return phone(dev,{key,bar,body,cls:'ag '+gu,nav:hide?'':nav})}
+ return phone(dev,{key,bar,body,bodyCls,cls:'ag '+gu,nav:hide?'':nav})}
 
 /* ---------- client app: two blocks and nothing else ---------- */
 function clientHTML(dev){const p=pOf(UI.clientPid),L=UI.lang.client,T=k=>tr(k,L),c=p.client.contacts[0],gu=L!=='en'?'gu':'',url=UI.linkMode?'revert.co.in/c/'+p.name.toLowerCase().replace(/\W+/g,'-')+'-7f3k':'';
@@ -892,9 +974,28 @@ const A={
  scen(v){const s=GUIDE[+v];UI.view=s.view;if(s.user)UI.user=s.user;if(s.view==='desk')UI.devs.desk.signed=true;if(s.run)s.run();UI.panel=null;UI.guide=+v;toast(s.t+': '+s.steps[0])},
  /* generic */
  nav(v,el,dev){if(dev.phone)dev.stack=[{s:v}];else{dev.sec=v;dev.vid=''}dev.sheet=null},back(v,el,dev){if(dev.stack.length>1)dev.stack.pop();dev.sheet=null},
- go(v,el,dev){const [s,id]=v.split('|');dev.stack.push({s,id:id&&/^\d+$/.test(id)?+id:id});if(s==='bill'&&dev.id==='agency'){const b=billOf(id);dev.f.ab_no='';dev.f.ab_amt='';dev.f.ab_doc=false}},
+ go(v,el,dev){const [s,id]=v.split('|');dev.stack.push({s,id:id&&/^\d+$/.test(id)?+id:id});if(s==='point'){dev.f.ad_note='';dev.f.ad_photo=false}if(s==='bill'&&dev.id==='agency'){const b=billOf(id);dev.f.ab_no='';dev.f.ab_amt='';dev.f.ab_doc=false}},
  ui(v,el,dev){const i=v.indexOf('='),k=v.slice(0,i),val=v.slice(i+1);if(k==='vid'&&dev.phone&&val){dev.stack.push({s:'visit',id:val});return}dev[k]=val},
- set(v,el,dev){const i=v.indexOf('='),k=v.slice(0,i);dev.f[k]=v.slice(i+1);if(k==='c_cause'){dev.f.c_ref='';dev.f.c_note=''}},tog(v,el,dev){dev.f[v]=!dev.f[v]},close(v,el,dev){dev.sheet=null},
+ set(v,el,dev){const i=v.indexOf('='),k=v.slice(0,i);dev.f[k]=v.slice(i+1);if((k+'_c') in dev.f)dev.f[k+'_c']=false;if(k==='c_cause'){dev.f.c_ref='';dev.f.c_note=''}},tog(v,el,dev){dev.f[v]=!dev.f[v]},close(v,el,dev){dev.sheet=(dev.sheet&&dev.sheet.back)||null},
+ /* a date typed by hand, as day month year */
+ duec(v,el,dev){dev.f[v+'_c']=!dev.f[v+'_c'];if(dev.f[v+'_c'])UI.focus=dev.id+'_'+v+'_t'},
+ /* the searchable choice: who a point is for, which room; the sheet it was opened from comes back */
+ pick(v,el,dev){const [src,key,pid,vendor]=v.split('|'),back=dev.sheet&&dev.sheet.k!=='pick'?dev.sheet:null;dev.f.pk_q='';openSheet(dev,'pick',{src,key,pid:+pid,vendor:vendor||'',back})},
+ pickset(v,el,dev){const s=dev.sheet;if(!s)return;dev.f[s.key]=v;dev.f.pk_q='';dev.sheet=s.back||null},
+ /* a point, whole */
+ ptview(v,el,dev){if(dev.id==='agency'||dev.id==='client'||!ptOf(v))return;openSheet(dev,'ptview',{id:v})},
+ reopenpt(v,el,dev){const x=ptOf(v);if(!x)return;OP.reopenPoint(x);dev.sheet=null;toast(`Point ${x.n} is open again.`)},
+ agdone(v,el,dev){const x=ptOf(v),a=agOf(UI.agency),L=UI.lang.agency;if(!x)return;if(!dev.f.ad_photo)return toast(tr('pt_proof',L),'wait');
+  OP.agencyDone(x,(dev.f.ad_note||'').trim(),true,a.people[0].n);dev.f.ad_note='';dev.f.ad_photo=false;if(dev.stack.length>1)dev.stack.pop();flash(dev,'✓');pushStaff(a.n+' marked point '+x.n+' done',[x.by,...pOf(x.pid).coords]);toast(tr('pt_sent',L))},
+ /* notifications */
+ notes(v,el,dev){const fresh=(DB.notes||[]).filter(n=>!n.seen).map(n=>n.id);openSheet(dev,'notes',{fresh});if(fresh.length)OP.seenNotes()},
+ noteopen(v,el,dev){const n=(DB.notes||[]).find(x=>String(x.id)===String(v)),r=n&&n.ref;if(!r)return;const [k,id]=r;dev.sheet=null;
+  if(k==='dwg'&&dOf(id))return openDwg(dev,id);if(k==='point'&&ptOf(id))return openSheet(dev,'ptview',{id});if(k==='bill'&&billOf(id))return A.bill(id,el,dev);if(k==='visit'&&visOf(id))return A.openvisit(id,el,dev);if(k==='proj'&&pOf(id))return openProj(dev,id,'picture');
+  toast('That is not on your screens any more.','wait')},
+ /* the MOM as a PDF, cut by visit and by party */
+ mompdf(v,el,dev){Object.assign(dev.f,{pf_v:'',pf_p:'',pf_st:'open'});openSheet(dev,'mompdf',{id:+v})},
+ dopdf(v,el,dev){const f=dev.f;openSheet(dev,'pdf',{kind:'points',a:v,b:f.pf_p||'all',v:f.pf_v||'',st:f.pf_st||'open'})},
+ newagency(v,el,dev){const [pid,t]=v.split('|');Object.assign(dev.f,{na_n:'',na_t:t,na_p:'',na_ph:'',na_l:'gu'});openSheet(dev,'addagency',{back:dev.sheet})},
  sheet(v,el,dev){const [k,id]=v.split('|');openSheet(dev,k,{id})},
  signin(v,el,dev){dev.signed=true;dev.sheet=null;if(dev.phone)dev.stack=[{s:'today'}];else dev.sec='today';dev._k='';flash(dev,'Welcome, '+me().n)},signout(v,el,dev){dev.signed=false;dev.sheet=null;dev.si={step:'lang'};dev.stack=[{s:dev.id==='staff'?'today':'home'}]},
  asuser(v){UI.user=v},
@@ -925,8 +1026,8 @@ const A={
    if((f.c_cause==='material'||f.c_cause==='other')&&!(f.c_note||'').trim())return toast('Add a short note: what is it waiting for?','wait')}
   l.ag=f.c_ag||null;OP.setLine(p,l,f.c_st,{cause:f.c_cause,ref,note:f.c_note});dev.sheet=dev.backRoom?{k:'room',pid:p.id,eid:l.e}:null;dev.backRoom=false;toast(`${entN(p,l.e)} · ${TX[l.t].n}: ${LS[l.st][0]}${l.st==='wait'?' for '+waitText(p,l):''}`)},
  markdone(v,el,dev){const [pid,lid]=v.split('|'),p=pOf(pid),l=p.lines.find(x=>x.id===lid);OP.setLine(p,l,'done');dev.sheet=null;flash(dev,'Done');toast(`${entN(p,l.e)} · ${TX[l.t].n} marked done.`)},
- assign(v,el,dev){const [pid,t]=v.split('|'),pl=planOf(pOf(pid),t);dev.f.a_ag=pl.ag||'';dev.f.a_by=7;openSheet(dev,'assign',{pid:+pid,t})},
- saveassign(v,el,dev){const [pid,t]=v.split('|'),p=pOf(pid);OP.assign(p,t,dev.f.a_ag,+dev.f.a_by);dev.sheet=null;toast(dev.f.a_ag?`${TX[t].n}: ${agN(dev.f.a_ag)}. Its ${plural(p.lines.filter(l=>l.t===t).length,'work line')} now carry this agency.`:`${TX[t].n} stays undecided until ${fd(+dev.f.a_by)}.`)},
+ assign(v,el,dev){const [pid,t]=v.split('|'),pl=planOf(pOf(pid),t);dev.f.a_ag=pl.ag||'';dev.f.a_by=7;dev.f.a_by_c=false;openSheet(dev,'assign',{pid:+pid,t})},
+ saveassign(v,el,dev){const [pid,t]=v.split('|'),p=pOf(pid),by=dueOf(dev.f,'a_by');if(!dev.f.a_ag&&isNaN(by))return toast(DMYHINT,'wait');OP.assign(p,t,dev.f.a_ag,by);dev.sheet=null;toast(dev.f.a_ag?`${TX[t].n}: ${agN(dev.f.a_ag)}. Its ${plural(p.lines.filter(l=>l.t===t).length,'work line')} now carry this agency.`:`${TX[t].n} stays undecided until ${fd(by)}.`)},
  /* drawings */
  dwg(v,el,dev){openDwg(dev,v)},dstart(v){dOf(v).st='in_progress';toast('Marked in progress.')},view(v,el,dev){openSheet(dev,'view',{id:v})},
  dosend(v,el,dev){const d=dOf(v);if(!dev.f.sa_file)return toast('Choose the PDF first.','wait');OP.sendForApproval(d,dev.f.sa_note);dev.f.sa_file=false;dev.f.sa_note='';
@@ -946,11 +1047,11 @@ const A={
  doclose(v,el,dev){const x=ptOf(v),p=pOf(x.pid);OP.closePoint(x,dev.f.cp_note,dev.f.cp_photo);dev.sheet=null;flash(dev,'Closed');toast(`Point ${x.n} closed.`);
   const l=x.e&&x.t&&p.lines.find(q=>q.e===x.e&&q.t===x.t);if(l&&l.st!=='done'&&!DB.points.some(q=>q.pid===p.id&&q.st==='open'&&q.e===x.e&&q.t===x.t))openSheet(dev,'offerdone',{pid:p.id,lid:l.id})},
  startmom(v,el,dev){const p=pOf(v);let vi=DB.visits.find(x=>x.pid===p.id&&x.st==='open');if(!vi){vi={id:'v'+(++DB.seq.vid),pid:p.id,no:++p.visitNo,date:0,by:UI.user,att:[me().n],st:'open'};DB.visits.push(vi)}
-  Object.assign(dev.f,{m_for:'',m_area:'',m_text:'',m_photo:false,m_due:2,m_vendor:''});if(dev.phone)dev.stack.push({s:'visit',id:vi.id});else{openProj(dev,p.id,'mom');dev.vid=vi.id}},
+  if(String(dev.f.m_pid)!==String(p.id))Object.assign(dev.f,{m_for:'',m_area:null,m_vendor:'',m_due:2,m_due_c:false});Object.assign(dev.f,{m_pid:String(p.id),m_text:'',m_photo:false});if(dev.phone)dev.stack.push({s:'visit',id:vi.id});else{openProj(dev,p.id,'mom');dev.vid=vi.id}},
  openvisit(v,el,dev){const vi=visOf(v);if(dev.phone)dev.stack.push({s:'visit',id:v});else{openProj(dev,vi.pid,'mom');dev.vid=v}},
- addpt(v,el,dev){const vi=visOf(v),f=dev.f,t=(f.m_text||'').trim();if(!t)return toast('Type or speak the point first.','wait');
-  const kind=agOf(f.m_for)?'agency':f.m_for==='client'?'client':f.m_for==='vendor'?'vendor':'staff',x=OP.addPoint({pid:vi.pid,vid:vi.id,kind,party:kind==='vendor'?f.m_vendor:f.m_for,text:t,e:f.m_area||null,due:+f.m_due,photo:!!f.m_photo});
-  if(UI.offline&&dev.id==='staff')x.pending=true;f.m_text='';f.m_photo=false;UI.focus=dev.id+'_m_text'},
+ addpt(v,el,dev){const vi=visOf(v),f=dev.f,t=(f.m_text||'').trim(),due=dueOf(f,'m_due');if(!t)return toast('Type or speak the point first.','wait');if(f.m_area==null)return toast('Choose the room first. It stays for the next points.','wait');if(isNaN(due))return toast(DMYHINT,'wait');
+  const kind=agOf(f.m_for)?'agency':f.m_for==='client'?'client':f.m_for==='vendor'?'vendor':'staff',x=OP.addPoint({pid:vi.pid,vid:vi.id,kind,party:kind==='vendor'?f.m_vendor:f.m_for,text:t,e:f.m_area||null,due,photo:!!f.m_photo});
+  if(UI.offline&&dev.id==='staff')x.pending=true;f.m_text='';f.m_photo=false;dev.toEnd=true;UI.focus=dev.id+'_m_text'},
  sendparty(v,el,dev){const [vid,key]=v.split('|');if(UI.offline&&dev.id==='staff'){if(!UI.outbox.some(o=>o.vid===vid&&o.key===key))UI.outbox.push({vid,key});return toast(`Saved. ${agN(key)}’s PDF goes out when the network returns.`,'wait')}
   const n=OP.sendParty(visOf(vid),key);if(n){flash(dev,'Sent','wa');toast(`${agN(key)}: ${plural(n,'point')} as a PDF · ${sent()}.`)}},
  sendall(v,el,dev){const vi=visOf(v),ks=[...new Set(DB.points.filter(x=>x.vid===v&&x.st==='open'&&x.kind==='agency').map(x=>x.party))];if(UI.offline&&dev.id==='staff'){ks.forEach(k=>{if(!UI.outbox.some(o=>o.vid===v&&o.key===k))UI.outbox.push({vid:v,key:k})});return toast('Saved. Every party’s PDF goes out when the network returns.','wait')}
@@ -958,9 +1059,11 @@ const A={
  finishvisit(v,el,dev){const vi=visOf(v);vi.st='finished';if(dev.phone)dev.stack.pop();else dev.vid='';flash(dev,'Filed');toast(`Visit ${vi.no} filed. The full MOM is with the office.`)},
  pdf(v,el,dev){const [kind,a,b]=v.split('|');openSheet(dev,'pdf',{kind,a,b})},
  dovendor(v,el,dev){const n=(dev.f.vn||'').trim();if(!n)return toast('Type the vendor’s name.','wait');dev.f.m_vendor=n;dev.f.m_for='vendor';dev.f.vn='';dev.sheet=null},
- raise(v,el,dev){const p=pOf(v);Object.assign(dev.f,{rp_for:forOptions(p)[0][0],rp_text:'',rp_area:'',rp_due:2,rp_photo:false});openSheet(dev,'point',{pid:+v})},
- raiseclient(v,el,dev){Object.assign(dev.f,{rp_for:'client',rp_text:'',rp_area:'',rp_due:3,rp_photo:false});openSheet(dev,'point',{pid:+v})},
- doraise(v,el,dev){const f=dev.f,t=(f.rp_text||'').trim();if(!t)return toast('Say what is needed.','wait');const kind=agOf(f.rp_for)?'agency':f.rp_for==='client'?'client':'staff',x=OP.addPoint({pid:+v,kind,party:f.rp_for,text:t,e:f.rp_area||null,due:+f.rp_due,photo:!!f.rp_photo});
+ raise(v,el,dev){const p=pOf(v),f=dev.f,same=String(f.rp_pid)===String(v),opts=forOptions(p);
+  Object.assign(f,{rp_pid:String(v),rp_for:same&&opts.some(o=>o[0]===f.rp_for)?f.rp_for:opts[0][0],rp_text:'',rp_area:same&&f.rp_area!=null&&(f.rp_area===''||p.ents.some(e=>e.id===f.rp_area))?f.rp_area:null,rp_due:f.rp_due==null?2:f.rp_due,rp_photo:false});openSheet(dev,'point',{pid:+v})},
+ raiseclient(v,el,dev){Object.assign(dev.f,{rp_pid:String(v),rp_for:'client',rp_text:'',rp_area:'',rp_due:3,rp_due_c:false,rp_photo:false});openSheet(dev,'point',{pid:+v})},
+ doraise(v,el,dev){const f=dev.f,t=(f.rp_text||'').trim(),due=dueOf(f,'rp_due');if(!t)return toast('Say what is needed.','wait');if(f.rp_area==null)return toast('Choose the room, or “Whole site”.','wait');if(isNaN(due))return toast(DMYHINT,'wait');
+  const kind=agOf(f.rp_for)?'agency':f.rp_for==='client'?'client':'staff',x=OP.addPoint({pid:+v,kind,party:f.rp_for,text:t,e:f.rp_area||null,due,photo:!!f.rp_photo});
   dev.sheet=null;if(kind==='client'&&x.confirmed)OP.confirmPoint(x);if(kind==='agency'){x.sent=1;x.fresh=false;OP.remind(f.rp_for,+v,t+' (by '+dueW(x.due)+')')}
   toast(kind==='client'&&!x.confirmed?`Point ${x.n} raised. It waits for the office to confirm before the client sees it.`:`Point ${x.n} raised for ${partyName(pOf(v),x)}${kind==='staff'?'':' · '+sent()}.`)},
  /* bills */
@@ -983,7 +1086,7 @@ const A={
  ettoggle(v){const [n,t]=v.split('|'),e=ETX[n],i=e.tr.indexOf(t);i<0?e.tr.push(t):e.tr.splice(i,1)},dtflag(v){const [i,k]=v.split('|');DTYPES[+i][k]=!DTYPES[+i][k]},
  roletog(v){const [s,r]=v.split('|'),u=stf(s),i=u.roles.indexOf(r);i<0?u.roles.push(r):u.roles.length>1&&u.roles.splice(i,1)},
  doaddtrade(v,el,dev){const f=dev.f,n=(f.nt_n||'').trim();if(!n)return toast('Type the trade’s name.','wait');const t={id:'t'+TRADES.length,n,s:n.slice(0,5),gu:f.nt_gu||n,hi:f.nt_hi||n};TRADES.push(t);TX[t.id]=t;f.nt_n=f.nt_gu=f.nt_hi='';dev.sheet=null;toast(`Trade “${n}” added. It is offered at the next onboarding.`)},
- doaddagency(v,el,dev){const f=dev.f;if(!(f.na_n||'').trim()||!f.na_t)return toast('Give the firm’s name and its trade.','wait');DB.agencies.push({id:'a'+(DB.agencies.length+1),n:f.na_n.trim(),tr:[f.na_t],lang:f.na_l||'gu',people:[{n:f.na_p||'Owner',ph:f.na_ph||'—'}]});f.na_n=f.na_p=f.na_ph='';dev.sheet=null;toast('Agency added.')},
+ doaddagency(v,el,dev){const f=dev.f;if(!(f.na_n||'').trim()||!f.na_t)return toast('Give the firm’s name and its trade.','wait');const g={id:'a'+(DB.agencies.length+1),n:f.na_n.trim(),tr:[f.na_t],lang:f.na_l||'gu',people:[{n:f.na_p||'Owner',ph:f.na_ph||'—'}]},back=dev.sheet&&dev.sheet.back;DB.agencies.push(g);f.na_n=f.na_p=f.na_ph='';dev.sheet=back||null;if(back&&back.k==='assign')f.a_ag=g.id;toast(back?'Agency added. Save to give it this trade.':'Agency added.')},
  /* agency and client apps */
  silang(v,el,dev){UI.lang[dev.id]=v;dev.si.step='phone';dev.f.si_ph=dev.id==='agency'?agOf(UI.agency).people[0].ph:pOf(UI.clientPid).client.contacts[0].ph},
  sicode(v,el,dev){dev.si.code=String(1000+Math.floor(Math.random()*9000));dev.si.step='otp';dev.f.si_otp='';notify('otp',dev.id==='agency'?UI.agency:'client:'+UI.clientPid,{code:dev.si.code});toast('Sign-in code '+sent()+'.')},
@@ -991,7 +1094,7 @@ const A={
  siverify(v,el,dev){if(String(dev.f.si_otp).trim()!==dev.si.code)return toast('That code does not match. Look at the WhatsApp message.','wait');dev.signed=true;dev.si=null;dev.stack=[{s:'home'}];dev._k='';flash(dev,tr(dev.id==='agency'?'hello':'c_hi',UI.lang[dev.id]))},
  alang(v){UI.lang.agency=v},clang(){UI.lang.client=UI.lang.client==='en'?'gu':'en'},
  adwg(v,el,dev){const d=dOf(v);if(OP.open(d,UI.agency))toast(`${agN(UI.agency)} opened ${sheetNo(d)}. The desk shows “opened” now.`);dev.f.aq='';dev.f.aq_photo=false;dev.stack.push({s:'dwg',id:v})},
- aask(v,el,dev){const d=dOf(v),t=(dev.f.aq||'').trim(),a=agOf(UI.agency);if(!t)return toast(tr('noq',UI.lang.agency),'wait');OP.ask(d,a.id,a.people[0].n,t,dev.f.aq_photo);dev.f.aq='';dev.f.aq_photo=false;flash(dev,tr('send',UI.lang.agency),'send');pushStaff(a.n+' asks on '+sheetNo(d)+': '+t,[d.ds,...pOf(d.pid).coords]);toast(`Question sent. It sits on ${stf(d.ds).n}’s list until answered.`)},
+ aask(v,el,dev){const d=dOf(v),a=agOf(UI.agency),t=(dev.f.aq||'').trim()||(dev.f.aq_photo?tr('q_only',UI.lang.agency):'');if(!t)return toast(tr('noq',UI.lang.agency),'wait');OP.ask(d,a.id,a.people[0].n,t,dev.f.aq_photo);dev.f.aq='';dev.f.aq_photo=false;dev.toEnd=true;flash(dev,tr('send',UI.lang.agency),'send');pushStaff(a.n+' asks on '+sheetNo(d)+': '+t,[d.ds,...pOf(d.pid).coords]);toast(`Question sent. It sits on ${stf(d.ds).n}’s list until answered.`)},
  asubmit(v,el,dev){const b=billOf(v),amt=+String(dev.f.ab_amt).replace(/\D/g,'');if(!amt)return toast(tr('amount',UI.lang.agency)+'?','wait');OP.uploadBill(b,{no:dev.f.ab_no||'—',amount:amt});flash(dev,tr('submitted',UI.lang.agency));pushStaff(agN(b.ag)+' uploaded a bill · '+b.what,pOf(b.pid).coords);toast('Bill uploaded. The office sees it in “To review”.')},
  cdwg(v,el,dev){const d=dOf(v);if(OP.open(d,'client'))toast(`The client opened ${sheetNo(d)}. The desk shows “opened” now.`);dev.f.c_note='';dev.stack.push({s:'dwg',id:v})},
  capprove(v,el,dev){const d=dOf(v),c=pOf(d.pid).client.contacts[0];OP.clientDecide(d,'approved','',c.n);flash(dev,'APPROVED','stamp');pushStaff(c.n+' approved '+d.title,[d.ds,pOf(d.pid).principal,...pOf(d.pid).coords]);toast(`${d.title} approved by ${c.n}, ${fdw(0)} ${NOW}. Recorded with name, date and time.`)},
@@ -1055,7 +1158,7 @@ function shellHTML(){const v=UI.view,D=UI.devs,dvw=(id,html)=>`<div class="dv dv
 /* ---------- the session: the preview comes back exactly where it was closed ----------
    Everything a real app would keep is kept: who is signed in, the open screen and tab, scroll, drafts, the outbox,
    the theme. Flutter: a secure token, the route stack and the form drafts in local storage, restored before the first frame. */
-const SKEY='rvt_r1_preview_s3',TRANSIENT=['flash','splash','push','party','sh','fh','pt','spT','_k','_n','seen'];
+const SKEY='rvt_r1_preview_s3',TRANSIENT=['flash','splash','push','party','sh','fh','pt','spT','_k','_n','_sk','toEnd','seen'];
 let SCROLL={},BOOT=true;
 const mastersSnap=()=>({trades:TRADES.map(t=>Object.assign({},t)),etr:ETYPES.map(e=>e.tr.slice()),dt:DTYPES.map(d=>[d.client,d.appr])});
 function mastersApply(m){TRADES.slice(m.trades.length).forEach(t=>delete TX[t.id]);TRADES.length=Math.min(TRADES.length,m.trades.length);m.trades.slice(TRADES.length).forEach(t=>{TRADES.push(t);TX[t.id]=t});
@@ -1101,7 +1204,8 @@ function render(){({staff:['staff'],agency:['agency'],client:['client'],all:['st
  root.querySelectorAll('[data-sc]').forEach(el=>{sc[key(el)]=[el.scrollTop,el.scrollLeft]});const ae=document.activeElement,fid=ae&&ae.id,ss=ae&&ae.selectionStart;
  root.style.setProperty('--t',((performance.now()-T0)/1000).toFixed(2));
  root.innerHTML=shellHTML();
- root.querySelectorAll('[data-sc]').forEach(el=>{const s=sc[key(el)]||(BOOT&&SCROLL[key(el)]);if(s){el.scrollTop=s[0];el.scrollLeft=s[1]}});afterRender(root);
+ root.querySelectorAll('[data-sc]').forEach(el=>{const s=sc[key(el)]||(BOOT&&SCROLL[key(el)]);if(s){el.scrollTop=s[0];el.scrollLeft=s[1]}});
+ Object.values(UI.devs).forEach(d=>{if(d.toEnd){d.toEnd=false;const b=root.querySelector('.dv-'+d.id+' .pbody');if(b)b.scrollTop=b.scrollHeight}});afterRender(root);
  const want=UI.focus||fid;UI.focus=null;if(want){const el=document.getElementById(want);if(el&&el.tagName!=='SELECT'){el.focus({preventScroll:true});try{el.setSelectionRange(ss==null?99:ss,ss==null?99:ss)}catch(e){}}}}
 function boot(){const root=document.getElementById('app'),html=document.documentElement,back=restore();
  html.dataset.rv=UI.theme==='dark'?'dark':'light';html.dataset.pal=UI.pal||'emerald';html.dataset.motion=UI.motion||'';
@@ -1111,7 +1215,7 @@ function boot(){const root=document.getElementById('app'),html=document.document
   if(e.clientX||e.clientY)TAP={x:e.clientX,y:e.clientY};
   if(el.dataset.a==='close'&&!RM()){const ov=el.closest('.ovl');if(ov){if(ov.classList.contains('out'))return;ov.classList.add('out');TAP=null;return setTimeout(()=>run(el,fn),170)}}
   run(el,fn)});
- root.addEventListener('input',e=>{const el=e.target,dev=devOf(el);if(el.dataset.m)dev.f[el.dataset.m]=el.value;if(el.dataset.mo&&dev.ob)setPath(dev.ob,el.dataset.mo,el.value);queueSave()});
+ root.addEventListener('input',e=>{const el=e.target,dev=devOf(el);if(el.dataset.m)dev.f[el.dataset.m]=el.value;if(el.dataset.mo&&dev.ob)setPath(dev.ob,el.dataset.mo,el.value);queueSave();if(el.dataset.ri&&!e.isComposing)render()});
  root.addEventListener('change',e=>{const el=e.target,dev=devOf(el);if(el.dataset.top){UI[el.dataset.top]=/^\d+$/.test(el.value)?+el.value:el.value;if(el.dataset.top!=='user'){UI.devs.agency.stack=[{s:'home'}];UI.devs.client.stack=[{s:'home'}]}if(el.dataset.top==='agency')UI.lang.agency=agOf(el.value).lang;return render()}
   if(el.dataset.ui){dev[el.dataset.ui]=el.value;return render()}if(el.dataset.r)render()});
  root.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'){const id=e.target.id||'';const b=id.endsWith('_m_text')?'addpt':id.endsWith('_aq')?'aask':null;if(b){const btn=e.target.closest('.composer').querySelector(`[data-a="${b}"]`);if(btn){e.preventDefault();btn.click()}}}
@@ -1225,7 +1329,7 @@ function setDay(iso){const [y,mo,d]=iso.split('-').map(Number);BASE=Date.UTC(y,m
 const setFeatures=()=>{document.documentElement.dataset.nof=Object.keys(DB.features||{}).filter(k=>!DB.features[k]).join(' ')};
 function applySnapshot(s){setMasters(s.masters);setDay(s.today_date);
  const seq=DB&&DB.seq&&DB.seq.ptid>=LOCAL0?DB.seq:localSeq();
- DB=Object.assign(seed(),{seq,set:s.set,staff:s.staff,agencies:s.agencies,projects:s.projects,drawings:s.drawings,visits:s.visits,points:s.points,bills:s.bills,wa:s.wa||[],
+ DB=Object.assign(seed(),{seq,set:s.set,staff:s.staff,agencies:s.agencies,projects:s.projects,drawings:s.drawings,visits:s.visits,points:s.points,bills:s.bills,wa:s.wa||[],notes:s.notes||[],
   features:s.features,mytasks:s.mytasks||[],today:s.today||[],company:s.company,prefix:'',admin:false,today_date:s.today_date,role:s.role||'staff'});
  DB.projects.forEach(p=>{if(p.pic)p.pic.noDwg=(p.pic.noDwg||[]).map(x=>p.lines.find(l=>l.id===x.id)).filter(Boolean)});
  if(s.me_info){APP.s.me=s.me_info;local('me',{me:s.me_info}).catch(()=>{})}
@@ -1244,6 +1348,7 @@ function bind(s){const me=APP.s.me||{};
 picture=function(p){return p.pic||EMPTY_PIC};
 todayFor=function(){return (DB.today||[]).map(n=>Object.assign({p:pOf(n.pid)},n)).filter(n=>n.p)};
 canSee=function(){return true};
+const agProjects0=agProjects;agProjects=function(a){return APP.role==='agency'?DB.projects:agProjects0(a)};
 notify=function(){};pushStaff=function(){};
 
 /* what is on the screen is also what is kept: the phone opens on it without network */
@@ -1252,9 +1357,14 @@ const stash=()=>{clearTimeout(stash.h);stash.h=setTimeout(()=>{if(APP.role&&DB.t
    and only a full answer puts it right. A passive refresh (coming back to the app) asks "the same?" first. */
 async function load(force){const tag=!force&&APP.etag&&APP.etagFor===APP.role&&DB.today_date?APP.etag:null;
  const s=await ask(API+SNAP[APP.role],'GET',undefined,false,tag);
- if(s&&s.__same){APP.at=Date.now();setOffline(false);return}
- APP.etag=(s&&s.__etag)||null;APP.etagFor=APP.role;applySnapshot(s);APP.at=Date.now();setOffline(false);stash()}
-async function reload(quiet,force){try{await load(force);render()}catch(e){if(e.code==='OFFLINE')setOffline(true);else if(e.status===401)return signedOut();else if(!quiet)toast(e.message,'bad');render()}}
+ if(s&&s.__same){APP.at=Date.now();setOffline(false);return false}
+ APP.etag=(s&&s.__etag)||null;APP.etagFor=APP.role;applySnapshot(s);APP.at=Date.now();setOffline(false);stash();return true}
+/* a quiet reading (the live line, coming back to the app) redraws only when something changed, and never under a
+   person's fingers while they type: the new data is in place and shows with their next tap */
+const typing=()=>{const a=document.activeElement;return !!(a&&/^(INPUT|TEXTAREA)$/.test(a.tagName))};
+async function reload(quiet,force){const was=!!UI.offline;
+ try{const changed=await load(force);if(quiet&&!changed&&was===!!UI.offline)return;if(quiet&&typing()){APP.stale=true;return}render()}
+ catch(e){if(e.code==='OFFLINE')setOffline(true);else if(e.status===401)return signedOut();else if(!quiet)toast(e.message,'bad');if(!quiet||was!==!!UI.offline)render()}}
 function setOffline(v){v=!!v;if(!!UI.offline===v)return;UI.offline=v;clearInterval(APP.timer);if(v){APP.timer=setInterval(pump,12000);if(APP.queue.length)APP.held=true}markQueue()}
 
 /* ---------- the outbox: in order, one at a time; kept on the phone until it has gone ---------- */
@@ -1287,6 +1397,9 @@ wrapOP('release',(r,d,to)=>sync('release',{drawing:d.id,to}));
 wrapOP('answer',(r,d,qid,text)=>sync('answer',{question:qid,text}));
 wrapOP('remind',(r,to,pid,text)=>sync('remind',{to,project:pid,text}));
 wrapOP('confirmPoint',(r,x)=>sync('confirm_point',{point:x.id}));
+wrapOP('reopenPoint',(r,x)=>sync('reopen_point',{point:x.id}));
+wrapOP('agencyDone',(r,x,note)=>send('POST','/agency/points/'+num(x.id)+'/done',{note:note||'',photo:takeImg('ad_photo')}));
+wrapOP('seenNotes',()=>send('POST','/me/notifications/seen',{}));
 wrapOP('sendParty',(n,v,key)=>{if(n)sync('send_party',{visit:v.id,key})});
 wrapOP('addPoint',(x,o)=>{sync('add_point',{pid:o.pid,vid:o.vid||'',kind:o.kind,party:o.party||'',text:o.text,e:o.e||'',t:o.t||'',due:o.due==null?null:+o.due,photo:o.photo?takeImg('m_photo','rp_photo'):'',client_uid:uid()},x.id)});
 /* a question, opening a drawing, a client's decision and closing a point differ by who is signed in */
@@ -1317,6 +1430,8 @@ wrapA('dstart',v=>sync('dstart',{drawing:v}));
 wrapA('newrev',v=>sync('new_revision',{drawing:v}));
 wrapA('setting',v=>sync('setting',{key:v,value:DB.set[v]}));
 wrapA('billto',v=>{const [id,to]=v.split('|');sync('bill_to',{bill:id,to})});
+const addagency0=A.doaddagency;A.doaddagency=function(v,el,dev){const f=dev.f,a={name:(f.na_n||'').trim(),trades:f.na_t?[f.na_t]:[],lang:f.na_l||'gu',person:f.na_p||'',phone:f.na_ph||''},n=DB.agencies.length;addagency0.apply(A,arguments);
+ if(DB.agencies.length>n){const g=DB.agencies[DB.agencies.length-1],was=g.id;g.id='anew'+Date.now();if(f.a_ag===was)f.a_ag=g.id;sync('add_agency',a,g.id)}};
 A.sendparty=function(v,el,dev){const [vid,key]=v.split('|'),n=OP.sendParty(visOf(vid),key);if(n){flash(dev,UI.offline?'Saved':'Sent','wa');toast(UI.offline?`Saved. ${agN(key)}’s PDF goes out when the network returns.`:`${agN(key)}: ${plural(n,'point')} as a PDF · ${sent()}.`)}};
 A.sendall=function(v,el,dev){const vi=visOf(v),ks=[...new Set(DB.points.filter(x=>x.vid===v&&x.st==='open'&&x.kind==='agency').map(x=>x.party))];ks.forEach(k=>OP.sendParty(vi,k));flash(dev,UI.offline?'Saved':'Sent','wa');
  toast(UI.offline?'Saved. Every party’s PDF goes out when the network returns.':`${plural(ks.length,'party','parties')} got their own PDF · ${sent()}. Client points wait for the office.`)};
@@ -1346,7 +1461,7 @@ A.obfinish=function(v,el,dev){const ob=dev.ob;if(!ob||APP.saving)return;if(!ob.n
 /* ---------- camera, files, drawings ---------- */
 const fmtSize=n=>n>=1e6?(n/1e6).toFixed(1)+' MB':Math.max(1,Math.round(n/1e3))+' KB';
 async function pick(kind){const r=await local('pick',{kind});if(!r||r.cancelled)return null;const b64=await (await fetch(r.blob+'?b64=1')).text();return {name:r.name,size:r.size,b64}}
-const PHOTO_KEYS=['m_photo','rp_photo','cp_photo','aq_photo','ab_doc','ub_doc','py_proof'];
+const PHOTO_KEYS=['m_photo','rp_photo','cp_photo','aq_photo','ad_photo','ab_doc','ub_doc','py_proof'];
 const tog0=A.tog;A.tog=function(v,el,dev){if(!PHOTO_KEYS.includes(v))return tog0.call(A,v,el,dev);
  if(dev.f[v]&&APP.img[v]){dev.f[v]=false;delete APP.img[v];return}dev.f[v]=false;openSheet(dev,'picksrc',{key:v})};
 SHEETS.picksrc=function(dev,s){return {title:T('addphoto'),body:`<div class="langs">${Bt(T('camera'),'pickimg',s.key+'|camera','gold lg blk','cam')}${Bt(T('gallery'),'pickimg',s.key+'|gallery','lg blk','layers')}</div>`}};
@@ -1370,11 +1485,16 @@ A.pdf=function(v){const [kind,a,b]=v.split('|');let path,title;
  if(kind==='open'){path=API+'/files/project/'+num(a)+'/open-points';title='Open points'}
  else{path=API+'/files/visit/'+num(a)+'/pdf'+(b&&b!=='all'&&b[0]==='a'?'?partner_id='+num(b):'');title='MOM'}
  local('pdf/open',{path,title,sub:''}).catch(e=>toast(e.message,'bad'))};
-function phOf(kind,x){const id=num(x.id);if(!id||+id>=LOCAL0)return '<span class="ph"></span>';const src=`${API}/files/${kind}/${id}/photo`;
- return `<span class="ph real" role="button" tabindex="0" data-a="photo" data-v="${kind}|${x.id}" aria-label="${esc(T('aphoto'))}" ${WEB?`data-asrc="${src}"`:`style="background-image:url(${src})"`}></span>`}
-A.photo=function(v,el,dev){const [a,b]=v.split('|');openSheet(dev,'photo',b?{kind:a,id:b}:{kind:'point',id:a})};
+/* the MOM of a project, cut by visit and by party: the real PDF, full screen */
+A.dopdf=function(v,el,dev){const f=dev.f,p=pOf(v),q=['party='+encodeURIComponent(f.pf_p||'all'),'state='+(f.pf_st==='all'?'all':'open')];if(f.pf_v)q.push('visit_id='+num(f.pf_v));dev.sheet=null;
+ local('pdf/open',{path:API+'/files/project/'+num(v)+'/points-pdf?'+q.join('&'),title:f.pf_v&&visOf(f.pf_v)?'MOM · visit '+visOf(f.pf_v).no:'Points',sub:p?p.name:''}).catch(e=>toast(e.message,'bad'))};
+phOf=function(kind,x){const id=num(x.id);if(!id||+id>=LOCAL0)return '<span class="ph"></span>';const src=`${API}/files/${kind}/${id}/photo`;
+ return `<span class="ph real" role="button" tabindex="0" data-a="photo" data-v="${kind}|${x.id}" aria-label="${esc(T('aphoto'))}" ${WEB?`data-asrc="${src}"`:`style="background-image:url(${src})"`}></span>`};
+ptPhoto=function(x,after){const id=num(x.id);if(!id||+id>=LOCAL0)return `<span class="ph full ${after?'aft':''}"></span>`;
+ return `<img class="phv" alt="" role="button" tabindex="0" data-a="photo" data-v="point|${x.id}|${after?1:0}" ${WEB?'data-asrc':'src'}="${API}/files/point/${id}/photo${after?'?close=1':''}">`};
+A.photo=function(v,el,dev){const [a,b,c]=v.split('|');openSheet(dev,'photo',b?{kind:a,id:b,close:c==='1',back:dev.sheet&&dev.sheet.k!=='photo'?dev.sheet:null}:{kind:'point',id:a})};
 SHEETS.photo=function(dev,s){const x=s.kind==='point'?ptOf(s.id):null,b=s.kind==='bill'?billOf(s.id):null;
- return {title:b?(b.no||T('bills')):T('aphoto')+(x&&APP.role==='staff'?' · point '+x.n:''),sub:x?x.text:b?b.what:'',body:`<div class="phw"><img class="phv" alt="" ${WEB?'data-asrc':'src'}="${API}/files/${s.kind}/${num(s.id)}/${b?'document':'photo'}"></div>`,foot:Bt(T('shut'),'close',null,'ghost')}};
+ return {title:b?(b.no||T('bills')):(x&&x.cphoto?tr(s.close?'after':'before',L()):T('aphoto'))+(x&&APP.role==='staff'?' · point '+x.n:''),sub:x?x.text:b?b.what:'',body:`<div class="phw"><img class="phv" alt="" ${WEB?'data-asrc':'src'}="${API}/files/${s.kind}/${num(s.id)}/${b?'document':'photo'}${s.close?'?close=1':''}"></div>`,foot:Bt(T('shut'),'close',null,'ghost')}};
 /* a bill's document is the file that was uploaded, or nothing: never a made-up file name */
 const bill0=SHEETS.bill;SHEETS.bill=function(dev,s){const o=bill0(dev,s),b=billOf(s.id);
  o.body=o.body.replace(/<div class="docrow">[^]*?<\/div>/,b.doc&&+num(b.id)<LOCAL0?`<button type="button" class="docrow" data-a="billdoc" data-v="${b.id}">${ic('file')}<span><b>${b.doc==='pdf'?'PDF':'Photo'} of the bill</b> · open</span></button>`:'');return o};
@@ -1403,7 +1523,7 @@ A.signin=function(v,el,dev){const f=dev.f;if(!(f.st_login||'').trim()||!f.st_pw)
  local('login',{login:f.st_login.trim(),password:f.st_pw}).then(r=>{f.st_pw='';return enter(r.me,true)}).catch(e=>{if(e.code==='OFFLINE')setOffline(true);toast(e.message,'bad');busy(dev,false);render()})};
 A.signout=function(v,el,dev){APP.queue.length&&!confirmLeave()?0:local('logout',{}).then(signedOut)};
 const confirmLeave=()=>{if(APP.leave)return true;APP.leave=true;toast(plural(APP.queue.length,'change')+' not sent yet. Tap Sign out again to leave anyway.','wait');setTimeout(()=>APP.leave=false,6000);return false};
-function signedOut(){if(WEB){APP.dead=APP.dead||'This link is no longer valid. Ask the Revert office for a new one.';APP.role=null;return render()}
+function signedOut(){liveShut();if(WEB){APP.dead=APP.dead||'This link is no longer valid. Ask the Revert office for a new one.';APP.role=null;return render()}
  ['staff','agency','client'].forEach(k=>{forget('data_'+k);UI.devs[k]=newDev(k,true);UI.devs[k].seen=true});UI.devs.agency.stack=[{s:'home'}];UI.devs.client.stack=[{s:'home'}];forget('ui');
  APP.role=null;APP.queue=[];APP.ids={};APP.etag=null;APP.s.signed=false;APP.s.me=null;DB=seed();UI.view='auth';const d=UI.devs.auth;d.si={step:UI.lang.auth?'phone':'lang'};d.f.st_pw='';d.f.si_otp='';d.sheet=null;setOffline(false);render()}
 async function enter(me,fresh){APP.s.me=me;APP.s.signed=true;APP.role=me.role;UI.view=me.role;const dev=UI.devs[me.role];dev.signed=true;dev.seen=true;
@@ -1412,7 +1532,7 @@ async function enter(me,fresh){APP.s.me=me;APP.s.signed=true;APP.role=me.role;UI
  /* with changes still waiting, the kept copy stays on screen: the outbox goes first and reads the server after */
  if(!(had&&APP.queue.length))try{await load()}catch(e){if(e.code==='OFFLINE'&&DB.today_date)setOffline(true);else if(e.status===401)return signedOut();else if(!DB.today_date){toast(e.message,'bad');APP.role=null;UI.view='auth';busy(UI.devs.auth,false);return render()}}
  if(fresh){busy(UI.devs.auth,false);flash(dev,me.role==='staff'?'Welcome, '+me.short:tr(me.role==='agency'?'hello':'c_hi',L()))}
- if(APP.queue.length)pump();render()}
+ if(APP.queue.length)pump();liveStart();render()}
 
 /* ---------- profile and settings (every role) ---------- */
 const seenOn=iso=>{const d=new Date(String(iso||'').replace(' ','T')+(/Z|[+-]\d\d:?\d\d$/.test(iso||'')?'':'Z'));return isNaN(d)?'':d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})};
@@ -1479,7 +1599,7 @@ save=function(){try{document.querySelectorAll('#app [data-sc]').forEach(el=>{con
   keep('ui',{v:1,role:APP.role,user:(APP.s.me||{}).id,lang:UI.lang,clientPid:UI.clientPid,dev:o,sc:SCROLL})}catch(e){}};
 restore=function(){const s=APP.saved;if(!s||s.v!==1)return false;if(s.lang)Object.assign(UI.lang,s.lang);if(!APP.role||s.role!==APP.role||s.user!==(APP.s.me||{}).id||!s.dev)return false;
  const d=UI.devs[APP.role];Object.assign(d,s.dev);d.signed=true;d.sheet=null;if(!d.stack||!d.stack.length)d.stack=[{s:APP.role==='staff'?'today':'home'}];
- d.stack=d.stack.filter(x=>!(x.s==='onboard'&&!d.ob)&&!(x.s==='project'&&!pOf(x.id))&&!(x.s==='dwg'&&!dOf(x.id))&&!(x.s==='visit'&&!visOf(x.id))&&!(x.s==='bill'&&!billOf(x.id)));if(!d.stack.length)d.stack=[{s:APP.role==='staff'?'today':'home'}];
+ d.stack=d.stack.filter(x=>!(x.s==='onboard'&&!d.ob)&&!(x.s==='project'&&!pOf(x.id))&&!(x.s==='dwg'&&!dOf(x.id))&&!(x.s==='visit'&&!visOf(x.id))&&!(x.s==='bill'&&!billOf(x.id))&&!(x.s==='point'&&!ptOf(x.id)));if(!d.stack.length)d.stack=[{s:APP.role==='staff'?'today':'home'}];
  if(s.clientPid)UI.clientPid=s.clientPid;SCROLL=s.sc||{};OBU=Math.max(0,...(d.ob?d.ob.ents.map(e=>e.u||0):[]));UI.toast=null;return true};
 intro=function(){};
 
@@ -1488,7 +1608,40 @@ window.__back=function(){const d=myDev();let done=true;
  if(d.sheet)d.sheet=null;else if(d.stack&&d.stack.length>1)d.stack.pop();else if(!APP.role&&d.si&&d.si.step!=='lang'&&d.si.step!=='staff')d.si.step=d.si.step==='otp'?'phone':'lang';else if(!APP.role&&d.si&&d.si.step==='staff'&&UI.lang.auth)d.si.step='phone';else done=false;
  if(done)render();return done};
 window.__pause=function(){save();stash()};
-window.__resume=function(away){if(!APP.role)return;if(APP.queue.length||UI.offline)pump();else if(away>45||Date.now()-APP.at>120000)reload(true)};
+window.__resume=function(away){if(!APP.role)return;if(APP.queue.length||UI.offline)pump();else reload(true);liveOpen()};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&APP.role&&!APP.busy&&!APP.queue.length&&Date.now()-APP.at>4000){reload(true);liveOpen()}});
+document.addEventListener('focusout',()=>{if(APP.stale)setTimeout(()=>{if(APP.stale&&!typing()){APP.stale=false;render()}},80)});
+
+/* ---------- live: the server says "something changed", and the screen reads again ----------
+   The message itself carries nothing; the data still comes through the signed-in API, so listening
+   gives nothing away. Where the live line cannot be had (an older server, a network that blocks it)
+   the app asks by itself every ten seconds while it is open; the answer is "the same" when nothing changed. */
+const LV={ws:null,on:false,last:0,wait:2000,t:null,r:null,poll:null};
+function liveSoon(){clearTimeout(LV.t);LV.t=setTimeout(()=>{if(!APP.role||document.hidden)return;if(APP.busy||APP.saving||APP.queue.length)return liveSoon();reload(true)},350)}
+function liveOpen(){const L=DB.set&&DB.set.live;if(!APP.role||!L||LV.ws||UI.offline||typeof WebSocket==='undefined')return;let ws;
+ try{ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/websocket?version='+encodeURIComponent(L.v))}catch(e){return}
+ LV.ws=ws;
+ /* the first time the line listens from now on (a number past the newest message is brought back to the newest by the
+    server, which says where that is); after a break it asks for what it missed. Either way one quiet reading follows. */
+ ws.onopen=()=>{LV.on=true;LV.wait=2000;try{ws.send(JSON.stringify({event_name:'subscribe',data:{channels:[L.ch],last:LV.last||2147483647,check_outdated:false}}))}catch(e){}liveSoon()};
+ ws.onmessage=e=>{let m=null;try{m=JSON.parse(e.data)}catch(x){}if(!Array.isArray(m))return;let hit=false;m.forEach(n=>{if(!n)return;if(n.internal){if(n.type==='bus/last_id_reset'&&typeof n.payload==='number')LV.last=n.payload;return}
+  if(n.id>LV.last)LV.last=n.id;if(n.message&&n.message.type==='rvt.changed')hit=true});if(hit)liveSoon()};
+ ws.onclose=()=>{if(LV.ws!==ws)return;LV.ws=null;LV.on=false;clearTimeout(LV.r);if(APP.role)LV.r=setTimeout(liveOpen,LV.wait);LV.wait=Math.min(LV.wait*2,60000)};
+ ws.onerror=()=>{try{ws.close()}catch(e){}}}
+function liveShut(){clearTimeout(LV.r);clearTimeout(LV.t);clearInterval(LV.poll);LV.poll=null;const w=LV.ws;LV.ws=null;LV.on=false;if(w){try{w.close()}catch(e){}}}
+function liveStart(){liveOpen();if(LV.poll)return;LV.poll=setInterval(()=>{if(!APP.role||document.hidden||UI.offline)return;if(!LV.ws)liveOpen();if(!LV.on&&!APP.busy&&!APP.saving&&!APP.queue.length)reload(true)},10000)}
+
+/* ---------- pull down at the top of a screen: read everything again ---------- */
+(function(){let y0=null,box=null,pull=0,busy=false;const ind=document.createElement('div');ind.id='ptr';ind.setAttribute('aria-hidden','true');ind.innerHTML='<i></i>';
+ const put=(px,on)=>{if(!ind.parentNode)document.body.appendChild(ind);ind.style.transform=`translate(-50%,${Math.round(px)}px) rotate(${Math.round(px*4)}deg)`;ind.style.opacity=px>6?Math.min(1,px/50):0;ind.classList.toggle('on',!!on);ind.classList.toggle('go',px>=64)};
+ const bodyOf=el=>el&&el.closest?el.closest('.pbody'):null;
+ document.addEventListener('touchstart',e=>{y0=null;if(busy||!APP.role||e.touches.length!==1)return;const d=myDev();if(d.sheet||d.splash)return;const b=bodyOf(e.target);if(!b||b.scrollTop>0)return;
+  for(let n=e.target;n&&n!==b;n=n.parentNode){if(n.scrollTop>0||(n.classList&&(n.classList.contains('scroll')||n.classList.contains('gw')||n.classList.contains('hscroll')||n.classList.contains('tabs'))))return}
+  y0=e.touches[0].clientY;box=b;pull=0},{passive:true});
+ document.addEventListener('touchmove',e=>{if(y0==null)return;const d=e.touches[0].clientY-y0;if(box.scrollTop>0){y0=null;pull=0;return put(0)}pull=d>0?Math.min(96,d*.45):0;put(pull)},{passive:true});
+ const end=()=>{if(y0==null)return;y0=null;if(pull<64){pull=0;return put(0)}pull=0;busy=true;put(64,true);haptic();const t0=Date.now();
+  reload(false,true).then(()=>{setTimeout(()=>{busy=false;put(0)},Math.max(0,450-(Date.now()-t0)))})};
+ document.addEventListener('touchend',end,{passive:true});document.addEventListener('touchcancel',()=>{y0=null;pull=0;if(!busy)put(0)},{passive:true})})();
 window.addEventListener('online',()=>{if(APP.role)pump()});
 
 /* ---------- start ---------- */
@@ -1503,6 +1656,6 @@ async function appBoot(){UI.devs.auth=newDev('auth',true);UI.devs.auth.si={step:
  boot();
  document.addEventListener('click',e=>{const el=e.target.closest&&e.target.closest('[data-a]');if(el&&!el.disabled)haptic(el.classList.contains('gold')||el.classList.contains('fab')?'heavy':'')},true);
  if(window.visualViewport){const vv=window.visualViewport,full=vv.height;vv.addEventListener('resize',()=>h.classList.toggle('kb',vv.height<full-120))}
- local('ready',{}).catch(()=>{});if(APP.role&&APP.queue.length)pump()}
+ local('ready',{}).catch(()=>{});if(APP.role){liveStart();if(APP.queue.length)pump()}}
 
 appBoot();})();

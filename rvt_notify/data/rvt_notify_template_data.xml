@@ -177,4 +177,9 @@
         <field name="lang">en</field>
         <field name="text">{site}: a question on {sheet} {title}: “{text}”</field>
     </record>
+    <record id="tpl_point_done_en" model="rvt.notify.template">
+        <field name="event">point_done</field>
+        <field name="lang">en</field>
+        <field name="text">{site}: {agency} marked point {no} done: “{text}”. Have a look at the photo.</field>
+    </record>
 </odoo>

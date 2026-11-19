@@ -55,6 +55,9 @@ class TestDeskNotify(MomCommon):
         row = next(p for p in self.snap()["projects"] if p["id"] == self.project.id)
         self.assertTrue(row["client"]["contacts"][0]["inv"])
         self.assertEqual(self.snap()["wa"][0]["ev"], "invite")
+        # "invited" does not hide a message that never left: a test copy holds it, and the screen says so
+        self.assertEqual(row["client"]["contacts"][0]["invst"], "held")
+        self.assertIn("Test copy", row["client"]["contacts"][0]["invwhy"])
         # onboarding step 6
         project = next(p for p in self.snap()["projects"] if p["id"] == self.project.id)
         s = lambda user: "s%s" % user.id

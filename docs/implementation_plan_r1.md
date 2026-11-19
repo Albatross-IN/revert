@@ -283,3 +283,23 @@ P1 → P2 → P3 → P4 → P5 → P6 → P7 → P8 → P9 → P10 → P11, abou
 | 3 | **The app resumes where it was closed** (route, tab, scroll position, unsent drafts), as the preview does. | P8 |
 | 4 | WhatsApp through `open_whatsapp_connector` and the API through FastAPI are confirmed as planned (P6, P7). | — |
 
+## 9. Changes after the first hands-on test (2026-11-19)
+
+The owner's team tried the desk and the app on their own phones (one client, one staff member, one carpenter agency) and sent
+thirteen points. They change the approved preview in the places named here; the preview (`revert_fe/design`) was changed first,
+so it stays the layout contract. Built and tested on the dev copy and in a desktop browser; **the check on a phone waits for the owner's word.**
+
+| # | What was reported | What was done | Where |
+|---|---|---|---|
+| 1 | The client got no invitation when the project was made. | The copy was a test copy without test numbers, so the message was held, and the screen still said "invited". The client's row now shows what became of the last invitation ("held: it did not leave", with the reason) and offers "Invite again". | `rvt_desk` (`invst`, `invwhy`), desk Client tab |
+| 2 | The bell did nothing. | The bell opens the person's notifications (`rvt.notify.log.rvt_mine`), newest first, new ones marked; a tap goes to the drawing, point, bill or project. The desk has the same bell. | `rvt_notify`, `rvt_desk` (`notes`, `seen_notes`), `/me/notifications/seen` |
+| 3 | "Decide the agency" listed every agency. | Only the agencies of that trade (one chosen earlier from another trade stays listed), and a new agency of that trade can be added on the spot. The per-room agency choice follows the same rule. | sheets `assign`, `cell` |
+| 4–6 | Nothing appeared until the app was closed and opened; no pull to refresh. | **Live line** (`rvt.live`): every change tells the open screens "something changed" over the standard live channel, and each reads its own data again. The app's shell carries the line; without it the app asks every 10 s and the desk every 15 s. Pull down on any screen to read again. | `rvt_base` (`rvt.live`, `rvt.live.mixin`), `live.js`, `mobile.js`, `local_server.dart` |
+| 7 | A question on a drawing went unnoticed. | The Drawings tab carries the count of questions waiting; its screen opens on a "Questions" list; on the drawing the questions come first. The designer, the coordinators and the principal are told in the app. | `rvt_drawing.rvt_ask`, `apps.js`, `desk.js`, `blocks.js` |
+| 8 | Agency: the question box scrolled away; a photo could not be opened by staff. | The box stays at the foot of the screen, a photo can be sent alone, and the photo opens on the desk too (it was a placeholder there). | `apps.js`, `/rvt/desk/question/<id>/photo` |
+| 9 | Agency: a point did nothing on a tap; no way to mark it done. | A point opens whole, with its photo. The agency marks it done **with a photo of the finished work**; the office is told, sees before and after side by side, and can open it again. Staff close with a photo the same way. | `rvt.point.rvt_agency_done`, `closed_by_partner_id`, `/agency/points/<id>/done`, sheet `ptview` |
+| 10 | A point raised on the phone never showed in the Work tab. | It had no room, so no cell could carry its count. The room is now asked for ("Whole site" is a choice one makes), and points of the whole site are named under the plan and the schedule. | sheets `point`, `sitepts`; `siteNote` |
+| 11 | Only fixed dates could be chosen. | Every date choice also takes a typed date, day month year (`25 11 26`, `25/11`, `251126`). | `dueChips`, `parseDMY` |
+| 12 | On site, "For" and "Area" were long rows to scroll. | Two searchable choices that stay for the next points until changed. | `pickBtn`, sheet `pick` |
+| 13 | MOM PDF by agency or by visit; numbers per project. | One PDF of a project's points: every visit or one, every party or one agency, open or all; closed points show before and after. Numbers were already per project; two people writing at once can no longer take the same number. | `report_points`, `rvt_points_pdf`, sheet `mompdf` |
+

@@ -44,11 +44,6 @@ PATCHES = {
         ("ps.e.forEach(([ty,c])=>{for(let i=1;i<=c;i++)ob.ents.push({u:++OBU,n:c>1?(ty==='Bedroom'?'Bedroom '+(i+1):ty.replace(' / bathroom','')+' '+i):ty,ty})});",
          "ps.e.forEach(([ty,c,f])=>{for(let i=1;i<=c;i++)ob.ents.push({u:++OBU,n:c>1?ty+' '+(i+(f||1)-1):ty,ty})});"),
     ],
-    "blocks.js": [
-        # the camera on a point opens its photo
-        ("""<span class="tx">${esc(x.text)}</span>${x.photo?ic('cam','mu'):''}</div>""",
-         """<span class="tx">${esc(x.text)}</span>${x.photo?`<span class="phb" role="button" tabindex="0" data-a="photo" data-v="${x.id}" aria-label="Open the photo">${ic('cam','mu')}</span>`:''}</div>"""),
-    ],
     "desk.js": [
         # the message log shows every outcome, and the WhatsApp card says honestly whether a number is paired
         ("<td>${m.held?pill('held','wait'):pill('sent','ok')}</td>",

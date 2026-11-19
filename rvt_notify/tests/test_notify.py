@@ -3,7 +3,7 @@ import re
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import tagged
 
-from odoo.addons.rvt_mom.tests.common import MomCommon
+from odoo.addons.rvt_mom.tests.common import PNG, MomCommon
 
 from ..models.rvt_notify import e164, fill
 from ..models.rvt_notify_template import CLIENT_EVENTS
@@ -156,9 +156,40 @@ class TestNotify(MomCommon):
         drawing.with_user(self.principal).action_approve()
         drawing.with_user(self.designer).action_release([self.ag_carp.id])
         drawing.rvt_ask(self.ag_carp, "Loft 18 or 24?", person_name="Bherubhai Suthar")
-        row = self.logs("drawing_question")
-        self.assertEqual((row.state, row.user_id), ("in_app", self.designer))
-        self.assertIn("Loft 18 or 24?", row.text)
+        rows = self.logs("drawing_question")
+        self.assertEqual(set(rows.mapped("state")), {"in_app"})
+        self.assertEqual(
+            rows.mapped("user_id"), self.designer | self.project.rvt_coordinator_ids | self.project.rvt_principal_id,
+            "the designer answers; the coordinators and the principal of the project see it too")
+        self.assertIn("Loft 18 or 24?", rows[0].text)
+
+    def test_the_office_hears_when_an_agency_marks_a_point_done(self):
+        self.go_live()
+        point = self.add("Fix the wardrobe shutter gap", partner=self.ag_carp, photo=PNG)
+        point.with_user(self.agency_user).rvt_agency_done("Aligned", PNG)
+        rows = self.logs("point_done")
+        self.assertEqual(rows.mapped("user_id"), self.coordinator, "the person who raised it and the coordinators")
+        self.assertEqual(rows.text, "Shah Residence: Mahadev Furniture marked point %s done: “Fix the wardrobe shutter gap”. "
+                                    "Have a look at the photo." % point.number)
+        self.assertFalse(self.sent, "staff get no WhatsApp message")
+
+    def test_a_persons_own_notifications(self):
+        self.go_live()
+        point = self.add("Fix the wardrobe shutter gap", partner=self.ag_carp, photo=PNG)
+        point.with_user(self.agency_user).rvt_agency_done("Aligned", PNG)
+        Log = self.env["rvt.notify.log"]
+        mine = Log.with_user(self.coordinator).rvt_mine()
+        self.assertEqual((mine[0]["ev"], mine[0]["ref"], mine[0]["seen"], mine[0]["on"], mine[0]["pid"]),
+                         ("point_done", ["point", "pt%s" % point.id], False, 0, self.project.id))
+        self.assertFalse([n for n in Log.with_user(self.designer).rvt_mine() if n["ev"] == "point_done"], "not meant for the designer")
+        Log.with_user(self.coordinator).rvt_seen()
+        self.assertTrue(Log.with_user(self.coordinator).rvt_mine()[0]["seen"])
+        # an agency person reads what was sent to them; the sign-in code is not a notification
+        person = self.agency_user.partner_id
+        self.Notify.send("remind", self.project, person, text="Point 4: fix the shutter")
+        self.Notify.send("otp", False, person, code="1234")
+        rows = Log.with_user(self.agency_user).rvt_mine()
+        self.assertEqual([(n["ev"], n["ref"]) for n in rows], [("remind", ["proj", self.project.id])])
 
     def test_party_pdf(self):
         self.go_live()

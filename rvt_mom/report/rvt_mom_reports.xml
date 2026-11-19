@@ -39,6 +39,11 @@
                         .rvm-new { background: #E2A534; color: #3A2500; font-size: 9px; font-weight: 800; border-radius: 4px; padding: 1px 5px; margin-left: 5px; }
                         .rvm-closed { color: #0E9453; font-style: italic; }
                         .rvm-ph { display: block; margin-top: 6px; max-height: 190px; max-width: 260px; border-radius: 6px; }
+                        table.rvm-ba { margin-top: 6px; border-collapse: separate; border-spacing: 0; }
+                        table.rvm-ba td { border: 0 none !important; padding: 0 8px 0 0 !important; }
+                        table.rvm-ba span { display: block; color: #6B7285; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+                        table.rvm-ba img { display: block; margin-top: 3px; max-height: 170px; max-width: 200px; border-radius: 6px; }
+                        table.rvm-t td.v { font-family: "JetBrains Mono", monospace; width: 40px; white-space: nowrap; color: #6B7285; }
                         .rvm-f { margin-top: 18px; color: #6B7285; font-size: 10px; text-align: center; }
                     </style>
                     <div class="page rvm">
@@ -52,20 +57,25 @@
                             <td t-foreach="sheet['meta']" t-as="m"><span t-out="m[0]"/><b t-out="m[1]"/></td>
                         </tr></table>
                         <table class="rvm-t">
-                            <thead><tr><th>No</th><th>Point</th><th>For</th><th>Area</th><th>By</th></tr></thead>
+                            <thead><tr><th>No</th><th t-if="sheet.get('show_visit')">Visit</th><th>Point</th><th>For</th><th>Area</th><th>By</th></tr></thead>
                             <tbody>
                                 <tr t-foreach="sheet['rows']" t-as="row">
                                     <td class="n" t-out="row['number']"/>
+                                    <td t-if="sheet.get('show_visit')" class="v"><t t-if="row['visit']">V<t t-out="row['visit']"/></t><t t-else="">office</t></td>
                                     <td>
                                         <span t-out="row['text']" style="white-space: pre-line"/><span t-if="row['new']" class="rvm-new">NEW</span>
                                         <span t-if="row['closed']" class="rvm-closed"> (closed<t t-if="row['close_note']">: <t t-out="row['close_note']"/></t>)</span>
-                                        <img t-if="row['photo']" class="rvm-ph" t-att-src="row['photo']" alt="Photo"/>
+                                        <table t-if="row['after']" class="rvm-ba"><tr>
+                                            <td t-if="row['photo']"><span>Before</span><img t-att-src="row['photo']" alt="Before"/></td>
+                                            <td><span>After</span><img t-att-src="row['after']" alt="After"/></td>
+                                        </tr></table>
+                                        <img t-elif="row['photo']" class="rvm-ph" t-att-src="row['photo']" alt="Photo"/>
                                     </td>
                                     <td t-out="row['party']"/>
                                     <td t-out="row['area']"/>
                                     <td t-attf-class="d #{'late' if row['late'] else ''}" t-out="row['due']"/>
                                 </tr>
-                                <tr t-if="not sheet['rows']"><td colspan="5">No points.</td></tr>
+                                <tr t-if="not sheet['rows']"><td colspan="6">No points.</td></tr>
                             </tbody>
                         </table>
                         <div class="rvm-f">A point agreed on site is a MOM point in the app.</div>
@@ -76,6 +86,7 @@
     </template>
     <template id="report_visit"><t t-call="rvt_mom.mom_document"/></template>
     <template id="report_open_points"><t t-call="rvt_mom.mom_document"/></template>
+    <template id="report_points"><t t-call="rvt_mom.mom_document"/></template>
 
     <record id="action_report_visit" model="ir.actions.report">
         <field name="name">MOM</field>
@@ -86,6 +97,14 @@
         <field name="paperformat_id" ref="paperformat_mom"/>
         <field name="binding_model_id" ref="model_rvt_visit"/>
         <field name="binding_type">report</field>
+    </record>
+    <record id="action_report_points" model="ir.actions.report">
+        <field name="name">Points</field>
+        <field name="model">project.project</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">rvt_mom.report_points</field>
+        <field name="print_report_name">'Points - %s' % object.name</field>
+        <field name="paperformat_id" ref="paperformat_mom"/>
     </record>
     <record id="action_report_open_points" model="ir.actions.report">
         <field name="name">Open points</field>

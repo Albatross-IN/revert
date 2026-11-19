@@ -143,6 +143,8 @@ class ProjectTask(models.Model):
             vals.update(self._rvt_state_side_effects(vals, False, today))
         tasks = super().create(vals_list)
         tasks.filtered(lambda t: t.rvt_kind == "work")._rvt_flush_agency_access()
+        if any(vals.get("rvt_kind") for vals in vals_list):
+            self.env["rvt.live"].touch()
         return tasks
 
     def _rvt_flush_agency_access(self):
@@ -153,6 +155,8 @@ class ProjectTask(models.Model):
         self.parent_id.flush_recordset(["rvt_entity_agency_ids"])
 
     def write(self, vals):
+        if any(key.startswith("rvt_") or key in ("name", "active", "parent_id") for key in vals) and any(self.mapped("rvt_kind")):
+            self.env["rvt.live"].touch()
         if "rvt_work_state" not in vals:
             res = super().write(vals)
             if "rvt_agency_id" in vals or "rvt_kind" in vals:
@@ -173,6 +177,8 @@ class ProjectTask(models.Model):
 
     def unlink(self):
         projects, rooms = self.project_id, self.parent_id - self
+        if any(self.mapped("rvt_kind")):
+            self.env["rvt.live"].touch()
         res = super().unlink()
         projects.exists().flush_recordset(["rvt_agency_ids"])
         rooms.exists().flush_recordset(["rvt_entity_agency_ids"])

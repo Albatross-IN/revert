@@ -142,8 +142,10 @@ class RvtApi(models.AbstractModel):
             "masters": {"trades": masters["trades"], "default_trades": [], "etypes": [], "extras": [], "presets": [], "dtypes": []},
             "set": {"approval": config["release_needs_approval"], "clientConfirm": config["client_points_need_confirmation"],
                     "lim": {"open": 2, "q": 1, "bill": 3, "stuck": 7}, "sending": self.env["rvt.notify"].sending_on(), "number": "",
-                    "testcopy": self.env["rvt.notify"].is_test_copy(), "testsend": bool(self.env["rvt.notify"].test_numbers())},
+                    "testcopy": self.env["rvt.notify"].is_test_copy(), "testsend": bool(self.env["rvt.notify"].test_numbers()),
+                    "live": self.env["rvt.live"].info()},
             "staff": [], "agencies": [], "projects": [], "drawings": [], "visits": [], "points": [], "bills": [], "wa": [],
+            "notes": self.env["rvt.notify.log"].rvt_mine(),
             "today": [], "mytasks": [], "company": self.env.company.name, "prefix": "", "admin": False,
         }
 

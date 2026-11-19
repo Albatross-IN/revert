@@ -79,6 +79,15 @@ def open_points_pdf(project_id: int, who: Annotated[Caller, Depends(staff)]):
                     headers={"Content-Disposition": content_disposition("Open points - %s.pdf" % project.sudo().name, "inline")})
 
 
+@router.get("/files/project/{project_id}/points-pdf", summary="A project's points as a PDF: by visit, by party, open or all")
+def points_pdf(project_id: int, who: Annotated[Caller, Depends(staff)], visit_id: int | None = None,
+               party: str = "all", state: str = "open"):
+    project = _readable(who, "project.project", project_id)
+    name, pdf = project.rvt_points_pdf(visit_id=visit_id, party=project._rvt_party_of(party), state=state)
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": content_disposition(name, "inline"), "Cache-Control": "private, no-store"})
+
+
 @router.post("/media", summary="Send a photo or a PDF ahead of the action that uses it")
 async def upload(who: Annotated[Caller, Depends(caller)], file: Annotated[UploadFile, File()],
                  client_uid: Annotated[str, Form()] = ""):

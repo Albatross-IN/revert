@@ -13,6 +13,20 @@ const chips=(dev,k,opts,cls)=>`<div class="chips ${cls||''}">${opts.map(o=>`<but
 const fld=(label,inner,hint)=>`<div class="fld"><label>${esc(label)}</label>${inner}${hint?`<small>${esc(hint)}</small>`:''}</div>`;
 const tog=(dev,k,label,icon)=>`<button type="button" class="chip tg" data-a="tog" data-v="${k}" aria-pressed="${!!dev.f[k]}">${ic(icon||'check')}${esc(label)}</button>`;
 const dueCls=(o,st)=>st==='closed'?'mu':o<0?'c-bad':o<=1?'c-wait':'c-ink2';
+/* a date: quick choices, or any date typed as day month year (dd mm yy) */
+const DMYHINT='Type the date as day month year, for example 25 11 26.';
+function dueChips(dev,k,opts,cls){const f=dev.f,own=!!f[k+'_c'],typed=f[k+'_t']||'',o=parseDMY(typed);
+ /* in a row that scrolls sideways the typed date comes first, so it is never out of sight */
+ const quick=opts.map(x=>`<button type="button" class="chip" data-a="set" data-v="${k}=${x[0]}" aria-pressed="${!own&&String(f[k])===String(x[0])}">${esc(x[1])}</button>`).join(''),other=`<button type="button" class="chip" data-a="duec" data-v="${k}" aria-pressed="${own}">${ic('clock')}${own&&o!=null?esc(fd(o)):'Date'}</button>`,side=/scroll/.test(cls||'');
+ return `<div class="duew"><div class="chips ${cls||''}">${side?other+quick:quick+other}</div>
+  ${own?`<div class="dmy"><input class="inp" id="${dev.id}_${k}_t" data-m="${k}_t" data-ri="1" value="${esc(typed)}" placeholder="dd mm yy" inputmode="numeric" autocomplete="off" aria-label="Date, as day month year"><span class="f12 ${typed&&o==null?'c-bad':'mu'}">${typed&&o!=null?esc(fdw(o))+' '+dt(o).getUTCFullYear()+(o<0?' · past':''):'e.g. 25 11 26'}</span></div>`:''}</div>`}
+const dueOf=(f,k)=>{if(f[k+'_c']){const o=parseDMY(f[k+'_t']);return o==null?NaN:o}return +f[k]};
+const forLabel=(p,k,vendor)=>k==='vendor'?(vendor||'Vendor'):k==='client'?(p.client.n||'Client'):agOf(k)?agN(k):k?(stf(k).full||stf(k).n):'Choose';
+const areaLabel=(p,id)=>id==null?'Choose the room':id===''?'Whole site':entN(p,id)||'Choose the room';
+const pickBtn=(dev,src,key,pid,label,icon,vendor)=>`<button type="button" class="pickb ${src==='area'&&dev.f[key]==null?'need':''}" data-a="pick" data-v="${src}|${key}|${pid}|${vendor||''}">${ic(icon)}<span><small>${src==='area'?'Area':'For'}</small><b>${esc(label)}</b></span>${ic('down')}</button>`;
+/* a point's photos: the one taken when it was raised and, once it is done, the one taken after */
+const ptBA=(x,L)=>!x.photo&&!x.cphoto?'':`<div class="ba ${x.photo&&x.cphoto?'pair':''}">${x.photo?`<figure><figcaption>${x.cphoto?tr('before',L):tr('pt_photo',L)}${x.on!=null?' · '+fd(x.on):''}</figcaption>${ptPhoto(x,0)}</figure>`:''}${x.cphoto?`<figure><figcaption>${tr('after',L)}${x.closedOn!=null?' · '+fd(x.closedOn):''}</figcaption>${ptPhoto(x,1)}</figure>`:''}</div>`;
+const sitePts=p=>DB.points.filter(x=>x.pid===p.id&&x.st==='open'&&!x.e);
 const pbar=(a,b,c)=>`<div class="bar ${c||''}"><i style="width:${b?Math.round(a/b*100):0}%"></i></div>`;
 const money=(n,cls)=>isOwner()?`<b class="num ${cls||''}">${inr(n)}</b>`:`<span class="lockd" title="Amounts are visible to the owner only">${ic('lock')}owner only</span>`;
 const stPill=p=>{const s=STATUS[picture(p).status];return pill(s[0],s[1])};
@@ -48,7 +62,10 @@ function statusCard(p,pic){const s=STATUS[pic.status],g=pic.progress,share=g.wk[
   <p>${bl.length?esc(bl.slice(0,2).map(b=>b.text).join(' · '))+(bl.length>2?' · +'+(bl.length-2)+' more':''):'No blocker. Work, drawings and points are moving.'}</p></div>${elev(p.kind,share,{cls:'lg'})}</div></section>`}
 function workView(p,dev){const v=dev.wv==='grid'?'grid':'plan';
  return card('Work',`<div class="seg sm"><button data-a="ui" data-v="wv=plan" aria-pressed="${v==='plan'}">${ic('layers')}Plan</button><button data-a="ui" data-v="wv=grid" aria-pressed="${v==='grid'}">${ic('grid')}Schedule</button></div>`,
-  v==='plan'?`<p class="t2 hint">Each room shows its trades as dots. Tap a room to change them.</p>${planView(p,dev)}${planLegend()}`:`<p class="t2 hint">Rooms down, trades across. Tap a cell to change it.</p>${gridBlock(p,dev)}`)}
+  (v==='plan'?`<p class="t2 hint">Each room shows its trades as dots. Tap a room to change them.</p>${planView(p,dev)}${planLegend()}`:`<p class="t2 hint">Rooms down, trades across. Tap a cell to change it.</p>${gridBlock(p,dev)}`)+siteNote(p))}
+/* points raised for the whole site carry no room, so no cell can show them: they are named under the plan */
+function siteNote(p){const s=sitePts(p);if(!s.length)return '';const by={};s.forEach(x=>{const k=partyName(p,x);by[k]=(by[k]||0)+1});
+ return `<button type="button" class="note wait lkn" data-a="sheet" data-v="sitepts|${p.id}">${ic('flag')}<span><b>${plural(s.length,'open point')} for the whole site</b>, not tied to one room: ${esc(Object.keys(by).map(k=>k+' '+by[k]).join(' · '))}</span>${ic('chev')}</button>`}
 function pictureBlock(p,dev){const pic=picture(p),w=pic.week,nt=dev.nt||'revert';
  const tabs=[['revert','Revert'],['agencies','Agencies'],['client','Client']].map(t=>`<button data-a="ui" data-v="nt=${t[0]}" aria-pressed="${nt===t[0]}">${t[1]}<i>${pic.next[t[0]].length}</i></button>`).join('');
  return `<div class="stack">${statusCard(p,pic)}
@@ -99,25 +116,26 @@ function dwgDetail(d,dev){const p=pOf(d.pid),r=cur(d),s=DS[d.st],w=p.lines.filte
  const revs=d.revs.slice().reverse().map(x=>`<div class="tl ${x.st}"><i class="rev">${x.n}</i><div><div class="t1">Revision ${x.n} ${pill({draft:'Draft',awaiting:'Awaiting approval',approved:'Approved',released:'Released',superseded:'Superseded'}[x.st],{draft:'plain',awaiting:'wait',approved:'gold',released:'ok',superseded:'plain'}[x.st])}</div>
    <div class="t2">${x.note?esc(x.note)+'<br>':''}${x.back?'<span class="c-bad">Sent back: '+esc(x.back)+'</span><br>':''}${x.sentBy?'sent by '+esc(stf(x.sentBy).n)+' '+fd(x.sentOn):''}${x.apprBy&&x.apprOn!=null?' · approved by '+esc(stf(x.apprBy).n)+' '+fd(x.apprOn):''}${x.relOn!=null?' · released '+fd(x.relOn):''}</div>
    ${x.client&&x.client.dec==='change'?`<div class="note bad sm">${ic('edit')}<span>Change asked by ${esc(x.client.by)} on ${fd(x.client.on)}, ${x.client.at}: “${esc(x.client.note)}”</span></div>`:''}</div></div>`).join('');
- const qs=d.q.map(q=>`<div class="q"><div class="qb in"><div class="lbl">${esc(q.byName)} · ${q.by==='client'?'client':esc(agN(q.by))} · ${fd(q.on)}${q.via==='office'?' · logged from a call':''}</div>${esc(q.text)}${q.photo?'<span class="ph"></span>':''}</div>
+ const qs=d.q.map(q=>`<div class="q"><div class="qb in"><div class="lbl">${esc(q.byName)} · ${q.by==='client'?'client':esc(agN(q.by))} · ${fd(q.on)}${q.via==='office'?' · logged from a call':''}</div>${esc(q.text)}${q.photo?phOf('question',q):''}</div>
    ${q.ans?`<div class="qb out"><div class="lbl">${esc(stf(q.ansBy).n)} · ${fd(q.ansOn)}</div>${esc(q.ans)}</div>`:`<div class="qa">${fin(dev,'ans_'+q.id,'Type the answer…')}${Bt('Answer','answer',d.id+'|'+q.id,'sm gold')}</div>`}</div>`).join('');
+ const nq=d.q.filter(q=>!q.ans).length,qcard=card('Questions'+(nq?` <span class="cnt bad">${nq} to answer</span>`:''),Bt('Log a question from a call','sheet','logq|'+d.id,'sm ghost','plus'),qs||empty('No question on this drawing.','info'),nq?'hot':'');
  return `<div class="stack dd"><div class="ddh"><button type="button" class="shtb" data-a="view" data-v="${d.id}" aria-label="View the sheet">${sht(d,'md')}</button><div class="m"><div class="lbl">${sheetNo(d)} · ${d.t?esc(TX[d.t].n):'General set'}</div><h2 class="serif">${esc(d.title)}</h2><div class="t2">${esc(p.name)} · drawn by ${esc(stf(d.ds).n)} · ${d.st==='released'?'released '+fd(r.relOn):'due '+fdw(d.due)}</div>
    <div class="chips ro">${pill(s[0],s[1])}${d.forClient?pill('for client','gold'):''}${d.needsApproval?pill('client approves','plain'):''}</div></div></div>
-  <div class="actbar">${act}</div>
+  <div class="actbar">${act}</div>${nq?qcard:''}
   ${w.length?`<div class="note wait">${ic('pause')}<span><b>${plural(w.length,'work line')} waiting</b> for this drawing: ${esc(w.map(l=>entN(p,l.e)+' ('+TX[l.t].s+')').join(', '))}</span></div>`:''}${cd}
   ${d.st==='released'?card('Sent to',`<span class="mu f12">${r.rc.filter(x=>x.opened!=null).length} of ${r.rc.length} opened</span>`,`<div class="rows">${rc}</div>`):''}
-  ${card('Questions',Bt('Log a question from a call','sheet','logq|'+d.id,'sm ghost','plus'),qs||empty('No question on this drawing.','info'))}
+  ${nq?'':qcard}
   ${card('Revisions',`<span class="mu f12">receivers only ever see the current one</span>`,`<div class="tls">${revs}</div>`)}</div>`}
 
 /* ---------- points and MOM ---------- */
 function ptRow(x,dev,o){o=o||{};const p=pOf(x.pid),nm=partyName(p,x),v=x.vid?visOf(x.vid):null;
- return `<div class="rw pt ${x.st}">${kn(x.n)}<div class="m"><div class="t1"><span class="tx">${esc(x.text)}</span>${x.photo?`<span class="phb" role="button" tabindex="0" data-a="photo" data-v="${x.id}" aria-label="Open the photo">${ic('cam','mu')}</span>`:''}</div>
+ return `<div class="rw pt ${x.st}">${kn(x.n)}<div class="m lkm" role="button" tabindex="0" data-a="ptview" data-v="${x.id}"><div class="t1"><span class="tx">${esc(x.text)}</span>${x.photo||x.cphoto?ic('cam','mu'):''}</div>
   <div class="t2">${x.fresh&&x.st==='open'&&x.vid&&x.kind!=='staff'?pill('new','gold')+' ':''}<b class="pty k-${x.kind}">${esc(nm)}</b>${x.e?' · '+esc(entN(p,x.e)):''}${o.proj?' · '+esc(p.name):''}${v?' · visit '+v.no:x.legacy?'':' · raised from the office'}${x.legacy?' · moved from the earlier MOM':''}</div>
-  ${x.st==='closed'?`<div class="t2 c-ok">${ic('check')}closed ${fd(x.closedOn)}${x.note?' · '+esc(x.note):''}</div>`:x.kind==='client'&&!x.confirmed?`<div class="t2 c-wait">${ic('eye')}not shown to the client until the office confirms</div>`:x.pending?`<div class="t2 c-wait">${ic('off')}saved on the phone · waiting to go</div>`:''}</div>
+  ${x.st==='closed'?`<div class="t2 c-ok">${ic('check')}${x.doneBy?'done by '+esc(x.doneBy)+' · ':'closed '}${fd(x.closedOn)}${x.note?' · '+esc(x.note):''}${x.photo&&x.cphoto?' · before and after':''}</div>`:x.kind==='client'&&!x.confirmed?`<div class="t2 c-wait">${ic('eye')}not shown to the client until the office confirms</div>`:x.pending?`<div class="t2 c-wait">${ic('off')}saved on the phone · waiting to go</div>`:''}</div>
   <div class="r">${x.st==='open'?`<span class="due ${dueCls(x.due)}">${dueW(x.due)}</span>${x.sent&&x.kind!=='staff'?`<span class="tick" title="sent">${ic('check')}${ic('check')}</span>`:''}${o.ro?'':x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'sm gold'):Bt('Close','closept',x.id,'sm')}`:''}</div></div>`}
 function forOptions(p){const o=[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))].map(a=>[a,agN(a).split(' ')[0],'agency']);o.push(['client','Client','client']);
  [...new Set([p.principal,...p.designers,...p.coords])].forEach(s=>o.push([s,stf(s).n,'staff']));return o}
-function momCapture(v,dev){const p=pOf(v.pid),f=dev.f,opts=forOptions(p);if(f.m_vendor)opts.push(['vendor',f.m_vendor,'vendor']);if(!f.m_for)f.m_for=opts[0][0];if(f.m_due==null)f.m_due=2;if(!f.m_area)f.m_area=(p.ents[0]||{id:''}).id;
+function momCapture(v,dev){const p=pOf(v.pid),f=dev.f,opts=forOptions(p);if(f.m_vendor)opts.push(['vendor',f.m_vendor,'vendor']);if(!opts.some(o=>o[0]===f.m_for))f.m_for=opts[0][0];if(f.m_due==null)f.m_due=2;if(f.m_area&&!p.ents.some(e=>e.id===f.m_area))f.m_area=null;
  const here=DB.points.filter(x=>x.vid===v.id),earlier=DB.points.filter(x=>x.pid===p.id&&x.st==='open'&&x.vid!==v.id&&!(x.kind==='staff')),grp={};
  earlier.forEach(x=>{const k=partyName(p,x);(grp[k]=grp[k]||[]).push(x)});
  const sendKeys=[...new Set(here.filter(x=>x.st==='open'&&x.kind==='agency').map(x=>x.party))],freshOf=k=>here.filter(x=>x.party===k&&x.st==='open'&&x.fresh).length,allOf=k=>here.filter(x=>x.party===k&&x.st==='open').length;
@@ -125,18 +143,20 @@ function momCapture(v,dev){const p=pOf(v.pid),f=dev.f,opts=forOptions(p);if(f.m_
  return `<div class="momc"><div class="momh"><div><div class="lbl">Visit ${v.no} · ${fdw(v.date)}</div><h2 class="serif">${esc(p.name)}</h2></div>${UI.offline?`<span class="pill wait">${ic('off')}offline · ${pend} waiting to go</span>`:`<span class="pill ok">${ic('check')}saved</span>`}</div>
   ${earlier.length?`<details class="earlier" ${f.m_early===false?'':'open'}><summary><span class="lbl">Open from earlier</span><span class="f12">${Object.keys(grp).map(k=>`${esc(k.replace(/^(Mr\.|Mrs\.|Dr\.)\s*/,'').split(' ')[0])} <b>${grp[k].length}</b>`).join(' · ')}</span></summary><div class="rows">${earlier.map(x=>ptRow(x,dev)).join('')}</div></details>`:''}
   <div class="lbl mt">This visit · ${plural(here.length,'point')}</div><div class="rows">${here.length?here.map(x=>ptRow(x,dev)).join(''):`<div class="empty sm">${ic('mom')}<span>Write the first point below. Under ten seconds each.</span></div>`}</div>
-  <div class="dock"><div class="composer"><div class="cr"><span class="lbl">For</span><div class="chips scroll">${opts.map(o=>`<button type="button" class="chip k-${o[2]}" data-a="set" data-v="m_for=${o[0]}" aria-pressed="${f.m_for===o[0]}">${esc(o[1])}</button>`).join('')}<button type="button" class="chip" data-a="sheet" data-v="vendor|${v.id}">${ic('plus')}Vendor</button></div></div>
-   <div class="cr"><span class="lbl">Area</span><div class="chips scroll">${p.ents.map(e=>`<button type="button" class="chip" data-a="set" data-v="m_area=${e.id}" aria-pressed="${f.m_area===e.id}">${esc(e.n)}</button>`).join('')}</div></div>
+  <div class="dock"><div class="composer"><div class="pickrow">${pickBtn(dev,'for','m_for',p.id,forLabel(p,f.m_for,f.m_vendor),'user',v.id)}${pickBtn(dev,'area','m_area',p.id,areaLabel(p,f.m_area),'pin')}</div>
+   <p class="keep">${ic('lock')}<span>Both stay for the next points, until you change them.</span></p>
    <div class="ctext">${fin(dev,'m_text','Type or speak the point…')}<button type="button" class="ib ${f.m_photo?'on':''}" data-a="tog" data-v="m_photo" aria-label="Photo" aria-pressed="${!!f.m_photo}">${ic('cam')}</button></div>
-   <div class="cr"><span class="lbl">Due</span>${chips(dev,'m_due',[[0,'Today'],[1,'Tmrw'],[2,dueW(2)],[5,dueW(5)],[7,fd(7)]],'scroll')}${Bt('Add','addpt',v.id,'gold','plus')}</div></div>
+   <div class="cr dt"><span class="lbl">Due</span>${dueChips(dev,'m_due',[[0,'Today'],[1,'Tmrw'],[2,dueW(2)],[5,dueW(5)],[7,fd(7)]],'scroll')}${Bt('Add','addpt',v.id,'gold','plus')}</div></div>
   <div class="sendbar"><span class="lbl">Send on WhatsApp</span><div class="chips">${sendKeys.map(k=>`<button type="button" class="btn sm wa" data-a="sendparty" data-v="${v.id}|${k}">${ic('wa')}<span>${esc(agN(k).split(' ')[0])} (${freshOf(k)||allOf(k)})${freshOf(k)?'':' ✓'}</span></button>`).join('')||'<span class="mu f12">Points for an agency appear here to send.</span>'}
    ${sendKeys.length>1?Bt('All','sendall',v.id,'sm wa','send'):''}${Bt('PDF','pdf','mom|'+v.id+'|all','sm ghost','file')}${v.st==='open'?Bt('Finish visit','finishvisit',v.id,'sm pri','check'):''}</div></div></div></div>`}
-function pdfDoc(kind,a,b){ /* mom|vid|party  ·  open|pid */
+function pdfDoc(kind,a,b,o){ /* mom|vid|party  ·  open|pid  ·  points|pid|party (o.v visit, o.st open or all) */
  let p,title,meta,rows;
+ if(kind==='points'){o=o||{};p=pOf(a);const v=o.v?visOf(o.v):null;rows=DB.points.filter(x=>x.pid===p.id&&(!v||x.vid===v.id)&&(b==='all'||partyKey(x)===b)&&(o.st==='all'||x.st==='open'));title=v?'Minutes of meeting':'Points';
+  meta=[['Project',p.name],['Visit',v?v.no+' · '+fdw(v.date):'All visits'],['For',b==='all'?'All parties':rows[0]?partyName(p,rows[0]):''],[o.st==='all'?'Points':'Open',rows.length]]}else
  if(kind==='mom'){const v=visOf(a);p=pOf(v.pid);rows=DB.points.filter(x=>x.vid===v.id&&(b==='all'||partyKey(x)===b));title='Minutes of meeting';meta=[['Project',p.name],['Visit',v.no+' · '+fdw(v.date)],['For',b==='all'?'All parties':agN(b)],['Present',v.att.join(', ')]]}
  else{p=pOf(a);rows=DB.points.filter(x=>x.pid===p.id&&x.st==='open');title='Open points';meta=[['Project',p.name],['As on',fdw(0)],['Open',rows.length],['Site',p.area]]}
  return `<div class="pdf"><div class="pdfh"><div class="pl">${LOGO}</div><div><b>${title}</b><span>Revert Architects · Ahmedabad</span></div></div><div class="pdfm">${meta.map(m=>`<div><span>${m[0]}</span><b>${esc(m[1])}</b></div>`).join('')}</div>
-  <table><thead><tr><th>No</th><th>Point</th><th>For</th><th>Area</th><th>By</th></tr></thead><tbody>${rows.map(x=>`<tr><td class="mono">${x.n}</td><td>${esc(x.text)}${x.fresh&&x.st==='open'?' <b class="new">NEW</b>':''}${x.photo?'<span class="ph"></span>':''}${x.st==='closed'?' <i>(closed)</i>':''}</td><td>${esc(partyName(p,x))}</td><td>${esc(entN(p,x.e))}</td><td class="mono">${fd(x.due)}</td></tr>`).join('')||'<tr><td colspan="5">No points.</td></tr>'}</tbody></table>
+  <table><thead><tr><th>No</th><th>Point</th><th>For</th><th>Area</th><th>By</th></tr></thead><tbody>${rows.map(x=>`<tr><td class="mono">${x.n}</td><td>${esc(x.text)}${x.fresh&&x.st==='open'?' <b class="new">NEW</b>':''}${x.photo?phOf('point',x):''}${x.st==='closed'?' <i>(closed)</i>':''}</td><td>${esc(partyName(p,x))}</td><td>${esc(entN(p,x.e))}</td><td class="mono">${fd(x.due)}</td></tr>`).join('')||'<tr><td colspan="5">No points.</td></tr>'}</tbody></table>
   <div class="pdff">A point agreed on site is a MOM point in the app. · Page 1 of 1</div></div>`}
 
 /* ---------- bills ---------- */

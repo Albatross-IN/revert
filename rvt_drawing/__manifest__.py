@@ -14,7 +14,7 @@ stay on the designer's list until answered.
 The project picture learns what is late and who is waiting (rules B2, B3, B4,
 B8, B9).
 """,
-    "version": "20.0.1.0.0",
+    "version": "20.0.1.0.1",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Albatross",

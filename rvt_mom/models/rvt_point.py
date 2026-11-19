@@ -2,10 +2,12 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 FOR_KINDS = [("agency", "An agency"), ("client", "The client"), ("vendor", "A vendor"), ("staff", "Revert staff")]
+POINT_LOCK = 7482001    # the first key of the advisory lock that serialises numbering within a project
 
 
 class RvtPoint(models.Model):
     _name = "rvt.point"
+    _inherit = ["rvt.live.mixin"]
     _description = "Point"
     _order = "project_id, number desc, id desc"
 
@@ -32,6 +34,9 @@ class RvtPoint(models.Model):
     due_date = fields.Date(string="By", index=True)
     state = fields.Selection([("open", "Open"), ("closed", "Closed")], default="open", required=True, index=True)
     closed_by_id = fields.Many2one("res.users", string="Closed by")
+    closed_by_partner_id = fields.Many2one(
+        "res.partner", string="Marked done by", ondelete="set null",
+        help="The agency's person who marked the point done from the app.")
     closed_on = fields.Date()
     close_note = fields.Text(string="Closing note")
     close_photo = fields.Binary(attachment=True)
@@ -127,6 +132,9 @@ class RvtPoint(models.Model):
                 continue
             pid = vals.get("project_id")
             if pid not in last:
+                # every project counts its own points from 1; two people writing at the same
+                # moment wait for each other instead of taking the same number
+                self.env.cr.execute("SELECT pg_advisory_xact_lock(%s, %s)", (POINT_LOCK, int(pid or 0)))
                 top = self.sudo().search([("project_id", "=", pid)], order="number desc", limit=1)
                 last[pid] = top.number
             last[pid] += 1
@@ -186,8 +194,35 @@ class RvtPoint(models.Model):
         lines.write({"rvt_work_state": "not_started"})
 
     def action_reopen(self):
+        """Not right yet: the point is open again, and the closing note and photo make room for the next ones."""
         self._rvt_staff()
-        self.sudo().write({"state": "open", "closed_by_id": False, "closed_on": False})
+        self.sudo().filtered(lambda p: p.state == "closed").write({
+            "state": "open", "closed_by_id": False, "closed_by_partner_id": False, "closed_on": False,
+            "close_note": False, "close_photo": False})
+        return True
+
+    def rvt_agency_done(self, note=None, photo=None, person=None):
+        """The agency marks its own point done from the app, with a photo of the finished work.
+        The point closes; the office is told and can open it again if the work is not right."""
+        self.ensure_one()
+        self.check_access("read")
+        point = self.sudo()
+        person = person or self.env.user.partner_id
+        if point.for_kind != "agency" or point.partner_id != person.commercial_partner_id:
+            raise UserError(self.env._("This point is not yours."))
+        if point.state != "open":
+            return True
+        if not photo:
+            raise UserError(self.env._("Add a photo of the finished work."))
+        point.write({
+            "state": "closed", "closed_on": self.env["rvt.config"].today(), "closed_by_partner_id": person.id,
+            "close_note": (note or "").strip() or False, "close_photo": photo})
+        point._rvt_after_close()
+        project = point.project_id
+        staff = point.raised_by_id | project.rvt_coordinator_ids
+        staff = staff.filtered(lambda u: u.active and not u.share)
+        if staff:
+            self.env["rvt.notify"].send("point_done", point, staff, agency=point.partner_id.name, person=person.name)
         return True
 
     def action_confirm(self):

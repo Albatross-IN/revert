@@ -17,14 +17,14 @@ async function rpc(method,args){
   throw new Error(d.message||j.error.message||'Something went wrong.')}
  return j.result}
 
-function applySnapshot(s){const m=s.masters,fill=(a,b)=>{a.length=0;b.forEach(x=>a.push(x))},clear=o=>Object.keys(o).forEach(k=>delete o[k]);
+function applySnapshot(s){LIVE.sig=JSON.stringify(s);const m=s.masters,fill=(a,b)=>{a.length=0;b.forEach(x=>a.push(x))},clear=o=>Object.keys(o).forEach(k=>delete o[k]);
  fill(TRADES,m.trades);clear(TX);TRADES.forEach(t=>TX[t.id]=t);fill(ETYPES,m.etypes);clear(ETX);ETYPES.forEach(e=>ETX[e.n]=e);
  fill(PRESETS,m.presets);fill(EXTRAS,m.extras);fill(DEFAULT_TRADES,m.default_trades);fill(DTYPES,m.dtypes);
  if(m.templates){clear(TPL);Object.assign(TPL,m.templates)}
  const [y,mo,d]=s.today_date.split('-').map(Number);BASE=Date.UTC(y,mo-1,d);
  const t=new Date(),h=t.getHours();NOW=((h%12)||12)+':'+String(t.getMinutes()).padStart(2,'0')+(h<12?' am':' pm');
  const seq=DB&&DB.seq&&DB.seq.ptid>=LOCAL0?DB.seq:localSeq();
- DB=Object.assign(seed(),{seq,set:s.set,staff:s.staff,agencies:s.agencies,projects:s.projects,drawings:s.drawings,visits:s.visits,points:s.points,bills:s.bills,wa:s.wa,
+ DB=Object.assign(seed(),{seq,set:s.set,staff:s.staff,agencies:s.agencies,projects:s.projects,drawings:s.drawings,visits:s.visits,points:s.points,bills:s.bills,wa:s.wa,notes:s.notes||[],
   features:s.features,mytasks:s.mytasks,today:s.today,company:s.company,prefix:s.prefix,admin:s.admin});
  DB.projects.forEach(p=>{if(p.pic)p.pic.noDwg=p.pic.noDwg.map(x=>p.lines.find(l=>l.id===x.id)).filter(Boolean)});
  UI.user=s.me;document.documentElement.dataset.nof=Object.keys(s.features).filter(k=>!s.features[k]).join(' ')}
@@ -45,7 +45,7 @@ async function pump(){if(LIVE.busy)return;LIVE.busy=true;document.documentElemen
  if(failed&&failed.message!=='session')toast(failed.message,'bad');
  if(LIVE.queue.length)return pump();
  render()}
-async function reload(){try{applySnapshot(await rpc('snapshot'));render()}catch(e){if(e.message!=='session')toast(e.message,'bad')}}
+async function reload(quiet){try{const s=await rpc('snapshot');if(quiet&&JSON.stringify(s)===LIVE.sig)return;applySnapshot(s);render()}catch(e){if(e.message!=='session'&&!quiet)toast(e.message,'bad')}}
 
 /* an operation called inside another one (a release that frees waiting lines) is the server's work, not a second request */
 function wrapOP(name,send){const orig=OP[name];if(!orig)return;OP[name]=function(){LIVE.depth++;let r;try{r=orig.apply(OP,arguments)}finally{LIVE.depth--}if(!LIVE.depth)send.apply(null,[r].concat(Array.prototype.slice.call(arguments)));return r}}
@@ -65,6 +65,8 @@ const takeImg=(...keys)=>{for(const k of keys){const g=LIVE.img[k];if(g){delete 
 wrapOP('addPoint',(x,o)=>sync('add_point',{pid:o.pid,vid:o.vid||'',kind:o.kind,party:o.party||'',text:o.text,e:o.e||'',t:o.t||'',due:o.due==null?null:+o.due,photo:o.photo?takeImg('m_photo','rp_photo'):''},x.id));
 wrapOP('closePoint',(r,x,note,photo)=>sync('close_point',{point:x.id,note:note||'',photo:photo?takeImg('cp_photo'):''}));
 wrapOP('confirmPoint',(r,x)=>sync('confirm_point',{point:x.id}));
+wrapOP('reopenPoint',(r,x)=>sync('reopen_point',{point:x.id}));
+wrapOP('seenNotes',()=>sync('seen_notes',{}));
 wrapOP('sendParty',(n,v,key)=>{if(n)sync('send_party',{visit:v.id,key})});
 
 /* bills: asked, uploaded, reviewed and paid on the server; the document and the proof are real files */
@@ -118,10 +120,16 @@ wrapA('billto',v=>{const [id,to]=v.split('|');sync('bill_to',{bill:id,to})});
 /* a bill's document is the file that was uploaded, or nothing: never a made-up file name */
 const bill0=SHEETS.bill;SHEETS.bill=function(dev,s){const o=bill0(dev,s),b=billOf(s.id),id=String(b.id).replace(/\D/g,'');
  o.body=o.body.replace(/<div class="docrow">[^]*?<\/div>/,b.doc&&+id<9e6?`<a class="docrow" href="/rvt/desk/bill/${id}/document" target="_blank" rel="noopener">${ic('file')}<span><b>${b.doc==='pdf'?'PDF':'Photo'} of the bill</b> · open</span></a>`:'');return o};
-A.photo=function(v,el,dev){openSheet(dev,'photo',{id:v})};
-SHEETS.photo=function(dev,s){const x=ptOf(s.id);return {title:'Photo · point '+(x?x.n:''),sub:x?x.text:'',wide:true,body:`<div class="phw"><img class="phv" alt="Photo of the point" src="/rvt/desk/point/${String(s.id).replace(/\D/g,'')}/photo"></div>`,foot:Bt('Close','close',null,'ghost')}};
-SHEETS.pdf=function(dev,s){return {title:s.kind==='mom'?'MOM PDF':'Open points PDF',sub:'What the party receives on WhatsApp',wide:true,
- body:`<div class="pdfw"><iframe class="pdfv" title="PDF" src="/rvt/desk/mom/pdf?kind=${encodeURIComponent(s.kind)}&a=${encodeURIComponent(s.a||'')}&b=${encodeURIComponent(s.b||'all')}#view=FitH&toolbar=0"></iframe></div>`,foot:Bt('Close','close',null,'ghost')}};
+const digits=v=>String(v==null?'':v).replace(/\D/g,'');
+phOf=function(kind,x){const id=digits(x.id);if(!id||+id>=LOCAL0)return '<span class="ph"></span>';
+ return `<span class="ph real" role="button" tabindex="0" data-a="photo" data-v="${kind}|${x.id}" aria-label="Open the photo" title="Open the photo" style="background-image:url(/rvt/desk/${kind}/${id}/photo)"></span>`};
+ptPhoto=function(x,after){const id=digits(x.id);if(!id||+id>=LOCAL0)return `<span class="ph full ${after?'aft':''}"></span>`;
+ return `<img class="phv" alt="${after?'After':'Photo'}" role="button" tabindex="0" data-a="photo" data-v="point|${x.id}|${after?1:0}" src="/rvt/desk/point/${id}/photo${after?'?close=1':''}">`};
+A.photo=function(v,el,dev){const [a,b,c]=String(v).split('|'),s=b?{kind:a,id:b,close:c==='1'}:{kind:'point',id:a};s.back=dev.sheet&&dev.sheet.k!=='photo'?dev.sheet:null;openSheet(dev,'photo',s)};
+SHEETS.photo=function(dev,s){const x=s.kind==='point'?ptOf(s.id):null;return {title:x?(x.cphoto?(s.close?'After':'Before'):'Photo')+' · point '+x.n:'Photo sent with the question',sub:x?x.text:'',wide:true,
+ body:`<div class="phw"><img class="phv" alt="Photo" src="/rvt/desk/${s.kind==='question'?'question':'point'}/${digits(s.id)}/photo${s.close?'?close=1':''}"></div>`,foot:Bt(s.back?'Back':'Close','close',null,'ghost')}};
+SHEETS.pdf=function(dev,s){return {title:s.kind==='open'?'Open points PDF':'MOM PDF',sub:s.kind==='points'?'The points of the project, as chosen. Save or print it from the bar above the page.':'What the party receives on WhatsApp',wide:true,
+ body:`<div class="pdfw"><iframe class="pdfv" title="PDF" src="/rvt/desk/mom/pdf?kind=${encodeURIComponent(s.kind)}&a=${encodeURIComponent(s.a||'')}&b=${encodeURIComponent(s.b||'all')}&v=${encodeURIComponent(s.v||'')}&st=${encodeURIComponent(s.st||'open')}#view=FitH"></iframe></div>`,foot:Bt('Close','close',null,'ghost')}};
 /* Setup › Earlier MOM: the real verification report of the move, read when the tab is opened */
 function etlReport(dev){const R=LIVE.etl;if(!isOwner()&&!DB.admin)return `<div class="note">${ic('lock')}The verification report of the move is for owners.</div>`;
  if(!R){if(!LIVE.etlBusy){LIVE.etlBusy=true;rpc('op',['etl_report',{}]).then(r=>{LIVE.etl=r}).catch(e=>{LIVE.etl={error:e.message}}).finally(()=>{LIVE.etlBusy=false;render()})}
@@ -166,7 +174,7 @@ wrapA('dtflag',v=>{const [i,k]=v.split('|');sync('dtype_flag',{id:DTYPES[+i].id,
 const roletog0=A.roletog;A.roletog=function(v){const [s,r]=v.split('|'),u=stf(s),had=u.roles.includes(r);roletog0.apply(A,arguments);if(u.roles.includes(r)!==had)sync('role',{user:s,role:r})};
 const addtrade0=A.doaddtrade;A.doaddtrade=function(v,el,dev){const f=dev.f,a={name:(f.nt_n||'').trim(),gu:f.nt_gu||'',hi:f.nt_hi||''},n=TRADES.length;addtrade0.apply(A,arguments);if(TRADES.length>n)sync('add_trade',a,TRADES[TRADES.length-1].id)};
 const addagency0=A.doaddagency;A.doaddagency=function(v,el,dev){const f=dev.f,a={name:(f.na_n||'').trim(),trades:f.na_t?[f.na_t]:[],lang:f.na_l||'gu',person:f.na_p||'',phone:f.na_ph||''},n=DB.agencies.length;addagency0.apply(A,arguments);
- if(DB.agencies.length>n){const g=DB.agencies[DB.agencies.length-1];g.id='anew'+Date.now();sync('add_agency',a,g.id)}};
+ if(DB.agencies.length>n){const g=DB.agencies[DB.agencies.length-1],was=g.id;g.id='anew'+Date.now();if(f.a_ag===was)f.a_ag=g.id;sync('add_agency',a,g.id)}};
 
 /* ---------- the window: the desk alone, at the size of the browser ---------- */
 shellHTML=function(){const d=UI.devs.desk;d.signed=true;
@@ -187,4 +195,21 @@ async function liveBoot(){const first=(()=>{try{return !sessionStorage.getItem('
  try{applySnapshot(await rpc('snapshot'))}catch(e){if(e.message==='session')return;document.getElementById('app').innerHTML=`<div class="livefail"><h1>The desk could not load</h1><p>${esc(e.message)}</p><button type="button" class="btn gold" onclick="location.reload()">Try again</button></div>`;return}
  const intro0=intro;if(!first)intro=function(){};boot();intro=intro0;if(first&&UI.restored)intro();
  try{sessionStorage.setItem('rvt_desk_open','1')}catch(e){}
- document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!LIVE.busy&&!LIVE.saving&&Date.now()-(LIVE.at||0)>60000){LIVE.at=Date.now();reload()}});LIVE.at=Date.now()}
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!LIVE.busy&&!LIVE.saving&&!LIVE.queue.length){reload(true);liveOpen()}});liveStart()}
+
+/* ---------- live: the server says "something changed", and the desk reads again ----------
+   The message itself carries nothing; the data comes through the signed-in session as always.
+   Where the live line cannot be had, the desk asks by itself every fifteen seconds while its tab is in front. */
+const LV={ws:null,on:false,last:0,wait:2000,t:null,r:null,poll:null};
+function liveSoon(){clearTimeout(LV.t);LV.t=setTimeout(()=>{if(document.hidden)return;if(LIVE.busy||LIVE.saving||LIVE.queue.length)return liveSoon();reload(true)},350)}
+function liveOpen(){const L=DB.set&&DB.set.live;if(!L||LV.ws||typeof WebSocket==='undefined')return;let ws;
+ try{ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/websocket?version='+encodeURIComponent(L.v))}catch(e){return}
+ LV.ws=ws;
+ /* the first time the line listens from now on (a number past the newest message is brought back to the newest by the
+    server, which says where that is); after a break it asks for what it missed. Either way one quiet reading follows. */
+ ws.onopen=()=>{LV.on=true;LV.wait=2000;try{ws.send(JSON.stringify({event_name:'subscribe',data:{channels:[L.ch],last:LV.last||2147483647,check_outdated:false}}))}catch(e){}liveSoon()};
+ ws.onmessage=e=>{let m=null;try{m=JSON.parse(e.data)}catch(x){}if(!Array.isArray(m))return;let hit=false;m.forEach(n=>{if(!n)return;if(n.internal){if(n.type==='bus/last_id_reset'&&typeof n.payload==='number')LV.last=n.payload;return}
+  if(n.id>LV.last)LV.last=n.id;if(n.message&&n.message.type==='rvt.changed')hit=true});if(hit)liveSoon()};
+ ws.onclose=()=>{if(LV.ws!==ws)return;LV.ws=null;LV.on=false;clearTimeout(LV.r);LV.r=setTimeout(liveOpen,LV.wait);LV.wait=Math.min(LV.wait*2,60000)};
+ ws.onerror=()=>{try{ws.close()}catch(e){}}}
+function liveStart(){liveOpen();if(LV.poll)return;LV.poll=setInterval(()=>{if(document.hidden)return;if(!LV.ws)liveOpen();if(!LV.on&&!LIVE.busy&&!LIVE.saving&&!LIVE.queue.length)reload(true)},15000)}

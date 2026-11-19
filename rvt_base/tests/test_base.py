@@ -132,3 +132,21 @@ class TestRvtBase(TransactionCase):
         person = self.env["res.partner"].create({"name": "Bherubhai", "parent_id": agency.id, "phone": "+91 98244 18830"})
         self.assertEqual(agency.rvt_trade_ids.code, "carp")
         self.assertEqual(person.commercial_partner_id, agency)
+
+    # ---- live screens ---------------------------------------------------
+    def test_open_screens_are_told_once_per_change(self):
+        Live = self.env["rvt.live"]
+        info = Live.info()
+        self.assertTrue(info["ch"].startswith("rvt_live_") and len(info["ch"]) == 41, "a name nobody can guess")
+        self.assertEqual(info["ch"], Live.channel(), "the same name every time")
+        self.assertTrue(info["v"])
+        self.env.cr.precommit.data.pop("rvt.live", None)
+        before = self.env["bus.bus"].sudo()._bus_last_id()
+        Live.touch()
+        Live.touch()
+        self.assertTrue(self.env.cr.precommit.data.get("rvt.live"), "a second change in the same step asks nothing more")
+        self.env.cr.precommit.run()
+        self.assertEqual(self.env["bus.bus"].sudo()._bus_last_id() - before, 1, "one message, however many changes")
+        self.env.cr.precommit.data.pop("rvt.live", None)
+        Live.with_context(rvt_quiet=True).touch()
+        self.assertFalse(self.env.cr.precommit.data.get("rvt.live"), "a quiet change tells nobody")

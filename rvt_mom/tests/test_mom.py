@@ -80,6 +80,7 @@ class TestMom(MomCommon):
         self.assertEqual(second.rvt_cell_line(), line.id)
         point.with_user(self.coordinator).action_reopen()
         self.assertEqual(point.state, "open")
+        self.assertFalse(point.has_close_photo or point.close_note, "opened again: the closing note and photo make room for the next")
         # a line waiting for a client item is free when the item closes
         item = self.add("Choose the kitchen platform stone", kind="client")
         carp = self.line(self.project, "Kitchen", "carp")
@@ -153,6 +154,71 @@ class TestMom(MomCommon):
         self.assertIn(b"Wardrobe loft depth 24 in.", document)
         with self.assertRaises(AccessError):
             visit.with_user(self.outsider).rvt_pdf()
+
+    def test_an_agency_marks_its_own_point_done_with_a_photo(self):
+        mine = self.add("Fix the wardrobe shutter gap", partner=self.ag_carp, entity_id=self.master.id, photo=PNG)
+        theirs = self.add("Add 2 points near the study table", partner=self.ag_elec)
+        person = self.agency_user.partner_id
+        with self.assertRaises(UserError, msg="a photo of the finished work is the proof"):
+            mine.with_user(self.agency_user).rvt_agency_done("done")
+        with self.assertRaises(AccessError):
+            theirs.with_user(self.agency_user).rvt_agency_done("done", PNG)
+        self.assertTrue(mine.with_user(self.agency_user).rvt_agency_done("Shutter aligned", PNG))
+        self.assertEqual((mine.state, mine.closed_on, mine.close_note, mine.closed_by_partner_id),
+                         ("closed", self.today, "Shutter aligned", person))
+        self.assertFalse(mine.closed_by_id, "closed by the agency's person, not by staff")
+        self.assertTrue(mine.has_photo and mine.has_close_photo, "before and after are both on the point")
+        self.assertTrue(mine.with_user(self.agency_user).rvt_agency_done("again", PNG), "a second tap changes nothing")
+        self.assertEqual(mine.close_note, "Shutter aligned")
+        # not right: the office opens it again
+        mine.with_user(self.coordinator).action_reopen()
+        self.assertEqual((mine.state, mine.closed_by_partner_id.id, mine.has_close_photo), ("open", False, False))
+
+    def test_every_project_counts_its_own_points(self):
+        other, _ = self.onboard(name="Mehta Office")
+        first = self.add("One", partner=self.ag_carp)
+        second = self.add("Two", partner=self.ag_carp)
+        elsewhere = self.Point.browse(self.Point.with_user(self.coordinator).rvt_add([
+            {"project_id": other.id, "text": "First of the other project", "for_kind": "vendor", "party_name": "A vendor"},
+            {"project_id": other.id, "text": "Second of the other project", "for_kind": "vendor", "party_name": "A vendor"}]))
+        third = self.add("Three", partner=self.ag_carp)
+        self.assertEqual((first.number, second.number, third.number), (1, 2, 3))
+        self.assertEqual(elsewhere.mapped("number"), [1, 2], "another project starts from 1 again")
+
+    def test_points_pdf_by_visit_and_by_agency(self):
+        earlier = self.Visit.create({"project_id": self.project.id, "date": self.days(-6), "state": "finished"})
+        visit = self.start()
+        a = self.add("Wardrobe loft depth 24 in.", partner=self.ag_carp, visit=earlier, photo=PNG)
+        self.add("Hinges of the study shutter", partner=self.ag_carp, visit=visit)
+        self.add("Add 2 points near the study table", partner=self.ag_elec, visit=visit)
+        self.add("From the office", partner=self.ag_elec)
+        a.with_user(self.coordinator).action_close("Done", PNG)
+        Report = self.env["ir.actions.report"]
+        html = lambda **data: Report._render_qweb_html("rvt_mom.action_report_points", self.project.ids, data=data)[0].decode()
+        carp = html(party={"kind": "agency", "partner_id": self.ag_carp.id}, state="all")
+        for text in ("Points", "All visits", "Mahadev Furniture", "Wardrobe loft depth 24 in.", "Hinges of the study shutter",
+                     "Before", "After", "V1", "V2", "1 open", "1 closed"):
+            self.assertIn(text, carp)
+        self.assertNotIn("Add 2 points near the study table", carp, "one agency's PDF holds only its own points")
+        only_open = html(party={"kind": "agency", "partner_id": self.ag_carp.id}, state="open")
+        self.assertNotIn("Wardrobe loft depth 24 in.", only_open)
+        second = html(visit_id=visit.id, party=False, state="all")
+        for text in ("Minutes of meeting", "All parties", "Hinges of the study shutter", "Add 2 points near the study table"):
+            self.assertIn(text, second)
+        self.assertNotIn("Wardrobe loft depth 24 in.", second, "one visit's PDF holds only that visit")
+        self.assertNotIn("From the office", second)
+        everything = html(party=False, state="all")
+        self.assertIn("From the office", everything)
+        self.assertIn("office", everything)
+        name, document = self.project.with_user(self.coordinator).rvt_points_pdf(
+            visit_id=visit.id, party=self.project._rvt_party_of("a%s" % self.ag_carp.id), state="all")
+        self.assertEqual(name, "MOM - Shah Residence - visit 2 - Mahadev Furniture.pdf")
+        self.assertIn(b"Hinges of the study shutter", document)
+        self.assertEqual(self.project._rvt_party_of("client"), {"kind": "client"})
+        self.assertEqual(self.project._rvt_party_of("v:Asian Tiles"), {"kind": "vendor", "name": "Asian Tiles"})
+        self.assertFalse(self.project._rvt_party_of("all"))
+        with self.assertRaises(AccessError):
+            self.project.with_user(self.outsider).rvt_points_pdf()
 
     # ---- access -------------------------------------------------------
     def test_agency_reads_only_its_own_points(self):

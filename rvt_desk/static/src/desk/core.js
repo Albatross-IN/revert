@@ -5,6 +5,10 @@ const fd=o=>{const d=dt(o);return d.getUTCDate()+' '+MON[d.getUTCMonth()]};
 const fdw=o=>DOW[dt(o).getUTCDay()]+' '+fd(o);
 const dueW=o=>o==null?'no date':o===0?'today':o===1?'tomorrow':o===-1?'yesterday':o>1&&o<7?DOW[dt(o).getUTCDay()]:fd(o);
 const days=n=>n<=0?'today':n===1?'1 day':n+' days';
+/* a date typed the short way, day month year: "25 11 26", "25/11", "251126" → days from today; null when it is not a date */
+const parseDMY=s=>{s=String(s||'').trim();const m=s.match(/^(\d{1,2})[\s\/.\-]+(\d{1,2})(?:[\s\/.\-]+(\d{2}|\d{4}))?$/)||s.match(/^(\d{2})(\d{2})(\d{2}|\d{4})?$/);if(!m)return null;
+ let y=m[3]?+m[3]:dt(0).getUTCFullYear();if(y<100)y+=2000;const d=Date.UTC(y,+m[2]-1,+m[1]),c=new Date(d);if(c.getUTCDate()!==+m[1]||c.getUTCMonth()!==+m[2]-1)return null;return Math.round((d-BASE)/864e5)};
+const fdmy=o=>{const d=dt(o),z=n=>String(n).padStart(2,'0');return z(d.getUTCDate())+' '+z(d.getUTCMonth()+1)+' '+String(d.getUTCFullYear()).slice(2)};
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const inr=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
 const plural=(n,w,pl)=>n+' '+(n===1?w:(pl||w+'s'));
@@ -52,6 +56,13 @@ const dOf=id=>DB.drawings.find(d=>d.id===id);
 const sheetNo=d=>d.code+'-'+String(d.no).padStart(2,'0');
 const cur=d=>d.revs[d.revs.length-1];
 const ptOf=id=>DB.points.find(x=>x.id===id);
+/* photos: the preview draws a placeholder; the desk and the app show the real one (they replace these two) */
+let phOf=(kind,x)=>'<span class="ph"></span>';
+let ptPhoto=(x,after)=>`<span class="ph full ${after?'aft':''}"></span>`;
+/* questions on drawings nobody has answered yet, on the projects I see */
+const openQs=()=>{const ps=myProjects().map(p=>p.id);return DB.drawings.filter(d=>ps.includes(d.pid)).reduce((n,d)=>n+d.q.filter(q=>!q.ans).length,0)};
+/* my notifications that I have not looked at yet */
+const newNotes=()=>(DB.notes||[]).filter(n=>!n.seen).length;
 const billOf=id=>DB.bills.find(b=>b.id===id);
 const visOf=id=>DB.visits.find(v=>v.id===id);
 const paid=b=>b.pay.reduce((s,x)=>s+x.amount,0);
@@ -185,9 +196,12 @@ const OP={
  ask(d,by,byName,text,photo,via){d.q.push({id:'q'+(++DB.seq.q),by,byName,via:via||'app',text,photo:!!photo,on:0,ans:null})},
  answer(d,qid,text){const q=d.q.find(x=>x.id===qid);q.ans=text;q.ansBy=UI.user;q.ansOn=0},
  addPoint(o){const p=pOf(o.pid),n=Math.max(0,...DB.points.filter(x=>x.pid===p.id).map(x=>x.n))+1;
-  const x=Object.assign({id:'pt'+(++DB.seq.ptid),n,vid:null,t:null,e:null,dwg:null,photo:false,st:'open',closedBy:null,closedOn:null,note:'',sent:0,fresh:true,by:UI.user,pending:false},o);
+  const x=Object.assign({id:'pt'+(++DB.seq.ptid),n,vid:null,t:null,e:null,dwg:null,photo:false,st:'open',closedBy:null,closedOn:null,note:'',sent:0,fresh:true,by:UI.user,pending:false,on:0,doneBy:null,cphoto:false},o);
   x.confirmed=x.kind!=='client'||!DB.set.clientConfirm;if(x.kind==='agency'&&!x.t){const pl=p.plan.find(q=>q.ag===x.party);x.t=pl?pl.t:null}DB.points.push(x);return x},
  closePoint(x,note,photo,by){Object.assign(x,{st:'closed',closedBy:by||UI.user,closedOn:0,note:note||'',cphoto:!!photo})},
+ reopenPoint(x){Object.assign(x,{st:'open',closedBy:null,closedOn:null,note:'',cphoto:false,doneBy:null})},
+ /* the agency marks its own point done, with a photo of the finished work; the office can open it again */
+ agencyDone(x,note,photo,name){Object.assign(x,{st:'closed',closedBy:null,closedOn:0,note:note||'',cphoto:!!photo,doneBy:name||''})},
  confirmPoint(x){const p=pOf(x.pid);x.confirmed=true;x.sent=1;x.fresh=false;notify('client_item','client:'+p.id,{site:p.name,text:x.text,date:fd(x.due)})},
  sendParty(v,key){const p=pOf(v.pid),ps=DB.points.filter(x=>x.vid===v.id&&partyKey(x)===key&&x.st==='open');if(!ps.length)return 0;
   const fresh=ps.filter(x=>x.fresh).length;ps.forEach(x=>{x.sent++;x.fresh=false});
@@ -199,6 +213,7 @@ const OP={
  reviewBill(b,ok,reason){const p=pOf(b.pid);if(ok){b.st='accepted';notify('bill_accepted',b.ag,{site:p.name,what:b.what})}else{b.st='returned';b.reason=reason;notify('bill_returned',b.ag,{site:p.name,reason})}},
  pay(b,o){const p=pOf(b.pid);b.pay.push(Object.assign({on:0,proof:false},o));b.st=paid(b)>=b.amount?'paid':'part_paid';notify('bill_paid',b.ag,{site:p.name,what:b.what,state:BS[b.st][0]})},
  remind(to,pid,text){const p=pOf(pid);notify('remind',to==='client'?'client:'+pid:to,{site:p.name,text})},
+ seenNotes(){(DB.notes||[]).forEach(n=>{n.seen=true})},
 };
 
 /* ---------- words the agency and the client read (en · gu · hi). Gujarati and Hindi need a native check before release. ---------- */
@@ -216,5 +231,10 @@ const STR={
  reason:{en:'Reason',gu:'કારણ',hi:'कारण'},again:{en:'Upload again',gu:'ફરી અપલોડ કરો',hi:'फिर अपलोड करें'},waiting4:{en:'Waiting for',gu:'રાહ',hi:'प्रतीक्षा'},noq:{en:'Type your question',gu:'તમારો પ્રશ્ન લખો',hi:'अपना सवाल लिखें'},
  c_wait:{en:'Waiting for you',gu:'તમારી રાહ જોઈ રહ્યું છે',hi:'आपकी प्रतीक्षा में'},c_dw:{en:'Your drawings',gu:'તમારા ડ્રોઇંગ',hi:'आपकी ड्रॉइंग'},c_none:{en:'Nothing needed from you right now.',gu:'અત્યારે તમારી પાસેથી કંઈ જોઈતું નથી.',hi:'अभी आपसे कुछ नहीं चाहिए।'},
  c_approve:{en:'Approve',gu:'મંજૂર કરો',hi:'मंज़ूर करें'},c_change:{en:'Ask for a change',gu:'ફેરફાર માટે કહો',hi:'बदलाव के लिए कहें'},c_approved:{en:'Approved by you',gu:'તમે મંજૂર કર્યું',hi:'आपने मंज़ूर किया'},c_note:{en:'What would you like changed?',gu:'શું ફેરફાર કરવો છે?',hi:'क्या बदलना चाहेंगे?'},
+ before:{en:'Before',gu:'પહેલાં',hi:'पहले'},after:{en:'After',gu:'પછી',hi:'बाद में'},pt_photo:{en:'Photo',gu:'ફોટો',hi:'फ़ोटो'},pt_done:{en:'Mark as done',gu:'કામ પૂરું થયું',hi:'काम पूरा हुआ'},
+ pt_proof:{en:'Add a photo of the finished work',gu:'પૂરા થયેલા કામનો ફોટો ઉમેરો',hi:'पूरे हुए काम की फ़ोटो जोड़ें'},pt_note:{en:'Note (optional)',gu:'નોંધ (જરૂરી નથી)',hi:'नोट (ज़रूरी नहीं)'},
+ pt_sent:{en:'Marked done. Revert will have a look.',gu:'પૂર્ણ તરીકે નોંધાયું. Revert જોઈ લેશે.',hi:'पूरा दर्ज हुआ। Revert देख लेगा।'},pt_closed:{en:'Done recently',gu:'હાલમાં પૂરા થયેલા',hi:'हाल में पूरे हुए'},
+ pt_room:{en:'Room',gu:'રૂમ',hi:'कमरा'},pt_site:{en:'Whole site',gu:'આખી સાઇટ',hi:'पूरी साइट'},pt_from:{en:'From Revert',gu:'Revert તરફથી',hi:'Revert की ओर से'},pt_no:{en:'Point',gu:'મુદ્દો',hi:'बिंदु'},
+ q_photo:{en:'Photo attached',gu:'ફોટો જોડાયો',hi:'फ़ोटो जुड़ी'},q_hint:{en:'Type here, or send a photo',gu:'અહીં લખો, અથવા ફોટો મોકલો',hi:'यहाँ लिखें, या फ़ोटो भेजें'},q_only:{en:'Photo',gu:'ફોટો',hi:'फ़ोटो'},
  c_look:{en:'Please have a look',gu:'કૃપા કરીને જુઓ',hi:'कृपया देखें'},c_done:{en:'Mark as done',gu:'થઈ ગયું',hi:'हो गया'},c_hi:{en:'Welcome',gu:'સ્વાગત છે',hi:'स्वागत है'},c_sub:{en:'Your home, one step at a time.',gu:'તમારું ઘર, એક એક પગલે.',hi:'आपका घर, एक-एक क़दम।'}};
 const tr=(k,l)=>(STR[k]||{})[l]||(STR[k]||{}).en||k;

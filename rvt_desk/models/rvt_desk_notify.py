@@ -41,11 +41,21 @@ class RvtDesk(models.AbstractModel):
             "ev": log.event, "held": log.state == "held", "st": STATE_WORD.get(log.state, log.state),
             "why": log.reason or "", "fresh": False,
         } for log in logs]
+        contacts = projects.sudo().rvt_client_contact_ids
         invited = set(env["res.partner"].sudo().search([
-            ("id", "in", projects.sudo().rvt_client_contact_ids.ids), ("rvt_invited_on", "!=", False)]).ids)
+            ("id", "in", contacts.ids), ("rvt_invited_on", "!=", False)]).ids)
+        # what became of the last invitation: "invited" must not hide a message that never left
+        last = {}
+        for log in env["rvt.notify.log"].sudo().search(
+                [("event", "=", "invite"), ("partner_id", "in", contacts.ids)], order="id"):
+            last[log.partner_id.id] = log
         for row in data["projects"]:
             for contact in row["client"]["contacts"]:
                 contact["inv"] = contact["id"] in invited
+                log = last.get(contact["id"])
+                contact["invst"] = STATE_WORD.get(log.state, log.state) if log else ""
+                contact["invwhy"] = (log.reason or "") if log and log.state != "sent" else ""
+        data["notes"] = env["rvt.notify.log"].rvt_mine()
 
     def _onboard_vals_extra(self, a):
         vals = super()._onboard_vals_extra(a)
@@ -62,6 +72,9 @@ class RvtDesk(models.AbstractModel):
         to = a.get("to")
         sent = project.rvt_remind(a.get("text"), agency_id=None if to == "client" else _num(to), client=to == "client")
         return {"sent": sent}
+
+    def _op_seen_notes(self, a):
+        self.env["rvt.notify.log"].rvt_seen()
 
     def _op_invite(self, a):
         project = self.env["project.project"].browse(_num(a.get("project"))).exists()

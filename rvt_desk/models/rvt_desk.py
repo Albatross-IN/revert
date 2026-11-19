@@ -287,6 +287,7 @@ class RvtDesk(models.AbstractModel):
                 "lim": {"open": config["limit_not_opened_days"], "q": config["limit_question_days"],
                         "bill": config["limit_bill_review_days"], "stuck": config["limit_stuck_days"]},
                 "sending": False, "number": "",
+                "live": self.env["rvt.live"].info(),
             },
             "masters": self._masters(),
             "staff": [self._staff_row(u) for u in self._staff_users() | user],
@@ -294,7 +295,7 @@ class RvtDesk(models.AbstractModel):
             "projects": project_rows,
             "today": [dict(self._next_row(i), pname=i.get("project", "")) for i in Project.rvt_today(pictures)],
             "mytasks": self._my_tasks(),
-            "drawings": [], "visits": [], "points": [], "bills": [], "wa": [],
+            "drawings": [], "visits": [], "points": [], "bills": [], "wa": [], "notes": [],
         }
         self._snapshot_extra(data, projects, off, today)
         return data
@@ -312,7 +313,10 @@ class RvtDesk(models.AbstractModel):
         method = getattr(self, "_op_%s" % name, None)
         if not method or not re.match(r"^[a-z_]+$", name or ""):
             raise UserError(self.env._("Unknown action."))
-        return method(args or {}) or {}
+        result = method(args or {}) or {}
+        # every button changes what some screen shows: the open screens read again
+        self.env["rvt.live"].touch()
+        return result
 
     def _line(self, ref):
         line = self.env["project.task"].browse(_num(ref)).exists()

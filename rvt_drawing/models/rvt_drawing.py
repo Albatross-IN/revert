@@ -23,7 +23,7 @@ REVISION_STATES = [
 class RvtDrawing(models.Model):
     _name = "rvt.drawing"
     _description = "Drawing"
-    _inherit = ["mail.thread"]
+    _inherit = ["mail.thread", "rvt.live.mixin"]
     _order = "project_id, due_date, id"
 
     project_id = fields.Many2one("project.project", required=True, ondelete="cascade", index=True)
@@ -314,13 +314,21 @@ class RvtDrawing(models.Model):
             "drawing_id": self.id, "partner_id": partner.sudo().commercial_partner_id.id,
             "asked_by_name": person_name or partner.name, "via": via, "text": text, "photo": photo or False,
         })
-        if self.designer_id:
-            self.env["rvt.notify"].send("drawing_question", question, self.designer_id)
+        # the designer answers; the coordinators and the principal of the project see it too
+        # (read as the system: the asker is an agency person or a client, who cannot read staff records)
+        project = self.sudo().project_id
+        staff = (self.sudo().designer_id | project.rvt_coordinator_ids | project.rvt_principal_id).filtered(
+            lambda user: user.active and not user.share)
+        if via == "office":
+            staff -= self.env.user
+        if staff:
+            self.env["rvt.notify"].send("drawing_question", question, staff)
         return question.id
 
 
 class RvtDrawingRevision(models.Model):
     _name = "rvt.drawing.revision"
+    _inherit = ["rvt.live.mixin"]
     _description = "Drawing revision"
     _order = "drawing_id, number"
 
@@ -356,6 +364,7 @@ class RvtDrawingRevision(models.Model):
 
 class RvtDrawingReceipt(models.Model):
     _name = "rvt.drawing.receipt"
+    _inherit = ["rvt.live.mixin"]
     _description = "Drawing sent to a receiver"
     _order = "revision_id, id"
 
@@ -398,6 +407,7 @@ class RvtDrawingReceipt(models.Model):
 
 class RvtDrawingQuestion(models.Model):
     _name = "rvt.drawing.question"
+    _inherit = ["rvt.live.mixin"]
     _description = "Question on a drawing"
     _order = "asked_on desc, id desc"
 

@@ -12,7 +12,7 @@ carries its own state; "Waiting" always names its cause.
 Onboarding is a model method (project.project.rvt_onboard) so the desk and
 the app call the same code. Tasks made by hand keep working as before.
 """,
-    "version": "20.0.1.1.1",
+    "version": "20.0.1.1.2",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Albatross",

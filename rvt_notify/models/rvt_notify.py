@@ -11,7 +11,7 @@ LANG_OF = {"gu_IN": "gu", "hi_IN": "hi"}
 # on a test copy: the numbers that are really messaged (see test_numbers)
 TEST_NUMBERS = "rvt.notify_test_numbers"
 # staff are told in the app (and by a push once the app is there), never on WhatsApp
-STAFF_EVENTS = ("drawing_approval_needed", "drawing_question")
+STAFF_EVENTS = ("drawing_approval_needed", "drawing_question", "point_done")
 
 
 def e164(phone):
@@ -118,6 +118,9 @@ class RvtNotify(models.AbstractModel):
             out.update({"sheet": drawing.sheet_no, "title": drawing.name, "rev": drawing.current_revision_id.number})
             if record._name == "rvt.drawing.question":
                 out["text"] = record.sudo().text
+        elif event == "point_done" and record:
+            point = record.sudo()
+            out.update({"no": point.number, "text": point.text})
         return out
 
     @api.model

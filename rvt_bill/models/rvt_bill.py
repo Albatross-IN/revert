@@ -33,6 +33,7 @@ def rupees(amount):
 
 class RvtBill(models.Model):
     _name = "rvt.bill"
+    _inherit = ["rvt.live.mixin"]
     _description = "Bill of an agency"
     _order = "asked_on desc, id desc"
 
@@ -234,6 +235,7 @@ class RvtBill(models.Model):
 
 class RvtBillPayment(models.Model):
     _name = "rvt.bill.payment"
+    _inherit = ["rvt.live.mixin"]
     _description = "Payment against a bill"
     _order = "date, id"
 

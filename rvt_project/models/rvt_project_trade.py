@@ -5,6 +5,7 @@ from odoo.exceptions import ValidationError
 class RvtProjectTrade(models.Model):
     """The trade plan: which trades a project needs and the agency chosen for each."""
     _name = "rvt.project.trade"
+    _inherit = ["rvt.live.mixin"]
     _description = "Trade on a project"
     _order = "project_id, sequence, id"
 

@@ -64,6 +64,9 @@ Run as on `deploy_production.md`: root on the server, `erp` owns the files.
      message). The live database ignores it; it need not be there.
    - nginx: `client_max_body_size 30m` on the site (drawings up to 25 MB, bills up to 15 MB), and
      gzip on for `application/json` (the staff snapshot is about 120 KB plain).
+   - nginx: `/websocket` goes to the service's gevent port with the upgrade headers, as the standard
+     set-up of this server already does for chat. The desk and the app listen there for "something
+     changed" and then read again; without it they still work, asking by themselves every 10 to 15 seconds.
 8. **WhatsApp.** Build and start the helper service (`open_whatsapp_connector/sidecar`, see its
    `SETUP.md`) as a system service of its own, bound to 127.0.0.1. Pair the dedicated number from
    the connector's settings. Send one test message to a staff phone. Only then switch
@@ -84,7 +87,8 @@ Run as on `deploy_production.md`: root on the server, `erp` owns the files.
 | Release one test drawing to a staff member's own number | the message arrives; opening the link marks "opened" in the desk |
 | "Copy link" on a pilot project's Client tab | the link opens that project in a phone browser without sign-in |
 | Message log (Setup → WhatsApp) | "sent", not "held" |
-| Module tests | were run before the release on a copy: 168 pass (`/rvt_base,/rvt_project,/rvt_drawing,/rvt_mom,/rvt_notify,/rvt_desk,/rvt_api,/rvt_bill`). Never run tests on the live database |
+| Open the desk in two browsers, change a line in one | the other shows it within a second or two, untouched (the live line); if it takes about 15 seconds, `/websocket` is not reaching the service |
+| Module tests | were run before the release on a copy: 174 pass (`/rvt_base,/rvt_project,/rvt_drawing,/rvt_mom,/rvt_notify,/rvt_desk,/rvt_api,/rvt_bill`). Never run tests on the live database |
 
 ## 5. The app
 

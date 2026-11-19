@@ -32,9 +32,28 @@ const A={
  scen(v){const s=GUIDE[+v];UI.view=s.view;if(s.user)UI.user=s.user;if(s.view==='desk')UI.devs.desk.signed=true;if(s.run)s.run();UI.panel=null;UI.guide=+v;toast(s.t+': '+s.steps[0])},
  /* generic */
  nav(v,el,dev){if(dev.phone)dev.stack=[{s:v}];else{dev.sec=v;dev.vid=''}dev.sheet=null},back(v,el,dev){if(dev.stack.length>1)dev.stack.pop();dev.sheet=null},
- go(v,el,dev){const [s,id]=v.split('|');dev.stack.push({s,id:id&&/^\d+$/.test(id)?+id:id});if(s==='bill'&&dev.id==='agency'){const b=billOf(id);dev.f.ab_no='';dev.f.ab_amt='';dev.f.ab_doc=false}},
+ go(v,el,dev){const [s,id]=v.split('|');dev.stack.push({s,id:id&&/^\d+$/.test(id)?+id:id});if(s==='point'){dev.f.ad_note='';dev.f.ad_photo=false}if(s==='bill'&&dev.id==='agency'){const b=billOf(id);dev.f.ab_no='';dev.f.ab_amt='';dev.f.ab_doc=false}},
  ui(v,el,dev){const i=v.indexOf('='),k=v.slice(0,i),val=v.slice(i+1);if(k==='vid'&&dev.phone&&val){dev.stack.push({s:'visit',id:val});return}dev[k]=val},
- set(v,el,dev){const i=v.indexOf('='),k=v.slice(0,i);dev.f[k]=v.slice(i+1);if(k==='c_cause'){dev.f.c_ref='';dev.f.c_note=''}},tog(v,el,dev){dev.f[v]=!dev.f[v]},close(v,el,dev){dev.sheet=null},
+ set(v,el,dev){const i=v.indexOf('='),k=v.slice(0,i);dev.f[k]=v.slice(i+1);if((k+'_c') in dev.f)dev.f[k+'_c']=false;if(k==='c_cause'){dev.f.c_ref='';dev.f.c_note=''}},tog(v,el,dev){dev.f[v]=!dev.f[v]},close(v,el,dev){dev.sheet=(dev.sheet&&dev.sheet.back)||null},
+ /* a date typed by hand, as day month year */
+ duec(v,el,dev){dev.f[v+'_c']=!dev.f[v+'_c'];if(dev.f[v+'_c'])UI.focus=dev.id+'_'+v+'_t'},
+ /* the searchable choice: who a point is for, which room; the sheet it was opened from comes back */
+ pick(v,el,dev){const [src,key,pid,vendor]=v.split('|'),back=dev.sheet&&dev.sheet.k!=='pick'?dev.sheet:null;dev.f.pk_q='';openSheet(dev,'pick',{src,key,pid:+pid,vendor:vendor||'',back})},
+ pickset(v,el,dev){const s=dev.sheet;if(!s)return;dev.f[s.key]=v;dev.f.pk_q='';dev.sheet=s.back||null},
+ /* a point, whole */
+ ptview(v,el,dev){if(dev.id==='agency'||dev.id==='client'||!ptOf(v))return;openSheet(dev,'ptview',{id:v})},
+ reopenpt(v,el,dev){const x=ptOf(v);if(!x)return;OP.reopenPoint(x);dev.sheet=null;toast(`Point ${x.n} is open again.`)},
+ agdone(v,el,dev){const x=ptOf(v),a=agOf(UI.agency),L=UI.lang.agency;if(!x)return;if(!dev.f.ad_photo)return toast(tr('pt_proof',L),'wait');
+  OP.agencyDone(x,(dev.f.ad_note||'').trim(),true,a.people[0].n);dev.f.ad_note='';dev.f.ad_photo=false;if(dev.stack.length>1)dev.stack.pop();flash(dev,'✓');pushStaff(a.n+' marked point '+x.n+' done',[x.by,...pOf(x.pid).coords]);toast(tr('pt_sent',L))},
+ /* notifications */
+ notes(v,el,dev){const fresh=(DB.notes||[]).filter(n=>!n.seen).map(n=>n.id);openSheet(dev,'notes',{fresh});if(fresh.length)OP.seenNotes()},
+ noteopen(v,el,dev){const n=(DB.notes||[]).find(x=>String(x.id)===String(v)),r=n&&n.ref;if(!r)return;const [k,id]=r;dev.sheet=null;
+  if(k==='dwg'&&dOf(id))return openDwg(dev,id);if(k==='point'&&ptOf(id))return openSheet(dev,'ptview',{id});if(k==='bill'&&billOf(id))return A.bill(id,el,dev);if(k==='visit'&&visOf(id))return A.openvisit(id,el,dev);if(k==='proj'&&pOf(id))return openProj(dev,id,'picture');
+  toast('That is not on your screens any more.','wait')},
+ /* the MOM as a PDF, cut by visit and by party */
+ mompdf(v,el,dev){Object.assign(dev.f,{pf_v:'',pf_p:'',pf_st:'open'});openSheet(dev,'mompdf',{id:+v})},
+ dopdf(v,el,dev){const f=dev.f;openSheet(dev,'pdf',{kind:'points',a:v,b:f.pf_p||'all',v:f.pf_v||'',st:f.pf_st||'open'})},
+ newagency(v,el,dev){const [pid,t]=v.split('|');Object.assign(dev.f,{na_n:'',na_t:t,na_p:'',na_ph:'',na_l:'gu'});openSheet(dev,'addagency',{back:dev.sheet})},
  sheet(v,el,dev){const [k,id]=v.split('|');openSheet(dev,k,{id})},
  signin(v,el,dev){dev.signed=true;dev.sheet=null;if(dev.phone)dev.stack=[{s:'today'}];else dev.sec='today';dev._k='';flash(dev,'Welcome, '+me().n)},signout(v,el,dev){dev.signed=false;dev.sheet=null;dev.si={step:'lang'};dev.stack=[{s:dev.id==='staff'?'today':'home'}]},
  asuser(v){UI.user=v},
@@ -65,8 +84,8 @@ const A={
    if((f.c_cause==='material'||f.c_cause==='other')&&!(f.c_note||'').trim())return toast('Add a short note: what is it waiting for?','wait')}
   l.ag=f.c_ag||null;OP.setLine(p,l,f.c_st,{cause:f.c_cause,ref,note:f.c_note});dev.sheet=dev.backRoom?{k:'room',pid:p.id,eid:l.e}:null;dev.backRoom=false;toast(`${entN(p,l.e)} · ${TX[l.t].n}: ${LS[l.st][0]}${l.st==='wait'?' for '+waitText(p,l):''}`)},
  markdone(v,el,dev){const [pid,lid]=v.split('|'),p=pOf(pid),l=p.lines.find(x=>x.id===lid);OP.setLine(p,l,'done');dev.sheet=null;flash(dev,'Done');toast(`${entN(p,l.e)} · ${TX[l.t].n} marked done.`)},
- assign(v,el,dev){const [pid,t]=v.split('|'),pl=planOf(pOf(pid),t);dev.f.a_ag=pl.ag||'';dev.f.a_by=7;openSheet(dev,'assign',{pid:+pid,t})},
- saveassign(v,el,dev){const [pid,t]=v.split('|'),p=pOf(pid);OP.assign(p,t,dev.f.a_ag,+dev.f.a_by);dev.sheet=null;toast(dev.f.a_ag?`${TX[t].n}: ${agN(dev.f.a_ag)}. Its ${plural(p.lines.filter(l=>l.t===t).length,'work line')} now carry this agency.`:`${TX[t].n} stays undecided until ${fd(+dev.f.a_by)}.`)},
+ assign(v,el,dev){const [pid,t]=v.split('|'),pl=planOf(pOf(pid),t);dev.f.a_ag=pl.ag||'';dev.f.a_by=7;dev.f.a_by_c=false;openSheet(dev,'assign',{pid:+pid,t})},
+ saveassign(v,el,dev){const [pid,t]=v.split('|'),p=pOf(pid),by=dueOf(dev.f,'a_by');if(!dev.f.a_ag&&isNaN(by))return toast(DMYHINT,'wait');OP.assign(p,t,dev.f.a_ag,by);dev.sheet=null;toast(dev.f.a_ag?`${TX[t].n}: ${agN(dev.f.a_ag)}. Its ${plural(p.lines.filter(l=>l.t===t).length,'work line')} now carry this agency.`:`${TX[t].n} stays undecided until ${fd(by)}.`)},
  /* drawings */
  dwg(v,el,dev){openDwg(dev,v)},dstart(v){dOf(v).st='in_progress';toast('Marked in progress.')},view(v,el,dev){openSheet(dev,'view',{id:v})},
  dosend(v,el,dev){const d=dOf(v);if(!dev.f.sa_file)return toast('Choose the PDF first.','wait');OP.sendForApproval(d,dev.f.sa_note);dev.f.sa_file=false;dev.f.sa_note='';
@@ -86,11 +105,11 @@ const A={
  doclose(v,el,dev){const x=ptOf(v),p=pOf(x.pid);OP.closePoint(x,dev.f.cp_note,dev.f.cp_photo);dev.sheet=null;flash(dev,'Closed');toast(`Point ${x.n} closed.`);
   const l=x.e&&x.t&&p.lines.find(q=>q.e===x.e&&q.t===x.t);if(l&&l.st!=='done'&&!DB.points.some(q=>q.pid===p.id&&q.st==='open'&&q.e===x.e&&q.t===x.t))openSheet(dev,'offerdone',{pid:p.id,lid:l.id})},
  startmom(v,el,dev){const p=pOf(v);let vi=DB.visits.find(x=>x.pid===p.id&&x.st==='open');if(!vi){vi={id:'v'+(++DB.seq.vid),pid:p.id,no:++p.visitNo,date:0,by:UI.user,att:[me().n],st:'open'};DB.visits.push(vi)}
-  Object.assign(dev.f,{m_for:'',m_area:'',m_text:'',m_photo:false,m_due:2,m_vendor:''});if(dev.phone)dev.stack.push({s:'visit',id:vi.id});else{openProj(dev,p.id,'mom');dev.vid=vi.id}},
+  if(String(dev.f.m_pid)!==String(p.id))Object.assign(dev.f,{m_for:'',m_area:null,m_vendor:'',m_due:2,m_due_c:false});Object.assign(dev.f,{m_pid:String(p.id),m_text:'',m_photo:false});if(dev.phone)dev.stack.push({s:'visit',id:vi.id});else{openProj(dev,p.id,'mom');dev.vid=vi.id}},
  openvisit(v,el,dev){const vi=visOf(v);if(dev.phone)dev.stack.push({s:'visit',id:v});else{openProj(dev,vi.pid,'mom');dev.vid=v}},
- addpt(v,el,dev){const vi=visOf(v),f=dev.f,t=(f.m_text||'').trim();if(!t)return toast('Type or speak the point first.','wait');
-  const kind=agOf(f.m_for)?'agency':f.m_for==='client'?'client':f.m_for==='vendor'?'vendor':'staff',x=OP.addPoint({pid:vi.pid,vid:vi.id,kind,party:kind==='vendor'?f.m_vendor:f.m_for,text:t,e:f.m_area||null,due:+f.m_due,photo:!!f.m_photo});
-  if(UI.offline&&dev.id==='staff')x.pending=true;f.m_text='';f.m_photo=false;UI.focus=dev.id+'_m_text'},
+ addpt(v,el,dev){const vi=visOf(v),f=dev.f,t=(f.m_text||'').trim(),due=dueOf(f,'m_due');if(!t)return toast('Type or speak the point first.','wait');if(f.m_area==null)return toast('Choose the room first. It stays for the next points.','wait');if(isNaN(due))return toast(DMYHINT,'wait');
+  const kind=agOf(f.m_for)?'agency':f.m_for==='client'?'client':f.m_for==='vendor'?'vendor':'staff',x=OP.addPoint({pid:vi.pid,vid:vi.id,kind,party:kind==='vendor'?f.m_vendor:f.m_for,text:t,e:f.m_area||null,due,photo:!!f.m_photo});
+  if(UI.offline&&dev.id==='staff')x.pending=true;f.m_text='';f.m_photo=false;dev.toEnd=true;UI.focus=dev.id+'_m_text'},
  sendparty(v,el,dev){const [vid,key]=v.split('|');if(UI.offline&&dev.id==='staff'){if(!UI.outbox.some(o=>o.vid===vid&&o.key===key))UI.outbox.push({vid,key});return toast(`Saved. ${agN(key)}’s PDF goes out when the network returns.`,'wait')}
   const n=OP.sendParty(visOf(vid),key);if(n){flash(dev,'Sent','wa');toast(`${agN(key)}: ${plural(n,'point')} as a PDF · ${sent()}.`)}},
  sendall(v,el,dev){const vi=visOf(v),ks=[...new Set(DB.points.filter(x=>x.vid===v&&x.st==='open'&&x.kind==='agency').map(x=>x.party))];if(UI.offline&&dev.id==='staff'){ks.forEach(k=>{if(!UI.outbox.some(o=>o.vid===v&&o.key===k))UI.outbox.push({vid:v,key:k})});return toast('Saved. Every party’s PDF goes out when the network returns.','wait')}
@@ -98,9 +117,11 @@ const A={
  finishvisit(v,el,dev){const vi=visOf(v);vi.st='finished';if(dev.phone)dev.stack.pop();else dev.vid='';flash(dev,'Filed');toast(`Visit ${vi.no} filed. The full MOM is with the office.`)},
  pdf(v,el,dev){const [kind,a,b]=v.split('|');openSheet(dev,'pdf',{kind,a,b})},
  dovendor(v,el,dev){const n=(dev.f.vn||'').trim();if(!n)return toast('Type the vendor’s name.','wait');dev.f.m_vendor=n;dev.f.m_for='vendor';dev.f.vn='';dev.sheet=null},
- raise(v,el,dev){const p=pOf(v);Object.assign(dev.f,{rp_for:forOptions(p)[0][0],rp_text:'',rp_area:'',rp_due:2,rp_photo:false});openSheet(dev,'point',{pid:+v})},
- raiseclient(v,el,dev){Object.assign(dev.f,{rp_for:'client',rp_text:'',rp_area:'',rp_due:3,rp_photo:false});openSheet(dev,'point',{pid:+v})},
- doraise(v,el,dev){const f=dev.f,t=(f.rp_text||'').trim();if(!t)return toast('Say what is needed.','wait');const kind=agOf(f.rp_for)?'agency':f.rp_for==='client'?'client':'staff',x=OP.addPoint({pid:+v,kind,party:f.rp_for,text:t,e:f.rp_area||null,due:+f.rp_due,photo:!!f.rp_photo});
+ raise(v,el,dev){const p=pOf(v),f=dev.f,same=String(f.rp_pid)===String(v),opts=forOptions(p);
+  Object.assign(f,{rp_pid:String(v),rp_for:same&&opts.some(o=>o[0]===f.rp_for)?f.rp_for:opts[0][0],rp_text:'',rp_area:same&&f.rp_area!=null&&(f.rp_area===''||p.ents.some(e=>e.id===f.rp_area))?f.rp_area:null,rp_due:f.rp_due==null?2:f.rp_due,rp_photo:false});openSheet(dev,'point',{pid:+v})},
+ raiseclient(v,el,dev){Object.assign(dev.f,{rp_pid:String(v),rp_for:'client',rp_text:'',rp_area:'',rp_due:3,rp_due_c:false,rp_photo:false});openSheet(dev,'point',{pid:+v})},
+ doraise(v,el,dev){const f=dev.f,t=(f.rp_text||'').trim(),due=dueOf(f,'rp_due');if(!t)return toast('Say what is needed.','wait');if(f.rp_area==null)return toast('Choose the room, or “Whole site”.','wait');if(isNaN(due))return toast(DMYHINT,'wait');
+  const kind=agOf(f.rp_for)?'agency':f.rp_for==='client'?'client':'staff',x=OP.addPoint({pid:+v,kind,party:f.rp_for,text:t,e:f.rp_area||null,due,photo:!!f.rp_photo});
   dev.sheet=null;if(kind==='client'&&x.confirmed)OP.confirmPoint(x);if(kind==='agency'){x.sent=1;x.fresh=false;OP.remind(f.rp_for,+v,t+' (by '+dueW(x.due)+')')}
   toast(kind==='client'&&!x.confirmed?`Point ${x.n} raised. It waits for the office to confirm before the client sees it.`:`Point ${x.n} raised for ${partyName(pOf(v),x)}${kind==='staff'?'':' · '+sent()}.`)},
  /* bills */
@@ -123,7 +144,7 @@ const A={
  ettoggle(v){const [n,t]=v.split('|'),e=ETX[n],i=e.tr.indexOf(t);i<0?e.tr.push(t):e.tr.splice(i,1)},dtflag(v){const [i,k]=v.split('|');DTYPES[+i][k]=!DTYPES[+i][k]},
  roletog(v){const [s,r]=v.split('|'),u=stf(s),i=u.roles.indexOf(r);i<0?u.roles.push(r):u.roles.length>1&&u.roles.splice(i,1)},
  doaddtrade(v,el,dev){const f=dev.f,n=(f.nt_n||'').trim();if(!n)return toast('Type the trade’s name.','wait');const t={id:'t'+TRADES.length,n,s:n.slice(0,5),gu:f.nt_gu||n,hi:f.nt_hi||n};TRADES.push(t);TX[t.id]=t;f.nt_n=f.nt_gu=f.nt_hi='';dev.sheet=null;toast(`Trade “${n}” added. It is offered at the next onboarding.`)},
- doaddagency(v,el,dev){const f=dev.f;if(!(f.na_n||'').trim()||!f.na_t)return toast('Give the firm’s name and its trade.','wait');DB.agencies.push({id:'a'+(DB.agencies.length+1),n:f.na_n.trim(),tr:[f.na_t],lang:f.na_l||'gu',people:[{n:f.na_p||'Owner',ph:f.na_ph||'—'}]});f.na_n=f.na_p=f.na_ph='';dev.sheet=null;toast('Agency added.')},
+ doaddagency(v,el,dev){const f=dev.f;if(!(f.na_n||'').trim()||!f.na_t)return toast('Give the firm’s name and its trade.','wait');const g={id:'a'+(DB.agencies.length+1),n:f.na_n.trim(),tr:[f.na_t],lang:f.na_l||'gu',people:[{n:f.na_p||'Owner',ph:f.na_ph||'—'}]},back=dev.sheet&&dev.sheet.back;DB.agencies.push(g);f.na_n=f.na_p=f.na_ph='';dev.sheet=back||null;if(back&&back.k==='assign')f.a_ag=g.id;toast(back?'Agency added. Save to give it this trade.':'Agency added.')},
  /* agency and client apps */
  silang(v,el,dev){UI.lang[dev.id]=v;dev.si.step='phone';dev.f.si_ph=dev.id==='agency'?agOf(UI.agency).people[0].ph:pOf(UI.clientPid).client.contacts[0].ph},
  sicode(v,el,dev){dev.si.code=String(1000+Math.floor(Math.random()*9000));dev.si.step='otp';dev.f.si_otp='';notify('otp',dev.id==='agency'?UI.agency:'client:'+UI.clientPid,{code:dev.si.code});toast('Sign-in code '+sent()+'.')},
@@ -131,7 +152,7 @@ const A={
  siverify(v,el,dev){if(String(dev.f.si_otp).trim()!==dev.si.code)return toast('That code does not match. Look at the WhatsApp message.','wait');dev.signed=true;dev.si=null;dev.stack=[{s:'home'}];dev._k='';flash(dev,tr(dev.id==='agency'?'hello':'c_hi',UI.lang[dev.id]))},
  alang(v){UI.lang.agency=v},clang(){UI.lang.client=UI.lang.client==='en'?'gu':'en'},
  adwg(v,el,dev){const d=dOf(v);if(OP.open(d,UI.agency))toast(`${agN(UI.agency)} opened ${sheetNo(d)}. The desk shows “opened” now.`);dev.f.aq='';dev.f.aq_photo=false;dev.stack.push({s:'dwg',id:v})},
- aask(v,el,dev){const d=dOf(v),t=(dev.f.aq||'').trim(),a=agOf(UI.agency);if(!t)return toast(tr('noq',UI.lang.agency),'wait');OP.ask(d,a.id,a.people[0].n,t,dev.f.aq_photo);dev.f.aq='';dev.f.aq_photo=false;flash(dev,tr('send',UI.lang.agency),'send');pushStaff(a.n+' asks on '+sheetNo(d)+': '+t,[d.ds,...pOf(d.pid).coords]);toast(`Question sent. It sits on ${stf(d.ds).n}’s list until answered.`)},
+ aask(v,el,dev){const d=dOf(v),a=agOf(UI.agency),t=(dev.f.aq||'').trim()||(dev.f.aq_photo?tr('q_only',UI.lang.agency):'');if(!t)return toast(tr('noq',UI.lang.agency),'wait');OP.ask(d,a.id,a.people[0].n,t,dev.f.aq_photo);dev.f.aq='';dev.f.aq_photo=false;dev.toEnd=true;flash(dev,tr('send',UI.lang.agency),'send');pushStaff(a.n+' asks on '+sheetNo(d)+': '+t,[d.ds,...pOf(d.pid).coords]);toast(`Question sent. It sits on ${stf(d.ds).n}’s list until answered.`)},
  asubmit(v,el,dev){const b=billOf(v),amt=+String(dev.f.ab_amt).replace(/\D/g,'');if(!amt)return toast(tr('amount',UI.lang.agency)+'?','wait');OP.uploadBill(b,{no:dev.f.ab_no||'—',amount:amt});flash(dev,tr('submitted',UI.lang.agency));pushStaff(agN(b.ag)+' uploaded a bill · '+b.what,pOf(b.pid).coords);toast('Bill uploaded. The office sees it in “To review”.')},
  cdwg(v,el,dev){const d=dOf(v);if(OP.open(d,'client'))toast(`The client opened ${sheetNo(d)}. The desk shows “opened” now.`);dev.f.c_note='';dev.stack.push({s:'dwg',id:v})},
  capprove(v,el,dev){const d=dOf(v),c=pOf(d.pid).client.contacts[0];OP.clientDecide(d,'approved','',c.n);flash(dev,'APPROVED','stamp');pushStaff(c.n+' approved '+d.title,[d.ds,pOf(d.pid).principal,...pOf(d.pid).coords]);toast(`${d.title} approved by ${c.n}, ${fdw(0)} ${NOW}. Recorded with name, date and time.`)},
@@ -195,7 +216,7 @@ function shellHTML(){const v=UI.view,D=UI.devs,dvw=(id,html)=>`<div class="dv dv
 /* ---------- the session: the preview comes back exactly where it was closed ----------
    Everything a real app would keep is kept: who is signed in, the open screen and tab, scroll, drafts, the outbox,
    the theme. Flutter: a secure token, the route stack and the form drafts in local storage, restored before the first frame. */
-const SKEY='rvt_r1_preview_s3',TRANSIENT=['flash','splash','push','party','sh','fh','pt','spT','_k','_n','seen'];
+const SKEY='rvt_r1_preview_s3',TRANSIENT=['flash','splash','push','party','sh','fh','pt','spT','_k','_n','_sk','toEnd','seen'];
 let SCROLL={},BOOT=true;
 const mastersSnap=()=>({trades:TRADES.map(t=>Object.assign({},t)),etr:ETYPES.map(e=>e.tr.slice()),dt:DTYPES.map(d=>[d.client,d.appr])});
 function mastersApply(m){TRADES.slice(m.trades.length).forEach(t=>delete TX[t.id]);TRADES.length=Math.min(TRADES.length,m.trades.length);m.trades.slice(TRADES.length).forEach(t=>{TRADES.push(t);TX[t.id]=t});
@@ -241,7 +262,8 @@ function render(){({staff:['staff'],agency:['agency'],client:['client'],all:['st
  root.querySelectorAll('[data-sc]').forEach(el=>{sc[key(el)]=[el.scrollTop,el.scrollLeft]});const ae=document.activeElement,fid=ae&&ae.id,ss=ae&&ae.selectionStart;
  root.style.setProperty('--t',((performance.now()-T0)/1000).toFixed(2));
  root.innerHTML=shellHTML();
- root.querySelectorAll('[data-sc]').forEach(el=>{const s=sc[key(el)]||(BOOT&&SCROLL[key(el)]);if(s){el.scrollTop=s[0];el.scrollLeft=s[1]}});afterRender(root);
+ root.querySelectorAll('[data-sc]').forEach(el=>{const s=sc[key(el)]||(BOOT&&SCROLL[key(el)]);if(s){el.scrollTop=s[0];el.scrollLeft=s[1]}});
+ Object.values(UI.devs).forEach(d=>{if(d.toEnd){d.toEnd=false;const b=root.querySelector('.dv-'+d.id+' .pbody');if(b)b.scrollTop=b.scrollHeight}});afterRender(root);
  const want=UI.focus||fid;UI.focus=null;if(want){const el=document.getElementById(want);if(el&&el.tagName!=='SELECT'){el.focus({preventScroll:true});try{el.setSelectionRange(ss==null?99:ss,ss==null?99:ss)}catch(e){}}}}
 function boot(){const root=document.getElementById('app'),html=document.documentElement,back=restore();
  html.dataset.rv=UI.theme==='dark'?'dark':'light';html.dataset.pal=UI.pal||'emerald';html.dataset.motion=UI.motion||'';
@@ -251,7 +273,7 @@ function boot(){const root=document.getElementById('app'),html=document.document
   if(e.clientX||e.clientY)TAP={x:e.clientX,y:e.clientY};
   if(el.dataset.a==='close'&&!RM()){const ov=el.closest('.ovl');if(ov){if(ov.classList.contains('out'))return;ov.classList.add('out');TAP=null;return setTimeout(()=>run(el,fn),170)}}
   run(el,fn)});
- root.addEventListener('input',e=>{const el=e.target,dev=devOf(el);if(el.dataset.m)dev.f[el.dataset.m]=el.value;if(el.dataset.mo&&dev.ob)setPath(dev.ob,el.dataset.mo,el.value);queueSave()});
+ root.addEventListener('input',e=>{const el=e.target,dev=devOf(el);if(el.dataset.m)dev.f[el.dataset.m]=el.value;if(el.dataset.mo&&dev.ob)setPath(dev.ob,el.dataset.mo,el.value);queueSave();if(el.dataset.ri&&!e.isComposing)render()});
  root.addEventListener('change',e=>{const el=e.target,dev=devOf(el);if(el.dataset.top){UI[el.dataset.top]=/^\d+$/.test(el.value)?+el.value:el.value;if(el.dataset.top!=='user'){UI.devs.agency.stack=[{s:'home'}];UI.devs.client.stack=[{s:'home'}]}if(el.dataset.top==='agency')UI.lang.agency=agOf(el.value).lang;return render()}
   if(el.dataset.ui){dev[el.dataset.ui]=el.value;return render()}if(el.dataset.r)render()});
  root.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'){const id=e.target.id||'';const b=id.endsWith('_m_text')?'addpt':id.endsWith('_aq')?'aask':null;if(b){const btn=e.target.closest('.composer').querySelector(`[data-a="${b}"]`);if(btn){e.preventDefault();btn.click()}}}

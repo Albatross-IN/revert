@@ -36,6 +36,8 @@ class RvtDesk(models.AbstractModel):
             "dwg": "d%s" % point.drawing_id.id if point.drawing_id else None,
             "photo": point.has_photo, "due": off(point.due_date),
             "st": point.state, "closedBy": "s%s" % point.closed_by_id.id if point.closed_by_id else None,
+            "doneBy": point.closed_by_partner_id.name or None,
+            "on": off(self.env["rvt.config"].to_date(point.raised_on)) if point.raised_on else None,
             "closedOn": off(point.closed_on), "note": point.close_note or "", "cphoto": point.has_close_photo,
             "confirmed": point.client_confirmed, "sent": point.sent_count,
             "fresh": point.state == "open" and not point.sent_count and not point.legacy_activity_id,
@@ -107,7 +109,7 @@ class RvtDesk(models.AbstractModel):
         vals = {
             "project_id": _num(a.get("pid")), "visit_id": _num(a.get("vid")), "text": a.get("text") or "",
             "for_kind": kind, "entity_id": _num(a.get("e")), "drawing_id": _num(a.get("dwg")),
-            "due_date": today + timedelta(days=int(a["due"])) if a.get("due") is not None else False,
+            "due_date": today + timedelta(days=int(a["due"])) if a.get("due") not in (None, "") else False,
             "photo": a.get("photo") or False,
             # given by a phone that wrote the point without network: the same point sent twice is created once
             "client_uid": a.get("client_uid") or False,
@@ -130,6 +132,9 @@ class RvtDesk(models.AbstractModel):
 
     def _op_confirm_point(self, a):
         self._point(a.get("point")).action_confirm()
+
+    def _op_reopen_point(self, a):
+        self._point(a.get("point")).action_reopen()
 
     def _op_send_party(self, a):
         visit = self._visit(a.get("visit"))

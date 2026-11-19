@@ -4,6 +4,7 @@ from odoo.exceptions import UserError
 
 class RvtVisit(models.Model):
     _name = "rvt.visit"
+    _inherit = ["rvt.live.mixin"]
     _description = "Site visit"
     _order = "project_id, date desc, id desc"
 

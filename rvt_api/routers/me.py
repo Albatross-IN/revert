@@ -79,3 +79,8 @@ def sign_out_device(device_id: int, who: Annotated[Caller, Depends(caller)]):
     if target and target.user_id == who.user:
         target._sign_out()
     return {"ok": True}
+
+
+@router.post("/me/notifications/seen", summary="The person opened their notifications: none of them is new any more")
+def notifications_seen(who: Annotated[Caller, Depends(caller)]):
+    return {"ok": who.env["rvt.notify.log"].rvt_seen()}

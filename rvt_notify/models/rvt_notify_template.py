@@ -14,6 +14,7 @@ EVENTS = [
     ("otp", "Sign-in code"),
     ("drawing_approval_needed", "Drawing waits for approval (staff, in the app)"),
     ("drawing_question", "Question on a drawing (staff, in the app)"),
+    ("point_done", "Point marked done by the agency (staff, in the app)"),
 ]
 # events whose reader is the client: the wording rules of docs/rules.md §6.1 apply to them
 CLIENT_EVENTS = ("drawing_client", "client_item")

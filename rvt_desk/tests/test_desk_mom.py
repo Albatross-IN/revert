@@ -54,6 +54,16 @@ class TestDeskMom(MomCommon):
         self.assertEqual((rows[p2]["st"], rows[p2]["note"], rows[p2]["closedOn"], rows[p2]["cphoto"]), ("closed", "Marked on site", 0, True))
         self.assertTrue(rows[p3]["confirmed"])
         self.assertEqual(next(v for v in snap["visits"] if v["id"] == vid)["st"], "finished")
+        self.assertEqual((rows[p1]["on"], rows[p1]["doneBy"]), (0, None), "when it was raised, for the photo taken before")
+        # not right after all: the point is opened again
+        self.op("reopen_point", {"point": p2})
+        again = next(p for p in self.snap()["points"] if p["id"] == p2)
+        self.assertEqual((again["st"], again["note"], again["cphoto"]), ("open", "", False))
+        self.op("close_point", {"point": p2, "note": "Marked on site", "photo": PNG})
+        # a date chosen by hand arrives as days from today, like the quick choices
+        far = self.op("add_point", {"pid": self.project.id, "kind": "vendor", "party": "A vendor", "text": "Far date", "due": 45})["id"]
+        self.assertEqual(next(p for p in self.snap()["points"] if p["id"] == far)["due"], 45)
+        self.env["rvt.point"].browse(int(far[2:])).unlink()
         # a line waits for the client's item
         line = self.line(self.project, "Kitchen", "carp")
         self.op("set_line", {"line": "l%s" % line.id, "state": "wait", "cause": "client", "ref": p3, "note": ""})
@@ -103,7 +113,14 @@ class TestDeskMomFiles(MomCommon, HttpCase):
         self.assertIn("All parties", whole)
         self.assertIn("Add 2 points near the study", whole)
         self.assertNotIn("Add 2 points near the study", document.text, "one party's PDF holds only its points")
+        # the points of the project, cut by agency or by visit
+        by_agency = self.url_open("/rvt/desk/mom/pdf?kind=points&a=%s&b=a%s&st=all" % (self.project.id, self.ag_carp.id)).text
+        self.assertIn("Wardrobe loft depth 24 in.", by_agency)
+        self.assertNotIn("Add 2 points near the study", by_agency)
+        by_visit = self.url_open("/rvt/desk/mom/pdf?kind=points&a=%s&b=all&v=v%s" % (self.project.id, visit.id)).text
+        self.assertIn("Add 2 points near the study", by_visit)
         self.authenticate("t_outsider", "t_outsider")
+        self.assertEqual(self.url_open("/rvt/desk/mom/pdf?kind=points&a=%s&b=all" % self.project.id).status_code, 404)
         self.assertEqual(self.url_open("/rvt/desk/point/%s/photo" % point.id).status_code, 404)
         self.assertEqual(self.url_open("/rvt/desk/mom/pdf?kind=mom&a=v%s&b=all" % visit.id).status_code, 404)
         self.assertEqual(self.url_open("/rvt/desk/mom/pdf?kind=open&a=%s" % self.project.id).status_code, 404)

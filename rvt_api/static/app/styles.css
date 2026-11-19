@@ -495,6 +495,38 @@ button.c:hover:not(:disabled){transform:translateY(-3px) scale(1.06);box-shadow:
 @media (prefers-reduced-motion:reduce){:root:not([data-motion="on"]) *,:root:not([data-motion="on"]) *::before,:root:not([data-motion="on"]) *::after{animation:none!important;transition:none!important}:root:not([data-motion="on"]) .splash{display:none}
  :root:not([data-motion="on"]) :is(.plan2 .ow,.plan2 .rb,.okfx .i path,.viewer .plan *,.dlg .plan *){stroke-dashoffset:0!important;stroke-dasharray:none!important}}
 
+/* ---------- round of 19 Nov: searchable choices, typed dates, a point whole, notifications, the chat box ---------- */
+.duew{display:flex;flex-direction:column;gap:7px;min-width:0;flex:1}
+.dmy{display:flex;gap:9px;align-items:center;min-width:0}.dmy .inp{width:116px;flex:none;font-family:var(--fm);letter-spacing:.05em;padding:9px 11px}
+.cr.dt{align-items:flex-start}.cr.dt>.lbl{padding-top:8px}.cr.dt>.btn{flex:none}
+.pickrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.pickb{display:flex;align-items:center;gap:8px;min-width:0;padding:8px 10px;border-radius:14px;background:var(--solid);border:1.3px solid var(--hair);text-align:left;transition:transform .2s var(--spring),border-color .2s}
+.pickb:active{transform:scale(.97)}.pickb>span{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pickb small{font-family:var(--fl);font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);font-weight:700}
+.pickb b{font-size:13.5px;font-weight:750;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pickb>.i{width:16px;height:16px;flex:none;color:var(--pri-t)}.pickb>.i:last-child{color:var(--mute);width:14px;height:14px}
+.pickb.need{border-color:var(--g2);box-shadow:0 0 0 3px rgba(226,165,52,.22)}.pickb.need b{color:var(--brand-t)}
+.keep{display:flex;gap:5px;align-items:center;font-size:11px;color:var(--mute);margin:-3px 2px 0}.keep .i{width:11px;height:11px;flex:none}
+.fld+.pickrow,.pickrow+.fld{margin-top:12px}
+.pksearch{position:relative}.pksearch>.i{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--mute);pointer-events:none}.pksearch .inp{padding-left:36px}
+.pklist{max-height:min(46vh,430px);overflow:auto;margin-top:8px;-webkit-overflow-scrolling:touch}.pklist+.btn{margin-top:10px}
+.lkm{cursor:pointer;border-radius:10px}.rw.pt .lkm:hover .tx{color:var(--pri-t)}.rw.pt .lkm:active{opacity:.7}
+.ptx{font-size:16px;font-weight:650;line-height:1.38;white-space:pre-line;overflow-wrap:anywhere}.sh-b>.ptx{margin-bottom:9px}
+.ba{display:grid;gap:10px;margin:12px 0 4px}.ba.pair{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.ba figure{margin:0;min-width:0}
+.ba figcaption{font-family:var(--fl);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);font-weight:700;margin-bottom:5px}
+.ba img{display:block;width:100%;max-height:52vh;object-fit:contain;border-radius:12px;background:var(--well);cursor:zoom-in}.ba.pair img{aspect-ratio:1;object-fit:cover}
+.ph.full{display:block;width:100%;height:150px;margin:0;border-radius:12px}.ph.full.aft{filter:hue-rotate(95deg) saturate(1.2)}
+button.note{border:0;font:inherit;color:inherit;text-align:left;width:100%;cursor:pointer}.note.lkn>.i:last-child{margin-left:auto;flex:none;align-self:center}.note.lkn:active{transform:scale(.99)}
+.card.hot{box-shadow:0 0 0 1.5px var(--bad),var(--sh)}.card.hot>.hd h3{display:flex;gap:8px;align-items:center}.card.hot>.hd .cnt{margin-left:0;height:20px;font-size:10.5px}
+.rw.nt .tx{white-space:normal}.rw.nt.unr{background:var(--pri-s);border-radius:14px}.rw.nt.unr .t1{font-weight:750}
+.gn-menu b.q{background:var(--bad);color:#fff;margin-left:4px}.gn-bell{position:relative}.gn-bell .ndot{top:5px;right:6px}
+.qph{display:flex;gap:7px;align-items:center;align-self:flex-start;background:var(--pri-s);color:var(--pri-t);border-radius:99px;padding:5px 11px;font-size:12px;font-weight:700}.qph .i{width:13px;height:13px}
+.ctext .ib.snd{background:linear-gradient(160deg,var(--g1),var(--g2) 60%,var(--g3));color:var(--on-g);border-color:transparent;box-shadow:var(--sh-g)}
+.momc.chat{gap:8px}.momc.chat>.viewer{flex:none}.momc.chat .composer>.lbl{margin-bottom:-3px}
+.rw.lk>.r .ph{margin-left:0}
+.qb .ph.real{display:block;width:150px;height:112px;margin:7px 0 1px;border-radius:12px}.qb .ph.real::after{display:none}
+.ovl.still,.ovl.still .dlg,.ovl.still .sh-b>*{animation:none!important}
+
 
 /* ---------- the app: the preview's phone, at the size of a real screen ---------- */
 html.app,html.app body{height:100%;margin:0;overflow:hidden;background:var(--bg);overscroll-behavior:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
@@ -546,3 +578,14 @@ html.web #app{max-width:430px;margin-inline:auto}
 .pdft.web{border:0;background:none;cursor:pointer;overflow:visible}.pdft.web .paper{pointer-events:none}
 .pdft.web .zm{position:static;width:max-content;margin:10px auto 2px}
 button.docrow{width:100%;text-align:left;font:inherit;font-size:13px;color:inherit;cursor:pointer;border:0}
+/* pull down to read again: a small wheel that comes down from under the top edge */
+#ptr{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) - 34px);z-index:60;width:38px;height:38px;border-radius:99px;background:var(--solid);box-shadow:0 6px 18px rgba(13,20,38,.28);display:grid;place-items:center;opacity:0;transform:translate(-50%,0);pointer-events:none;transition:opacity .15s}
+#ptr i{width:18px;height:18px;border-radius:99px;border:2.4px solid var(--well2,#d9d4c8);border-top-color:var(--pri);display:block}
+#ptr.go i{border-top-color:var(--g2)}#ptr.on{transition:transform .2s}#ptr.on i{animation:ptrspin .7s linear infinite}
+@keyframes ptrspin{to{transform:rotate(360deg)}}
+/* a photo of a point, in its before-and-after pair */
+.ba .phv{max-height:52vh;width:100%;object-fit:contain;background:var(--well);border-radius:12px}.ba.pair .phv{aspect-ratio:1;object-fit:cover}
+/* the chat box of a drawing sits above the phone's own bottom edge */
+.app .momb .chat .dock{padding-bottom:calc(10px + var(--sab,0px))}
+/* a notice never covers the box a person is typing in */
+html.app:has(.momb .dock) #toast{bottom:calc(168px + var(--sab,0px))}

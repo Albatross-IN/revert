@@ -9,12 +9,12 @@ onboarding reads (trades, entity types with their usual trades, site
 presets, standard drawing sets); the agency mark on contacts; and the
 settings the project picture and the release flow depend on.
 """,
-    "version": "20.0.1.3.1",
+    "version": "20.0.1.4.0",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Albatross",
     "website": "https://albatross.work",
-    "depends": ["base", "base_setup", "mail"],
+    "depends": ["base", "base_setup", "mail", "bus"],
     "data": [
         "security/rvt_groups.xml",
         "security/ir.access.csv",

@@ -84,7 +84,12 @@ class RvtDeskController(http.Controller):
             return request.not_found()
         number = lambda ref: int("".join(ch for ch in str(ref) if ch.isdigit()) or 0)
         try:
-            if kind == "open":
+            if kind == "points":
+                # the points of a project: one visit or all (v), one party or all (b), open or all (st)
+                project = env["project.project"].browse(number(a)).exists()
+                name, pdf = project.rvt_points_pdf(
+                    visit_id=number(kw.get("v")) or None, party=project._rvt_party_of(b), state=kw.get("st") or "open")
+            elif kind == "open":
                 project = env["project.project"].browse(number(a)).exists()
                 project.check_access("read")
                 pdf = env["ir.actions.report"].sudo()._render_qweb_pdf("rvt_mom.action_report_open_points", project.ids)[0]
@@ -110,6 +115,24 @@ class RvtDeskController(http.Controller):
             ("Content-Type", "application/pdf"),
             ("Content-Disposition", content_disposition(name, "inline")),
             ("Cache-Control", "private, no-store"),
+        ])
+
+    @http.route(DESK_URL + "/question/<int:question_id>/photo", type="http", auth="user")
+    def desk_question_photo(self, question_id, **kw):
+        """The photo an agency sent with its question on a drawing."""
+        if not _is_staff(request.env.user):
+            return request.not_found()
+        question = request.env["rvt.drawing.question"].browse(question_id).exists()
+        try:
+            question.check_access("read")
+        except Exception:  # noqa: BLE001
+            return request.not_found()
+        if not question or not question.photo:
+            return request.not_found()
+        content = question.photo.content
+        return request.make_response(content, headers=[
+            ("Content-Type", guess_mimetype(content, default="image/jpeg")),
+            ("Cache-Control", "private, max-age=3600"),
         ])
 
     @http.route(DESK_URL + "/point/<int:point_id>/photo", type="http", auth="user")

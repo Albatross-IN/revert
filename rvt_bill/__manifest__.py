@@ -19,7 +19,7 @@ within the day limit.
 In the desk, the API and the app the bill screens are the approved ones;
 this module gives them their data and their operations.
 """,
-    "version": "20.0.1.0.0",
+    "version": "20.0.1.0.1",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Albatross",
