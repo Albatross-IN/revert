@@ -28,6 +28,9 @@ class RvtPointRows(models.AbstractModel):
             "late": bool(p.state == "open" and p.due_date and p.due_date < today),
             "new": p.state == "open" and not p.sent_count and p.for_kind != "staff" and not p.legacy_activity_id,
             "closed": p.state == "closed", "close_note": p.close_note or "",
+            # sent back by the office: the party reads what has to change
+            "change": p.change_note or "" if p.state == "open" and p.review_state == "change" else "",
+            "to_check": p.state == "open" and p.review_state == "to_check",
             "photo": _photo_uri(p.photo) if p.has_photo else False,
             # a closed point shows what it looked like before and after
             "after": _photo_uri(p.close_photo) if p.state == "closed" and p.has_close_photo else False,

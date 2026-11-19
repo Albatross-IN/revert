@@ -1,5 +1,6 @@
 /* Core: helpers, icons, store, the project picture and the operations every screen calls. */
 let BASE=Date.UTC(2026,10,18);const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONF=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const dt=o=>new Date(BASE+o*864e5);
 const fd=o=>{const d=dt(o);return d.getUTCDate()+' '+MON[d.getUTCMonth()]};
 const fdw=o=>DOW[dt(o).getUTCDay()]+' '+fd(o);
@@ -32,6 +33,7 @@ const IC={home:'<path d="m3 11 9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-
  hand:'<path d="M8 12V5a1.500 1.500 0 0 1 3 0v6M11 10V4a1.500 1.500 0 0 1 3 0v6M14 10V6a1.500 1.500 0 0 1 3 0v8a7 7 0 0 1-7 7c-3 0-4.500-1.500-6-4l-2-3.500a1.500 1.500 0 0 1 2.500-1.500L8 14"/>',
  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h0"/>',layers:'<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',tool:'<path d="M14 6a4 4 0 0 0 5 5l-9 9a2 2 0 0 1-3-3z"/><path d="M14 6l3-3 4 4-3 3"/>'};
 IC.sun='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.900 4.900l1.400 1.400M17.700 17.700l1.400 1.400M2 12h2M20 12h2M4.900 19.100l1.400-1.400M17.700 6.300l1.400-1.400"/>';IC.moon='<path d="M20 14.500A8 8 0 1 1 9.500 4a6.500 6.500 0 0 0 10.500 10.500z"/>';
+IC.chat='<path d="M4 5h16v11H10l-5 4v-4H4z"/><path d="M8 9h8M8 12.500h5"/>';IC.cal='<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>';
 const ic=(n,c)=>`<svg class="i ${c||''}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]||IC.info}</svg>`;
 
 /* ---------- store ---------- */
@@ -58,9 +60,26 @@ const cur=d=>d.revs[d.revs.length-1];
 const ptOf=id=>DB.points.find(x=>x.id===id);
 /* photos: the preview draws a placeholder; the desk and the app show the real one (they replace these two) */
 let phOf=(kind,x,after)=>`<span class="ph ${after?'aft':''}"></span>`;
+/* the photo just taken for a field, as an address the page can show; the desk and the app give the real one */
+let pickedImg=k=>'';
 let ptPhoto=(x,after)=>`<span class="ph full ${after?'aft':''}"></span>`;
 /* questions on drawings nobody has answered yet, on the projects I see */
 const openQs=()=>{const ps=myProjects().map(p=>p.id);return DB.drawings.filter(d=>ps.includes(d.pid)).reduce((n,d)=>n+d.q.filter(q=>!q.ans).length,0)};
+const myPids=()=>myProjects().map(p=>p.id);
+/* The conversations about drawings: one thread per drawing and asker (an agency, or the client). Those with a question
+   waiting come first, the longest wait on top; then the others, the latest word first. */
+function qThreads(pids){const out=[];DB.drawings.filter(d=>pids.includes(d.pid)).forEach(d=>{const by={};d.q.forEach(q=>{(by[q.by]=by[q.by]||[]).push(q)});
+  Object.keys(by).forEach(k=>{const qs=by[k],open=qs.filter(q=>!q.ans);out.push({id:d.id+'|'+k,d,by:k,qs,open:open.length,since:open.length?open[0].on:null,
+   lastOn:Math.max(...qs.map(q=>q.ansOn!=null?q.ansOn:q.on)),lastTs:Math.max(...qs.map(q=>q.ansTs||q.ts||0))})})});
+ return out.sort((a,b)=>(b.open>0)-(a.open>0)||(a.open?a.since-b.since:0)||b.lastOn-a.lastOn||b.lastTs-a.lastTs)}
+const thOf=id=>qThreads(DB.projects.map(p=>p.id)).find(t=>t.id===id);
+const thName=t=>t.by==='client'?(pOf(t.d.pid).client.n||'Client'):agN(t.by);
+/* a thread as it was said: each question, each answer, and what the office wrote in between. One answer given to
+   several questions at once shows once, after the last of them. */
+function thMsgs(t){const m=[];t.qs.forEach((q,i)=>{if(q.text||q.photo)m.push({k:'in',q,text:q.text,on:q.on,at:q.at||'',ts:q.ts||0,i});
+  if(q.ans){const same=t.qs.slice(i+1).some(x=>x.ans===q.ans&&x.ansBy===q.ansBy&&q.ansTs!=null&&x.ansTs!=null&&Math.abs(x.ansTs-q.ansTs)<=120);
+   if(!same)m.push({k:'out',q,text:q.ans,on:q.ansOn,at:q.ansAt||'',ts:q.ansTs||q.ts||0,i})}});
+ return m.sort((a,b)=>(a.ts-b.ts)||(a.i-b.i)||((a.k==='out')-(b.k==='out')))}
 /* my notifications that I have not looked at yet */
 const newNotes=()=>(DB.notes||[]).filter(n=>!n.seen).length;
 const billOf=id=>DB.bills.find(b=>b.id===id);
@@ -123,6 +142,7 @@ function picture(p){
   d.q.filter(q=>!q.ans).forEach(q=>R({sec:'question',who:[d.ds],whoN:stf(d.ds).n,text:'Answer on '+sheetNo(d)+' '+d.title,sub:'“'+q.text+'” · '+q.byName+(q.photo?' · photo':''),late:-q.on>=lim.q,act:['dwg',d.id,'Answer']}))});
  p.plan.filter(x=>!x.ag).forEach(x=>R({sec:'decide',who:p.coords,whoN:p.coords.map(s=>stf(s).n)[0]||'Coordinator',text:'Decide the '+TX[x.t].n.toLowerCase()+' agency',sub:x.by!=null?'decide by '+fd(x.by)+' · holds '+plural(L.filter(l=>l.t===x.t).length,'line'):'',late:x.by!=null&&x.by<0,act:['assign',p.id+'|'+x.t,'Assign']}));
  bills.filter(b=>b.st==='submitted').forEach(b=>R({sec:'bill',who:office,whoN:'Office',text:'Review the bill from '+agN(b.ag),sub:b.what+' · submitted '+fd(b.subOn),late:-b.subOn>=lim.bill,act:['bill',b.id,'Review']}));
+ pts.filter(x=>x.st==='open'&&x.rev==='check').forEach(x=>R({sec:'check',who:[...new Set([x.by,...p.coords])],whoN:'Office',text:'Check point '+x.n+': '+partyName(p,x)+' marked it done',sub:x.text,act:['ptview',x.id,'Check']}));
  pts.filter(x=>x.kind==='client'&&x.st==='open'&&!x.confirmed).forEach(x=>R({sec:'confirm',who:office,whoN:'Office',text:'Confirm client point '+x.n+' before the client sees it',sub:x.text,act:['confirmpt',x.id,'Confirm']}));
  pts.filter(x=>x.kind==='staff'&&x.st==='open').forEach(x=>R({sec:'point',who:[x.party],whoN:stf(x.party).n,text:x.text,sub:'point '+x.n+' · by '+dueW(x.due),late:x.due<0,act:['closept',x.id,'Close']}));
  rel.forEach(d=>cur(d).rc.filter(r=>r.to!=='client'&&r.opened==null&&-r.sent>=lim.open).forEach(r=>R({sec:'chase',who:p.coords,whoN:p.coords.map(s=>stf(s).n)[0]||'Coordinator',text:'Chase '+agN(r.to)+' to open '+sheetNo(d),sub:'released '+days(-r.sent)+' ago, not opened',late:true,act:['remind',r.to+'|'+p.id+'|Please open '+sheetNo(d)+' '+d.title+'.','Remind']})));
@@ -147,8 +167,8 @@ function todayFor(u){const out=[];DB.projects.filter(p=>p.onb&&canSee(u,p)).forE
   pic.next.revert.forEach(n=>{if(n.who.includes(u.id)||(n.whoN==='Office'&&has(u,'owner')))out.push(Object.assign({p},n))});
   if(p.coords.includes(u.id))pic.next.client.filter(n=>n.late).forEach(n=>out.push({p,pid:p.id,sec:'client',text:'Chase '+p.client.n+': '+n.text,sub:n.sub,late:true,act:['remind','client|'+p.id+'|'+n.rem,'Remind']}))});
  return out}
-const SECC={approve:'brz',draw:'work',change:'wait',release:'ok',question:'work',decide:'bad',confirm:'wait',bill:'brz',chase:'ok',client:'work',point:'brz'};
-const SECS=[['approve','To approve','check'],['draw','To draw','dwg'],['change','Change asked','edit'],['release','To release','send'],['question','Questions','info'],['decide','Agencies to decide','users'],['confirm','Client points to confirm','eye'],['bill','Bills to review','bill'],['chase','To chase','wa'],['client','Waiting on a client','user'],['point','My open points','mom']];
+const SECC={approve:'brz',draw:'work',change:'wait',release:'ok',question:'work',decide:'bad',confirm:'wait',check:'brz',bill:'brz',chase:'ok',client:'work',point:'brz'};
+const SECS=[['approve','To approve','check'],['draw','To draw','dwg'],['change','Change asked','edit'],['release','To release','send'],['question','Questions','info'],['decide','Agencies to decide','users'],['confirm','Client points to confirm','eye'],['check','Points to check','cam'],['bill','Bills to review','bill'],['chase','To chase','wa'],['client','Waiting on a client','user'],['point','My open points','mom']];
 
 /* ---------- messages (rvt.notify): only this function sends ---------- */
 const TPL={
@@ -193,15 +213,22 @@ const OP={
  clientDecide(d,dec,note,name){const p=pOf(d.pid),r=cur(d);r.client={dec,by:name,on:0,at:NOW,note:note||''};
   if(dec==='approved')p.lines.filter(l=>l.st==='wait'&&l.cause==='client'&&l.ref===d.id).forEach(l=>OP.setLine(p,l,'ns'));
   else{d.revs.push({n:r.n+1,st:'draft',note:'Change asked by the client: '+note,rc:[]});d.st='in_progress';d.due=Math.max(d.due,3)}},
- ask(d,by,byName,text,photo,via){d.q.push({id:'q'+(++DB.seq.q),by,byName,via:via||'app',text,photo:!!photo,on:0,ans:null})},
- answer(d,qid,text){const q=d.q.find(x=>x.id===qid);q.ans=text;q.ansBy=UI.user;q.ansOn=0},
+ ask(d,by,byName,text,photo,via){d.q.push({id:'q'+(++DB.seq.q),by,byName,via:via||'app',text,photo:!!photo,on:0,at:NOW,ts:Math.floor(Date.now()/1000),ans:null})},
+ answer(d,qid,text){const q=d.q.find(x=>x.id===qid);q.ans=text;q.ansBy=UI.user;q.ansOn=0;q.ansAt=NOW;q.ansTs=Math.floor(Date.now()/1000)},
+ /* a line from the office in the thread with one party, when no question of theirs is waiting */
+ say(d,by,text){const ts=Math.floor(Date.now()/1000);d.q.push({id:'q'+(++DB.seq.q),by,byName:by==='client'?pOf(d.pid).client.n:agN(by),via:'revert',text:'',photo:false,on:0,at:NOW,ts,ans:text,ansBy:UI.user,ansOn:0,ansAt:NOW,ansTs:ts})},
  addPoint(o){const p=pOf(o.pid),n=Math.max(0,...DB.points.filter(x=>x.pid===p.id).map(x=>x.n))+1;
   const x=Object.assign({id:'pt'+(++DB.seq.ptid),n,vid:null,t:null,e:null,dwg:null,photo:false,st:'open',closedBy:null,closedOn:null,note:'',sent:0,fresh:true,by:UI.user,pending:false,on:0,doneBy:null,cphoto:false},o);
   x.confirmed=x.kind!=='client'||!DB.set.clientConfirm;if(x.kind==='agency'&&!x.t){const pl=p.plan.find(q=>q.ag===x.party);x.t=pl?pl.t:null}DB.points.push(x);return x},
- closePoint(x,note,photo,by){Object.assign(x,{st:'closed',closedBy:by||UI.user,closedOn:0,note:note||'',cphoto:!!photo})},
- reopenPoint(x){Object.assign(x,{st:'open',closedBy:null,closedOn:null,note:'',cphoto:false,doneBy:null})},
- /* the agency marks its own point done, with a photo of the finished work; the office can open it again */
- agencyDone(x,note,photo,name){Object.assign(x,{st:'closed',closedBy:null,closedOn:0,note:note||'',cphoto:!!photo,doneBy:name||''})},
+ /* closed by the office itself. A point the agency marked done keeps the agency's note and photo unless the office gives its own. */
+ closePoint(x,note,photo,by){const chk=x.rev==='check';Object.assign(x,{st:'closed',closedBy:by||UI.user,closedOn:0,note:note||(chk?x.note:''),cphoto:!!photo||(chk&&x.cphoto),doneBy:chk?x.doneBy:null,rev:null})},
+ reopenPoint(x){Object.assign(x,{st:'open',closedBy:null,closedOn:null,note:'',cphoto:false,doneBy:null,rev:null,doneOn:null})},
+ /* The agency marks its own point done, with a photo of the finished work. That does not close it: the office looks at
+    the photo beside the one taken when the point was raised, and either confirms it (solvePoint) or asks for a change
+    with a note (changePoint); the agency then does it and marks the point done again with a new photo. */
+ agencyDone(x,note,photo,name){Object.assign(x,{rev:'check',doneOn:0,note:note||'',cphoto:!!photo,doneBy:name||''})},
+ solvePoint(x){Object.assign(x,{st:'closed',closedBy:UI.user,closedOn:0,rev:null})},
+ changePoint(x,note){Object.assign(x,{st:'open',closedBy:null,closedOn:null,rev:'change',chg:note,chgBy:UI.user,chgOn:0,chgN:(x.chgN||0)+1})},
  confirmPoint(x){const p=pOf(x.pid);x.confirmed=true;x.sent=1;x.fresh=false;notify('client_item','client:'+p.id,{site:p.name,text:x.text,date:fd(x.due)})},
  sendParty(v,key){const p=pOf(v.pid),ps=DB.points.filter(x=>x.vid===v.id&&partyKey(x)===key&&x.st==='open');if(!ps.length)return 0;
   const fresh=ps.filter(x=>x.fresh).length;ps.forEach(x=>{x.sent++;x.fresh=false});
@@ -233,6 +260,8 @@ const STR={
  c_approve:{en:'Approve',gu:'મંજૂર કરો',hi:'मंज़ूर करें'},c_change:{en:'Ask for a change',gu:'ફેરફાર માટે કહો',hi:'बदलाव के लिए कहें'},c_approved:{en:'Approved by you',gu:'તમે મંજૂર કર્યું',hi:'आपने मंज़ूर किया'},c_note:{en:'What would you like changed?',gu:'શું ફેરફાર કરવો છે?',hi:'क्या बदलना चाहेंगे?'},
  before:{en:'Before',gu:'પહેલાં',hi:'पहले'},after:{en:'After',gu:'પછી',hi:'बाद में'},pt_photo:{en:'Photo',gu:'ફોટો',hi:'फ़ोटो'},pt_done:{en:'Mark as done',gu:'કામ પૂરું થયું',hi:'काम पूरा हुआ'},
  pt_proof:{en:'Add a photo of the finished work',gu:'પૂરા થયેલા કામનો ફોટો ઉમેરો',hi:'पूरे हुए काम की फ़ोटो जोड़ें'},pt_note:{en:'Note (optional)',gu:'નોંધ (જરૂરી નથી)',hi:'नोट (ज़रूरी नहीं)'},
+ pt_chg:{en:'Revert asks for a change',gu:'Revert એ ફેરફાર માંગ્યો છે',hi:'Revert ने बदलाव माँगा है'},pt_wait:{en:'Sent to Revert. They will check the photo.',gu:'Revert ને મોકલાયું. તેઓ ફોટો તપાસશે.',hi:'Revert को भेजा गया। वे फ़ोटो जाँचेंगे।'},
+ pt_waitl:{en:'Waiting for Revert to check',gu:'Revert ની તપાસ બાકી',hi:'Revert की जाँच बाकी'},pt_again:{en:'Mark as done again',gu:'ફરી પૂર્ણ તરીકે નોંધો',hi:'फिर से पूरा दर्ज करें'},pt_sentp:{en:'sent',gu:'મોકલાયું',hi:'भेजा गया'},
  pt_sent:{en:'Marked done. Revert will have a look.',gu:'પૂર્ણ તરીકે નોંધાયું. Revert જોઈ લેશે.',hi:'पूरा दर्ज हुआ। Revert देख लेगा।'},pt_closed:{en:'Done recently',gu:'હાલમાં પૂરા થયેલા',hi:'हाल में पूरे हुए'},
  pt_room:{en:'Room',gu:'રૂમ',hi:'कमरा'},pt_site:{en:'Whole site',gu:'આખી સાઇટ',hi:'पूरी साइट'},pt_from:{en:'From Revert',gu:'Revert તરફથી',hi:'Revert की ओर से'},pt_no:{en:'Point',gu:'મુદ્દો',hi:'बिंदु'},
  q_photo:{en:'Photo attached',gu:'ફોટો જોડાયો',hi:'फ़ोटो जुड़ी'},q_hint:{en:'Type here, or send a photo',gu:'અહીં લખો, અથવા ફોટો મોકલો',hi:'यहाँ लिखें, या फ़ोटो भेजें'},q_only:{en:'Photo',gu:'ફોટો',hi:'फ़ोटो'},

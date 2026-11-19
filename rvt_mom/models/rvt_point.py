@@ -3,6 +3,8 @@ from odoo.exceptions import UserError, ValidationError
 
 FOR_KINDS = [("agency", "An agency"), ("client", "The client"), ("vendor", "A vendor"), ("staff", "Revert staff")]
 POINT_LOCK = 7482001    # the first key of the advisory lock that serialises numbering within a project
+# an agency marks its point done with a photo: the point stays open until the office has looked at it
+REVIEW = [("to_check", "Done, to be checked"), ("change", "Change asked")]
 
 
 class RvtPoint(models.Model):
@@ -38,6 +40,15 @@ class RvtPoint(models.Model):
         "res.partner", string="Marked done by", ondelete="set null",
         help="The agency's person who marked the point done from the app.")
     closed_on = fields.Date()
+    review_state = fields.Selection(
+        REVIEW, string="Check", index=True, copy=False,
+        help="The agency marked the point done with a photo and the office has not confirmed it yet, "
+             "or the office looked and asked for a change. Empty in every other case.")
+    done_on = fields.Date(string="Marked done on", copy=False, help="The day the agency marked the point done.")
+    change_note = fields.Text(string="Change asked", copy=False, help="What the office asked to be changed, the last time.")
+    change_by_id = fields.Many2one("res.users", string="Change asked by", copy=False)
+    change_on = fields.Date(string="Change asked on", copy=False)
+    change_count = fields.Integer(string="Times sent back", copy=False)
     close_note = fields.Text(string="Closing note")
     close_photo = fields.Binary(attachment=True)
     has_close_photo = fields.Boolean(compute="_compute_has_photo", store=True)
@@ -179,11 +190,19 @@ class RvtPoint(models.Model):
         """A point stays open until it is closed with a note or a photo."""
         self._rvt_staff()
         today = self.env["rvt.config"].today()
+        note = (note or "").strip()
         for point in self.sudo().filtered(lambda p: p.state == "open"):
-            point.write({
-                "state": "closed", "closed_by_id": self.env.uid, "closed_on": today,
-                "close_note": (note or "").strip() or False, "close_photo": photo or False,
-            })
+            vals = {"state": "closed", "closed_by_id": self.env.uid, "closed_on": today, "review_state": False}
+            if point.review_state == "to_check":
+                # the agency's own note and photo of the finished work stay, unless the office gives its own
+                if note:
+                    vals["close_note"] = note
+                if photo:
+                    vals["close_photo"] = photo
+            else:
+                vals.update({"close_note": note or False, "close_photo": photo or False,
+                             "closed_by_partner_id": False, "done_on": False})
+            point.write(vals)
             point._rvt_after_close()
         return True
 
@@ -198,32 +217,73 @@ class RvtPoint(models.Model):
         self._rvt_staff()
         self.sudo().filtered(lambda p: p.state == "closed").write({
             "state": "open", "closed_by_id": False, "closed_by_partner_id": False, "closed_on": False,
-            "close_note": False, "close_photo": False})
+            "close_note": False, "close_photo": False, "review_state": False, "done_on": False})
         return True
 
     def rvt_agency_done(self, note=None, photo=None, person=None):
         """The agency marks its own point done from the app, with a photo of the finished work.
-        The point closes; the office is told and can open it again if the work is not right."""
+        The point is not closed by that: it waits for the office, which looks at the photo beside the one
+        taken when the point was raised and either confirms it (action_solved) or asks for a change
+        (action_ask_change). The office is told."""
         self.ensure_one()
         self.check_access("read")
         point = self.sudo()
         person = person or self.env.user.partner_id
         if point.for_kind != "agency" or point.partner_id != person.commercial_partner_id:
             raise UserError(self.env._("This point is not yours."))
-        if point.state != "open":
+        if point.state != "open" or point.review_state == "to_check":
             return True
         if not photo:
             raise UserError(self.env._("Add a photo of the finished work."))
         point.write({
-            "state": "closed", "closed_on": self.env["rvt.config"].today(), "closed_by_partner_id": person.id,
+            "review_state": "to_check", "done_on": self.env["rvt.config"].today(), "closed_by_partner_id": person.id,
             "close_note": (note or "").strip() or False, "close_photo": photo})
-        point._rvt_after_close()
         project = point.project_id
-        staff = point.raised_by_id | project.rvt_coordinator_ids
+        staff = point.raised_by_id | project.rvt_coordinator_ids | point.change_by_id
         staff = staff.filtered(lambda u: u.active and not u.share)
         if staff:
             self.env["rvt.notify"].send("point_done", point, staff, agency=point.partner_id.name, person=person.name)
         return True
+
+    def action_solved(self):
+        """The office looked at the photo of the finished work and the point is solved: it closes.
+        The agency's note and photo stay on it, with who confirmed it and when."""
+        self._rvt_staff()
+        today = self.env["rvt.config"].today()
+        for point in self.sudo().filtered(lambda p: p.state == "open" and p.review_state == "to_check"):
+            point.write({"state": "closed", "closed_by_id": self.env.uid, "closed_on": today, "review_state": False})
+            point._rvt_after_close()
+        return True
+
+    def action_ask_change(self, note):
+        """The office looked and the work is not right yet: the point goes back to the agency with what
+        has to change. The agency is told, does it, and marks the point done again with a new photo.
+        Also for a point that was closed already, when the work turns out not to be right after all."""
+        self.ensure_one()
+        self._rvt_staff()
+        note = (note or "").strip()
+        if not note:
+            raise UserError(self.env._("Say what has to change."))
+        point = self.sudo()
+        if point.for_kind != "agency" or not point.closed_by_partner_id or (
+                point.state == "open" and point.review_state != "to_check"):
+            raise UserError(self.env._("This point is not waiting to be checked."))
+        point.write({
+            "state": "open", "closed_by_id": False, "closed_on": False,
+            "review_state": "change", "change_note": note, "change_by_id": self.env.uid,
+            "change_on": self.env["rvt.config"].today(), "change_count": point.change_count + 1})
+        people = point._rvt_party_people()
+        if people:
+            self.env["rvt.notify"].send("point_change", point, people, note=note)
+        return True
+
+    def _rvt_party_people(self):
+        """The agency's people who hear about this point: its contacts on the project's trade plan
+        and the person who marked it done; the firm itself when there is nobody else."""
+        self.ensure_one()
+        partner = self.partner_id
+        plans = self.project_id.sudo().rvt_trade_plan_ids.filtered(lambda p: p.agency_id == partner)
+        return (plans.contact_ids | self.closed_by_partner_id) or partner
 
     def action_confirm(self):
         """The office confirms a client point: the client sees it from now on and is told."""

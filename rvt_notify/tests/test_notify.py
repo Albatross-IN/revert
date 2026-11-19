@@ -173,6 +173,21 @@ class TestNotify(MomCommon):
                                     "Have a look at the photo." % point.number)
         self.assertFalse(self.sent, "staff get no WhatsApp message")
 
+    def test_the_agency_is_told_what_has_to_change(self):
+        self.go_live()
+        point = self.add("Fix the wardrobe shutter gap", partner=self.ag_carp, photo=PNG)
+        point.with_user(self.agency_user).rvt_agency_done("Aligned", PNG)
+        point.with_user(self.coordinator).action_ask_change("The gap is still 4 mm at the top")
+        rows = self.logs("point_change")
+        self.assertEqual(rows.mapped("partner_id"), self.carp_person | self.agency_user.partner_id,
+                         "the agency's contact on the project and the person who marked it done")
+        contact = rows.filtered(lambda r: r.partner_id == self.carp_person)
+        self.assertEqual((contact.state, contact.lang), ("sent", "gu"), "on WhatsApp, in the agency's language")
+        self.assertIn("મુદ્દો %s “Fix the wardrobe shutter gap” માં ફેરફાર જોઈએ છે: The gap is still 4 mm at the top." % point.number, contact.text)
+        self.assertEqual([s[1] for s in self.sent if "The gap is still 4 mm at the top" in s[2]], ["+919824418830"])
+        note = self.env["rvt.notify.log"].with_user(self.agency_user).rvt_mine()[0]
+        self.assertEqual((note["ev"], note["ref"]), ("point_change", ["point", "pt%s" % point.id]), "and a tap on it opens the point")
+
     def test_a_persons_own_notifications(self):
         self.go_live()
         point = self.add("Fix the wardrobe shutter gap", partner=self.ag_carp, photo=PNG)

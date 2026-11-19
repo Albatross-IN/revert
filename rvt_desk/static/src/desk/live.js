@@ -59,6 +59,7 @@ wrapOP('sendBack',(r,d,note)=>sync('send_back',{drawing:d.id,note:note||''}));
 wrapOP('release',(r,d,to)=>sync('release',{drawing:d.id,to}));
 wrapOP('answer',(r,d,qid,text)=>sync('answer',{question:qid,text}));
 wrapOP('ask',(r,d,by,byName,text,photo,via)=>sync('ask',{drawing:d.id,by,name:byName||'',text},d.q[d.q.length-1].id));
+wrapOP('say',(r,d,by,text)=>sync('say',{drawing:d.id,to:by,text},d.q[d.q.length-1].id));
 
 /* points and MOM */
 const takeImg=(...keys)=>{for(const k of keys){const g=LIVE.img[k];if(g){delete LIVE.img[k];return g.b64}}return ''};
@@ -66,6 +67,9 @@ wrapOP('addPoint',(x,o)=>sync('add_point',{pid:o.pid,vid:o.vid||'',kind:o.kind,p
 wrapOP('closePoint',(r,x,note,photo)=>sync('close_point',{point:x.id,note:note||'',photo:photo?takeImg('cp_photo'):''}));
 wrapOP('confirmPoint',(r,x)=>sync('confirm_point',{point:x.id}));
 wrapOP('reopenPoint',(r,x)=>sync('reopen_point',{point:x.id}));
+/* the check of a point an agency marked done */
+wrapOP('solvePoint',(r,x)=>sync('solve_point',{point:x.id}));
+wrapOP('changePoint',(r,x,note)=>sync('change_point',{point:x.id,note:note||''}));
 wrapOP('seenNotes',()=>sync('seen_notes',{}));
 wrapOP('sendParty',(n,v,key)=>{if(n)sync('send_party',{visit:v.id,key})});
 
@@ -114,8 +118,11 @@ const startmom0=A.startmom;A.startmom=function(v,el,dev){const had=new Set(DB.vi
 wrapA('finishvisit',v=>sync('finish_visit',{visit:v}));
 const FILE_TOGS={m_photo:'image/*',rp_photo:'image/*',cp_photo:'image/*',ub_doc:'image/*,application/pdf',py_proof:'image/*,application/pdf'};
 const tog0=A.tog;A.tog=function(v,el,dev){const accept=FILE_TOGS[v];if(!accept)return tog0.call(A,v,el,dev);
- if(dev.f[v]&&LIVE.img[v]){dev.f[v]=false;delete LIVE.img[v];return}
- dev.f[v]=false;pickFile(accept,12e6,'That file is larger than 12 MB.',(file,b64)=>{LIVE.img[v]={b64,name:file.name};dev.f[v]=true;render()})};
+ if(dev.f[v]&&LIVE.img[v]){dev.f[v]=false;dropImg(v);return}
+ dev.f[v]=false;pickFile(accept,12e6,'That file is larger than 12 MB.',(file,b64)=>{dropImg(v);LIVE.img[v]={b64,name:file.name,url:/^image\//.test(file.type)?URL.createObjectURL(file):''};dev.f[v]=true;render()})};
+/* the photo just chosen shows on its button, from the file itself */
+const dropImg=k=>{const g=LIVE.img[k];if(g&&g.url)try{URL.revokeObjectURL(g.url)}catch(e){}delete LIVE.img[k]};
+pickedImg=function(k){const g=LIVE.img[k];return g&&g.url?g.url:''};
 wrapA('billto',v=>{const [id,to]=v.split('|');sync('bill_to',{bill:id,to})});
 /* a bill's document is the file that was uploaded, or nothing: never a made-up file name */
 const bill0=SHEETS.bill;SHEETS.bill=function(dev,s){const o=bill0(dev,s),b=billOf(s.id),id=String(b.id).replace(/\D/g,'');

@@ -11,7 +11,7 @@ uses, and runs with the signed-in person's own rights, so an agency can
 never read another agency's points, drawings or lines, and a client gets
 only the drawings marked for the client and its own items.
 """,
-    "version": "20.0.1.3.2",
+    "version": "20.0.1.4.0",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Albatross",

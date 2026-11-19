@@ -118,7 +118,7 @@ class RvtNotify(models.AbstractModel):
             out.update({"sheet": drawing.sheet_no, "title": drawing.name, "rev": drawing.current_revision_id.number})
             if record._name == "rvt.drawing.question":
                 out["text"] = record.sudo().text
-        elif event == "point_done" and record:
+        elif event in ("point_done", "point_change") and record:
             point = record.sudo()
             out.update({"no": point.number, "text": point.text})
         return out

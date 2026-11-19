@@ -35,20 +35,34 @@ const A={
  go(v,el,dev){const [s,id]=v.split('|');dev.stack.push({s,id:id&&/^\d+$/.test(id)?+id:id});if(s==='point'){dev.f.ad_note='';dev.f.ad_photo=false}if(s==='bill'&&dev.id==='agency'){const b=billOf(id);dev.f.ab_no='';dev.f.ab_amt='';dev.f.ab_doc=false}},
  ui(v,el,dev){const i=v.indexOf('='),k=v.slice(0,i),val=v.slice(i+1);if(k==='vid'&&dev.phone&&val){dev.stack.push({s:'visit',id:val});return}dev[k]=val},
  set(v,el,dev){const i=v.indexOf('='),k=v.slice(0,i);dev.f[k]=v.slice(i+1);if((k+'_c') in dev.f)dev.f[k+'_c']=false;if(k==='c_cause'){dev.f.c_ref='';dev.f.c_note=''}},tog(v,el,dev){dev.f[v]=!dev.f[v]},close(v,el,dev){dev.sheet=(dev.sheet&&dev.sheet.back)||null},
- /* a date typed by hand, as day month year */
- duec(v,el,dev){dev.f[v+'_c']=!dev.f[v+'_c'];if(dev.f[v+'_c'])UI.focus=dev.id+'_'+v+'_t'},
+ /* the calendar: for a date of the form (f|key) or for a date the screen is looked up by (ui|key|project).
+    It opens on the month of the date already chosen; the sheet it was opened from comes back. */
+ cal(v,el,dev){const [mode,key,pid]=v.split('|'),s={mode,key,pid:+pid||0,mo:0,back:dev.sheet&&dev.sheet.k!=='cal'?dev.sheet:null},now=calVal(dev,s);dev.f.cal_t='';if(now!=null)s.mo=calMonth(now);openSheet(dev,'cal',s);if(!dev.phone)UI.focus=dev.id+'_cal_t'},
+ calmo(v,el,dev){const s=dev.sheet;if(s&&s.k==='cal'){s.mo=(s.mo||0)+(+v);s.seen=dev.f.cal_t||''}},
+ calset(v,el,dev){const s=dev.sheet;if(!s||s.k!=='cal'||isNaN(+v))return;if(s.mode==='f'){dev.f[s.key+'_c']=true;dev.f[s.key+'_t']=fdmy(+v)}else dev[s.key]=String(+v);dev.f.cal_t='';dev.sheet=s.back||null},
+ calclear(v,el,dev){const s=dev.sheet;if(!s||s.k!=='cal')return;dev[s.key]='';dev.f.cal_t='';dev.sheet=s.back||null},
  /* the searchable choice: who a point is for, which room; the sheet it was opened from comes back */
  pick(v,el,dev){const [src,key,pid,vendor]=v.split('|'),back=dev.sheet&&dev.sheet.k!=='pick'?dev.sheet:null;dev.f.pk_q='';openSheet(dev,'pick',{src,key,pid:+pid,vendor:vendor||'',back})},
  pickset(v,el,dev){const s=dev.sheet;if(!s)return;dev.f[s.key]=v;dev.f.pk_q='';dev.sheet=s.back||null},
  /* a point, whole */
  ptview(v,el,dev){if(dev.id==='agency'||dev.id==='client'||!ptOf(v))return;openSheet(dev,'ptview',{id:v})},
  reopenpt(v,el,dev){const x=ptOf(v);if(!x)return;OP.reopenPoint(x);dev.sheet=null;toast(`Point ${x.n} is open again.`)},
+ /* the check of a point an agency marked done: solved, or back to the agency with what has to change */
+ solvept(v,el,dev){const x=ptOf(v);if(!x)return;const p=pOf(x.pid);OP.solvePoint(x);dev.sheet=null;flash(dev,'Solved');toast(`Point ${x.n} is solved and closed.`);
+  const l=x.e&&x.t&&p.lines.find(q=>q.e===x.e&&q.t===x.t);if(l&&l.st!=='done'&&!DB.points.some(q=>q.pid===p.id&&q.st==='open'&&q.e===x.e&&q.t===x.t))openSheet(dev,'offerdone',{pid:p.id,lid:l.id})},
+ ptchange(v,el,dev){if(!ptOf(v))return;dev.f.pc_note='';openSheet(dev,'ptchange',{id:v,back:dev.sheet&&dev.sheet.k==='ptview'?dev.sheet:null});if(!dev.phone)UI.focus=dev.id+'_pc_note'},
+ dochange(v,el,dev){const x=ptOf(v),t=(dev.f.pc_note||'').trim();if(!x)return;if(!t)return toast('Say what has to change.','wait');OP.changePoint(x,t);dev.f.pc_note='';dev.sheet=null;flash(dev,'Sent back','send');toast(`Point ${x.n} is back with ${partyName(pOf(x.pid),x)} · ${sent()}.`)},
+ /* questions: open a thread, and write in it. An answer goes to every question of the thread that waits; with none waiting it is a line of its own. */
+ thread(v,el,dev){dev.qt=v;dev.sheet=null;dev.toEnd=true;if(dev.phone){if(!(top(dev).s==='qchat'&&top(dev).id===v))dev.stack.push({s:'qchat',id:v})}else{const t=thOf(v);if(dev.sec!=='questions'&&t&&!t.open)dev.qf='all';dev.sec='questions'}},
+ thsend(v,el,dev){const t=thOf(v);if(!t)return;const k=thKey(v),text=(dev.f[k]||'').trim(),open=t.qs.filter(q=>!q.ans),nm=thName(t);if(!text)return toast(open.length?'Type the answer first.':'Type the message first.','wait');
+  if(open.length){const ts=Math.floor(Date.now()/1000);open.forEach(q=>{OP.answer(t.d,q.id,text);q.ansTs=ts})}else OP.say(t.d,t.by,text);dev.f[k]='';dev.toEnd=true;UI.focus=dev.id+'_'+k;toast(`${open.length?'Answered':'Sent'}. ${nm} sees it in the app.`)},
  agdone(v,el,dev){const x=ptOf(v),a=agOf(UI.agency),L=UI.lang.agency;if(!x)return;if(!dev.f.ad_photo)return toast(tr('pt_proof',L),'wait');
   OP.agencyDone(x,(dev.f.ad_note||'').trim(),true,a.people[0].n);dev.f.ad_note='';dev.f.ad_photo=false;if(dev.stack.length>1)dev.stack.pop();flash(dev,'✓');pushStaff(a.n+' marked point '+x.n+' done',[x.by,...pOf(x.pid).coords]);toast(tr('pt_sent',L))},
  /* notifications */
  notes(v,el,dev){const fresh=(DB.notes||[]).filter(n=>!n.seen).map(n=>n.id);openSheet(dev,'notes',{fresh});if(fresh.length)OP.seenNotes()},
  noteopen(v,el,dev){const n=(DB.notes||[]).find(x=>String(x.id)===String(v)),r=n&&n.ref;if(!r)return;const [k,id]=r;dev.sheet=null;
-  if(k==='dwg'&&dOf(id))return openDwg(dev,id);if(k==='point'&&ptOf(id))return openSheet(dev,'ptview',{id});if(k==='bill'&&billOf(id))return A.bill(id,el,dev);if(k==='visit'&&visOf(id))return A.openvisit(id,el,dev);if(k==='proj'&&pOf(id))return openProj(dev,id,'picture');
+  if(k==='dwg'&&n.ev==='drawing_question'&&dOf(id)){const th=qThreads(myPids()).find(x=>x.d.id===id&&x.open)||qThreads(myPids()).find(x=>x.d.id===id);if(th)return A.thread(th.id,el,dev)}
+  if(k==='dwg'&&dOf(id))return openDwg(dev,id);if(k==='point'&&ptOf(id))return dev.id==='agency'?A.go('point|'+id,el,dev):openSheet(dev,'ptview',{id});if(k==='bill'&&billOf(id))return A.bill(id,el,dev);if(k==='visit'&&visOf(id))return A.openvisit(id,el,dev);if(k==='proj'&&pOf(id))return openProj(dev,id,'picture');
   toast('That is not on your screens any more.','wait')},
  /* the MOM as a PDF, cut by visit and by party */
  mompdf(v,el,dev){Object.assign(dev.f,{pf_v:'',pf_p:'',pf_st:'open'});openSheet(dev,'mompdf',{id:+v})},
@@ -278,7 +292,9 @@ function boot(){const root=document.getElementById('app'),html=document.document
  root.addEventListener('input',e=>{const el=e.target,dev=devOf(el);if(el.dataset.m)dev.f[el.dataset.m]=el.value;if(el.dataset.mo&&dev.ob)setPath(dev.ob,el.dataset.mo,el.value);queueSave();if(el.dataset.ri&&!e.isComposing)render()});
  root.addEventListener('change',e=>{const el=e.target,dev=devOf(el);if(el.dataset.top){UI[el.dataset.top]=/^\d+$/.test(el.value)?+el.value:el.value;if(el.dataset.top!=='user'){UI.devs.agency.stack=[{s:'home'}];UI.devs.client.stack=[{s:'home'}]}if(el.dataset.top==='agency')UI.lang.agency=agOf(el.value).lang;return render()}
   if(el.dataset.ui){dev[el.dataset.ui]=el.value;return render()}if(el.dataset.r)render()});
- root.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'){const id=e.target.id||'';const b=id.endsWith('_m_text')?'addpt':id.endsWith('_aq')?'aask':null;if(b){const btn=e.target.closest('.composer').querySelector(`[data-a="${b}"]`);if(btn){e.preventDefault();btn.click()}}}
+ root.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'){const id=e.target.id||'';const b=id.endsWith('_m_text')?'addpt':id.endsWith('_aq')?'aask':/_th_/.test(id)?'thsend':null;if(b){const box=e.target.closest('.composer,.qa'),btn=box&&box.querySelector(`[data-a="${b}"]`);if(btn){e.preventDefault();btn.click()}}
+   /* Enter on a date typed in the calendar uses it; Enter on what has to change sends it back */
+   const own=id.endsWith('_cal_t')?'.calw .use':id.endsWith('_pc_note')?'.ovl [data-a="dochange"]':null,ob=own&&e.target.closest('.dlg')&&e.target.closest('.dlg').querySelector(own);if(ob){e.preventDefault();ob.click()}}
   if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('g[data-a]')){e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true}))}});
  /* a phone's bar turns to glass once its page is scrolled; on the desk a soft light follows the pointer across a card */
  root.addEventListener('scroll',e=>{const t=e.target;if(t.classList&&t.classList.contains('pbody')){const s=t.closest('.pscr');if(s)s.classList.toggle('scrolled',t.scrollTop>6)}queueSave()},true);

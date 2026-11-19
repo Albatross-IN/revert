@@ -15,7 +15,7 @@ with Revert Architects. In Gujarati, Hindi or English.
   Revert sees that you opened it.
 - **A doubt?** Open the drawing, type your question, add a photo from site, tap Send.
 - **Your points**: what Revert noted for you on a site visit, with the date. Tap a point to see it whole, with its photo.
-- **Work finished?** Open the point, take a photo of the finished work, tap **Mark as done**. Revert sees the photo beside the first one.
+- **Work finished?** Open the point, take a photo of the finished work, tap **Mark as done**. Revert checks the photo beside the first one. If Revert asks for a change, the point comes back in red with what to change: do it, take a new photo, mark it done again.
 
 ## Bills
 - You upload a bill only when Revert asks. The request shows on Home under "Revert asks".

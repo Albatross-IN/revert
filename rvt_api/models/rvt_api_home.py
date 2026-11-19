@@ -47,10 +47,12 @@ class RvtApi(models.AbstractModel):
                 "sheet": d.sheet_no, "title": d.name, "t": d.sudo().trade_id.code or "",
                 "rev": rev.number, "rev_id": rev.id, "released": iso(local(rev.released_on)), "rel_off": off(local(rev.released_on)),
                 "opened": bool(receipt.opened_on), "in_revision": d.state != "released",
+                # a message the office wrote without a question waiting is a line with an answer and no question
                 "q": [{
-                    "id": q.id, "text": q.text, "photo": bool(q.photo), "on_off": off(local(q.asked_on)),
-                    "ans": q.answer or None, "ans_by": q.sudo().answered_by_id.name or "", "ans_off": off(local(q.answered_on)),
-                } for q in env["rvt.drawing.question"].with_context(bin_size=True).search([("drawing_id", "=", d.id)], order="asked_on")],
+                    "id": q.id, "text": "" if q.via == "revert" else q.text, "photo": bool(q.photo) and q.via != "revert",
+                    "on_off": off(local(q.asked_on)), "ans": (q.text if q.via == "revert" else q.answer) or None,
+                    "ans_by": q.sudo().answered_by_id.name or "", "ans_off": off(local(q.answered_on)),
+                } for q in env["rvt.drawing.question"].with_context(bin_size=True).search([("drawing_id", "=", d.id)], order="asked_on, id")],
             }
 
         sites = []

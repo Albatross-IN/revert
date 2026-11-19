@@ -13,7 +13,7 @@ _logger = logging.getLogger(__name__)
 # which switch of the profile page silences which event
 PREF_OF = {
     "drawing_released": "drawings", "drawing_client": "drawings", "drawing_approval_needed": "drawings", "drawing_question": "drawings",
-    "mom_party_pdf": "points", "client_item": "points",
+    "mom_party_pdf": "points", "client_item": "points", "point_change": "points",
     "bill_asked": "bills", "bill_returned": "bills", "bill_accepted": "bills", "bill_paid": "bills",
     "remind": "reminders",
 }

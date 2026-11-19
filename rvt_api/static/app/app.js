@@ -13,6 +13,7 @@ function seed(){return {set:{approval:true,clientConfirm:true,lim:{open:2,q:1,bi
 /* ---- core.js ---- */
 /* Core: helpers, icons, store, the project picture and the operations every screen calls. */
 let BASE=Date.UTC(2026,10,18);const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONF=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const dt=o=>new Date(BASE+o*864e5);
 const fd=o=>{const d=dt(o);return d.getUTCDate()+' '+MON[d.getUTCMonth()]};
 const fdw=o=>DOW[dt(o).getUTCDay()]+' '+fd(o);
@@ -45,6 +46,7 @@ const IC={home:'<path d="m3 11 9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-
  hand:'<path d="M8 12V5a1.500 1.500 0 0 1 3 0v6M11 10V4a1.500 1.500 0 0 1 3 0v6M14 10V6a1.500 1.500 0 0 1 3 0v8a7 7 0 0 1-7 7c-3 0-4.500-1.500-6-4l-2-3.500a1.500 1.500 0 0 1 2.500-1.500L8 14"/>',
  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h0"/>',layers:'<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',tool:'<path d="M14 6a4 4 0 0 0 5 5l-9 9a2 2 0 0 1-3-3z"/><path d="M14 6l3-3 4 4-3 3"/>'};
 IC.sun='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.900 4.900l1.400 1.400M17.700 17.700l1.400 1.400M2 12h2M20 12h2M4.900 19.100l1.400-1.400M17.700 6.300l1.400-1.400"/>';IC.moon='<path d="M20 14.500A8 8 0 1 1 9.500 4a6.500 6.500 0 0 0 10.500 10.500z"/>';
+IC.chat='<path d="M4 5h16v11H10l-5 4v-4H4z"/><path d="M8 9h8M8 12.500h5"/>';IC.cal='<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>';
 const ic=(n,c)=>`<svg class="i ${c||''}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]||IC.info}</svg>`;
 
 /* ---------- store ---------- */
@@ -71,9 +73,26 @@ const cur=d=>d.revs[d.revs.length-1];
 const ptOf=id=>DB.points.find(x=>x.id===id);
 /* photos: the preview draws a placeholder; the desk and the app show the real one (they replace these two) */
 let phOf=(kind,x,after)=>`<span class="ph ${after?'aft':''}"></span>`;
+/* the photo just taken for a field, as an address the page can show; the desk and the app give the real one */
+let pickedImg=k=>'';
 let ptPhoto=(x,after)=>`<span class="ph full ${after?'aft':''}"></span>`;
 /* questions on drawings nobody has answered yet, on the projects I see */
 const openQs=()=>{const ps=myProjects().map(p=>p.id);return DB.drawings.filter(d=>ps.includes(d.pid)).reduce((n,d)=>n+d.q.filter(q=>!q.ans).length,0)};
+const myPids=()=>myProjects().map(p=>p.id);
+/* The conversations about drawings: one thread per drawing and asker (an agency, or the client). Those with a question
+   waiting come first, the longest wait on top; then the others, the latest word first. */
+function qThreads(pids){const out=[];DB.drawings.filter(d=>pids.includes(d.pid)).forEach(d=>{const by={};d.q.forEach(q=>{(by[q.by]=by[q.by]||[]).push(q)});
+  Object.keys(by).forEach(k=>{const qs=by[k],open=qs.filter(q=>!q.ans);out.push({id:d.id+'|'+k,d,by:k,qs,open:open.length,since:open.length?open[0].on:null,
+   lastOn:Math.max(...qs.map(q=>q.ansOn!=null?q.ansOn:q.on)),lastTs:Math.max(...qs.map(q=>q.ansTs||q.ts||0))})})});
+ return out.sort((a,b)=>(b.open>0)-(a.open>0)||(a.open?a.since-b.since:0)||b.lastOn-a.lastOn||b.lastTs-a.lastTs)}
+const thOf=id=>qThreads(DB.projects.map(p=>p.id)).find(t=>t.id===id);
+const thName=t=>t.by==='client'?(pOf(t.d.pid).client.n||'Client'):agN(t.by);
+/* a thread as it was said: each question, each answer, and what the office wrote in between. One answer given to
+   several questions at once shows once, after the last of them. */
+function thMsgs(t){const m=[];t.qs.forEach((q,i)=>{if(q.text||q.photo)m.push({k:'in',q,text:q.text,on:q.on,at:q.at||'',ts:q.ts||0,i});
+  if(q.ans){const same=t.qs.slice(i+1).some(x=>x.ans===q.ans&&x.ansBy===q.ansBy&&q.ansTs!=null&&x.ansTs!=null&&Math.abs(x.ansTs-q.ansTs)<=120);
+   if(!same)m.push({k:'out',q,text:q.ans,on:q.ansOn,at:q.ansAt||'',ts:q.ansTs||q.ts||0,i})}});
+ return m.sort((a,b)=>(a.ts-b.ts)||(a.i-b.i)||((a.k==='out')-(b.k==='out')))}
 /* my notifications that I have not looked at yet */
 const newNotes=()=>(DB.notes||[]).filter(n=>!n.seen).length;
 const billOf=id=>DB.bills.find(b=>b.id===id);
@@ -136,6 +155,7 @@ function picture(p){
   d.q.filter(q=>!q.ans).forEach(q=>R({sec:'question',who:[d.ds],whoN:stf(d.ds).n,text:'Answer on '+sheetNo(d)+' '+d.title,sub:'“'+q.text+'” · '+q.byName+(q.photo?' · photo':''),late:-q.on>=lim.q,act:['dwg',d.id,'Answer']}))});
  p.plan.filter(x=>!x.ag).forEach(x=>R({sec:'decide',who:p.coords,whoN:p.coords.map(s=>stf(s).n)[0]||'Coordinator',text:'Decide the '+TX[x.t].n.toLowerCase()+' agency',sub:x.by!=null?'decide by '+fd(x.by)+' · holds '+plural(L.filter(l=>l.t===x.t).length,'line'):'',late:x.by!=null&&x.by<0,act:['assign',p.id+'|'+x.t,'Assign']}));
  bills.filter(b=>b.st==='submitted').forEach(b=>R({sec:'bill',who:office,whoN:'Office',text:'Review the bill from '+agN(b.ag),sub:b.what+' · submitted '+fd(b.subOn),late:-b.subOn>=lim.bill,act:['bill',b.id,'Review']}));
+ pts.filter(x=>x.st==='open'&&x.rev==='check').forEach(x=>R({sec:'check',who:[...new Set([x.by,...p.coords])],whoN:'Office',text:'Check point '+x.n+': '+partyName(p,x)+' marked it done',sub:x.text,act:['ptview',x.id,'Check']}));
  pts.filter(x=>x.kind==='client'&&x.st==='open'&&!x.confirmed).forEach(x=>R({sec:'confirm',who:office,whoN:'Office',text:'Confirm client point '+x.n+' before the client sees it',sub:x.text,act:['confirmpt',x.id,'Confirm']}));
  pts.filter(x=>x.kind==='staff'&&x.st==='open').forEach(x=>R({sec:'point',who:[x.party],whoN:stf(x.party).n,text:x.text,sub:'point '+x.n+' · by '+dueW(x.due),late:x.due<0,act:['closept',x.id,'Close']}));
  rel.forEach(d=>cur(d).rc.filter(r=>r.to!=='client'&&r.opened==null&&-r.sent>=lim.open).forEach(r=>R({sec:'chase',who:p.coords,whoN:p.coords.map(s=>stf(s).n)[0]||'Coordinator',text:'Chase '+agN(r.to)+' to open '+sheetNo(d),sub:'released '+days(-r.sent)+' ago, not opened',late:true,act:['remind',r.to+'|'+p.id+'|Please open '+sheetNo(d)+' '+d.title+'.','Remind']})));
@@ -160,8 +180,8 @@ function todayFor(u){const out=[];DB.projects.filter(p=>p.onb&&canSee(u,p)).forE
   pic.next.revert.forEach(n=>{if(n.who.includes(u.id)||(n.whoN==='Office'&&has(u,'owner')))out.push(Object.assign({p},n))});
   if(p.coords.includes(u.id))pic.next.client.filter(n=>n.late).forEach(n=>out.push({p,pid:p.id,sec:'client',text:'Chase '+p.client.n+': '+n.text,sub:n.sub,late:true,act:['remind','client|'+p.id+'|'+n.rem,'Remind']}))});
  return out}
-const SECC={approve:'brz',draw:'work',change:'wait',release:'ok',question:'work',decide:'bad',confirm:'wait',bill:'brz',chase:'ok',client:'work',point:'brz'};
-const SECS=[['approve','To approve','check'],['draw','To draw','dwg'],['change','Change asked','edit'],['release','To release','send'],['question','Questions','info'],['decide','Agencies to decide','users'],['confirm','Client points to confirm','eye'],['bill','Bills to review','bill'],['chase','To chase','wa'],['client','Waiting on a client','user'],['point','My open points','mom']];
+const SECC={approve:'brz',draw:'work',change:'wait',release:'ok',question:'work',decide:'bad',confirm:'wait',check:'brz',bill:'brz',chase:'ok',client:'work',point:'brz'};
+const SECS=[['approve','To approve','check'],['draw','To draw','dwg'],['change','Change asked','edit'],['release','To release','send'],['question','Questions','info'],['decide','Agencies to decide','users'],['confirm','Client points to confirm','eye'],['check','Points to check','cam'],['bill','Bills to review','bill'],['chase','To chase','wa'],['client','Waiting on a client','user'],['point','My open points','mom']];
 
 /* ---------- messages (rvt.notify): only this function sends ---------- */
 const TPL={
@@ -206,15 +226,22 @@ const OP={
  clientDecide(d,dec,note,name){const p=pOf(d.pid),r=cur(d);r.client={dec,by:name,on:0,at:NOW,note:note||''};
   if(dec==='approved')p.lines.filter(l=>l.st==='wait'&&l.cause==='client'&&l.ref===d.id).forEach(l=>OP.setLine(p,l,'ns'));
   else{d.revs.push({n:r.n+1,st:'draft',note:'Change asked by the client: '+note,rc:[]});d.st='in_progress';d.due=Math.max(d.due,3)}},
- ask(d,by,byName,text,photo,via){d.q.push({id:'q'+(++DB.seq.q),by,byName,via:via||'app',text,photo:!!photo,on:0,ans:null})},
- answer(d,qid,text){const q=d.q.find(x=>x.id===qid);q.ans=text;q.ansBy=UI.user;q.ansOn=0},
+ ask(d,by,byName,text,photo,via){d.q.push({id:'q'+(++DB.seq.q),by,byName,via:via||'app',text,photo:!!photo,on:0,at:NOW,ts:Math.floor(Date.now()/1000),ans:null})},
+ answer(d,qid,text){const q=d.q.find(x=>x.id===qid);q.ans=text;q.ansBy=UI.user;q.ansOn=0;q.ansAt=NOW;q.ansTs=Math.floor(Date.now()/1000)},
+ /* a line from the office in the thread with one party, when no question of theirs is waiting */
+ say(d,by,text){const ts=Math.floor(Date.now()/1000);d.q.push({id:'q'+(++DB.seq.q),by,byName:by==='client'?pOf(d.pid).client.n:agN(by),via:'revert',text:'',photo:false,on:0,at:NOW,ts,ans:text,ansBy:UI.user,ansOn:0,ansAt:NOW,ansTs:ts})},
  addPoint(o){const p=pOf(o.pid),n=Math.max(0,...DB.points.filter(x=>x.pid===p.id).map(x=>x.n))+1;
   const x=Object.assign({id:'pt'+(++DB.seq.ptid),n,vid:null,t:null,e:null,dwg:null,photo:false,st:'open',closedBy:null,closedOn:null,note:'',sent:0,fresh:true,by:UI.user,pending:false,on:0,doneBy:null,cphoto:false},o);
   x.confirmed=x.kind!=='client'||!DB.set.clientConfirm;if(x.kind==='agency'&&!x.t){const pl=p.plan.find(q=>q.ag===x.party);x.t=pl?pl.t:null}DB.points.push(x);return x},
- closePoint(x,note,photo,by){Object.assign(x,{st:'closed',closedBy:by||UI.user,closedOn:0,note:note||'',cphoto:!!photo})},
- reopenPoint(x){Object.assign(x,{st:'open',closedBy:null,closedOn:null,note:'',cphoto:false,doneBy:null})},
- /* the agency marks its own point done, with a photo of the finished work; the office can open it again */
- agencyDone(x,note,photo,name){Object.assign(x,{st:'closed',closedBy:null,closedOn:0,note:note||'',cphoto:!!photo,doneBy:name||''})},
+ /* closed by the office itself. A point the agency marked done keeps the agency's note and photo unless the office gives its own. */
+ closePoint(x,note,photo,by){const chk=x.rev==='check';Object.assign(x,{st:'closed',closedBy:by||UI.user,closedOn:0,note:note||(chk?x.note:''),cphoto:!!photo||(chk&&x.cphoto),doneBy:chk?x.doneBy:null,rev:null})},
+ reopenPoint(x){Object.assign(x,{st:'open',closedBy:null,closedOn:null,note:'',cphoto:false,doneBy:null,rev:null,doneOn:null})},
+ /* The agency marks its own point done, with a photo of the finished work. That does not close it: the office looks at
+    the photo beside the one taken when the point was raised, and either confirms it (solvePoint) or asks for a change
+    with a note (changePoint); the agency then does it and marks the point done again with a new photo. */
+ agencyDone(x,note,photo,name){Object.assign(x,{rev:'check',doneOn:0,note:note||'',cphoto:!!photo,doneBy:name||''})},
+ solvePoint(x){Object.assign(x,{st:'closed',closedBy:UI.user,closedOn:0,rev:null})},
+ changePoint(x,note){Object.assign(x,{st:'open',closedBy:null,closedOn:null,rev:'change',chg:note,chgBy:UI.user,chgOn:0,chgN:(x.chgN||0)+1})},
  confirmPoint(x){const p=pOf(x.pid);x.confirmed=true;x.sent=1;x.fresh=false;notify('client_item','client:'+p.id,{site:p.name,text:x.text,date:fd(x.due)})},
  sendParty(v,key){const p=pOf(v.pid),ps=DB.points.filter(x=>x.vid===v.id&&partyKey(x)===key&&x.st==='open');if(!ps.length)return 0;
   const fresh=ps.filter(x=>x.fresh).length;ps.forEach(x=>{x.sent++;x.fresh=false});
@@ -246,6 +273,8 @@ const STR={
  c_approve:{en:'Approve',gu:'મંજૂર કરો',hi:'मंज़ूर करें'},c_change:{en:'Ask for a change',gu:'ફેરફાર માટે કહો',hi:'बदलाव के लिए कहें'},c_approved:{en:'Approved by you',gu:'તમે મંજૂર કર્યું',hi:'आपने मंज़ूर किया'},c_note:{en:'What would you like changed?',gu:'શું ફેરફાર કરવો છે?',hi:'क्या बदलना चाहेंगे?'},
  before:{en:'Before',gu:'પહેલાં',hi:'पहले'},after:{en:'After',gu:'પછી',hi:'बाद में'},pt_photo:{en:'Photo',gu:'ફોટો',hi:'फ़ोटो'},pt_done:{en:'Mark as done',gu:'કામ પૂરું થયું',hi:'काम पूरा हुआ'},
  pt_proof:{en:'Add a photo of the finished work',gu:'પૂરા થયેલા કામનો ફોટો ઉમેરો',hi:'पूरे हुए काम की फ़ोटो जोड़ें'},pt_note:{en:'Note (optional)',gu:'નોંધ (જરૂરી નથી)',hi:'नोट (ज़रूरी नहीं)'},
+ pt_chg:{en:'Revert asks for a change',gu:'Revert એ ફેરફાર માંગ્યો છે',hi:'Revert ने बदलाव माँगा है'},pt_wait:{en:'Sent to Revert. They will check the photo.',gu:'Revert ને મોકલાયું. તેઓ ફોટો તપાસશે.',hi:'Revert को भेजा गया। वे फ़ोटो जाँचेंगे।'},
+ pt_waitl:{en:'Waiting for Revert to check',gu:'Revert ની તપાસ બાકી',hi:'Revert की जाँच बाकी'},pt_again:{en:'Mark as done again',gu:'ફરી પૂર્ણ તરીકે નોંધો',hi:'फिर से पूरा दर्ज करें'},pt_sentp:{en:'sent',gu:'મોકલાયું',hi:'भेजा गया'},
  pt_sent:{en:'Marked done. Revert will have a look.',gu:'પૂર્ણ તરીકે નોંધાયું. Revert જોઈ લેશે.',hi:'पूरा दर्ज हुआ। Revert देख लेगा।'},pt_closed:{en:'Done recently',gu:'હાલમાં પૂરા થયેલા',hi:'हाल में पूरे हुए'},
  pt_room:{en:'Room',gu:'રૂમ',hi:'कमरा'},pt_site:{en:'Whole site',gu:'આખી સાઇટ',hi:'पूरी साइट'},pt_from:{en:'From Revert',gu:'Revert તરફથી',hi:'Revert की ओर से'},pt_no:{en:'Point',gu:'મુદ્દો',hi:'बिंदु'},
  q_photo:{en:'Photo attached',gu:'ફોટો જોડાયો',hi:'फ़ोटो जुड़ी'},q_hint:{en:'Type here, or send a photo',gu:'અહીં લખો, અથવા ફોટો મોકલો',hi:'यहाँ लिखें, या फ़ोटो भेजें'},q_only:{en:'Photo',gu:'ફોટો',hi:'फ़ोटो'},
@@ -339,19 +368,20 @@ const chips=(dev,k,opts,cls)=>`<div class="chips ${cls||''}">${opts.map(o=>`<but
 const fld=(label,inner,hint)=>`<div class="fld"><label>${esc(label)}</label>${inner}${hint?`<small>${esc(hint)}</small>`:''}</div>`;
 const tog=(dev,k,label,icon)=>`<button type="button" class="chip tg" data-a="tog" data-v="${k}" aria-pressed="${!!dev.f[k]}">${ic(icon||'check')}${esc(label)}</button>`;
 const dueCls=(o,st)=>st==='closed'?'mu':o<0?'c-bad':o<=1?'c-wait':'c-ink2';
-/* a date: quick choices, or any date typed as day month year (dd mm yy) */
+/* a date: quick choices, or any other day from the calendar (where it can also be typed as day month year) */
 const DMYHINT='Type the date as day month year, for example 25 11 26.';
-function dueChips(dev,k,opts,cls){const f=dev.f,own=!!f[k+'_c'],typed=f[k+'_t']||'',o=parseDMY(typed);
- /* in a row that scrolls sideways the typed date comes first, so it is never out of sight */
- const quick=opts.map(x=>`<button type="button" class="chip" data-a="set" data-v="${k}=${x[0]}" aria-pressed="${!own&&String(f[k])===String(x[0])}">${esc(x[1])}</button>`).join(''),other=`<button type="button" class="chip" data-a="duec" data-v="${k}" aria-pressed="${own}">${ic('clock')}${own&&o!=null?esc(fd(o)):'Date'}</button>`,side=/scroll/.test(cls||'');
- return `<div class="duew"><div class="chips ${cls||''}">${side?other+quick:quick+other}</div>
-  ${own?`<div class="dmy"><input class="inp" id="${dev.id}_${k}_t" data-m="${k}_t" data-ri="1" value="${esc(typed)}" placeholder="dd mm yy" inputmode="numeric" autocomplete="off" aria-label="Date, as day month year"><span class="f12 ${typed&&o==null?'c-bad':'mu'}">${typed&&o!=null?esc(fdw(o))+' '+dt(o).getUTCFullYear()+(o<0?' · past':''):'e.g. 25 11 26'}</span></div>`:''}</div>`}
+function dueChips(dev,k,opts,cls){const f=dev.f,o=f[k+'_c']?parseDMY(f[k+'_t']):null,own=o!=null,yr=own&&dt(o).getUTCFullYear()!==dt(0).getUTCFullYear()?' '+dt(o).getUTCFullYear():'';
+ /* in a row that scrolls sideways the calendar comes first, so it is never out of sight */
+ const quick=opts.map(x=>`<button type="button" class="chip" data-a="set" data-v="${k}=${x[0]}" aria-pressed="${!own&&String(f[k])===String(x[0])}">${esc(x[1])}</button>`).join(''),other=`<button type="button" class="chip calc" data-a="cal" data-v="f|${k}" aria-pressed="${own}" aria-label="Choose the date from the calendar">${ic('cal')}${own?esc(fd(o))+yr:'Date'}</button>`,side=/scroll/.test(cls||'');
+ return `<div class="duew"><div class="chips ${cls||''}">${side?other+quick:quick+other}</div></div>`}
+/* a photo for a field: one clear button to take it; once taken it shows, and a tap removes it */
+const photoTile=(dev,k,label,done)=>{const on=!!dev.f[k],src=on?pickedImg(k):'';return `<button type="button" class="drop pht ${on?'on':''}" data-a="tog" data-v="${k}" aria-pressed="${on}">${src?`<img alt="" src="${src}">`:ic(on?'check':'cam')}<span>${on?esc(done||'Photo added')+'<small>tap to remove it</small>':esc(label)}</span></button>`};
 const dueOf=(f,k)=>{if(f[k+'_c']){const o=parseDMY(f[k+'_t']);return o==null?NaN:o}return +f[k]};
 const forLabel=(p,k,vendor)=>k==='vendor'?(vendor||'Vendor'):k==='client'?(p.client.n||'Client'):agOf(k)?agN(k):k?(stf(k).full||stf(k).n):'Choose';
 const areaLabel=(p,id)=>id==null?'Choose the room':id===''?'Whole site':entN(p,id)||'Choose the room';
 const pickBtn=(dev,src,key,pid,label,icon,vendor)=>`<button type="button" class="pickb ${src==='area'&&dev.f[key]==null?'need':''}" data-a="pick" data-v="${src}|${key}|${pid}|${vendor||''}">${ic(icon)}<span><small>${src==='area'?'Area':'For'}</small><b>${esc(label)}</b></span>${ic('down')}</button>`;
 /* a point's photos: the one taken when it was raised and, once it is done, the one taken after */
-const ptBA=(x,L)=>!x.photo&&!x.cphoto?'':`<div class="ba ${x.photo&&x.cphoto?'pair':''}">${x.photo?`<figure><figcaption>${x.cphoto?tr('before',L):tr('pt_photo',L)}${x.on!=null?' · '+fd(x.on):''}</figcaption>${ptPhoto(x,0)}</figure>`:''}${x.cphoto?`<figure><figcaption>${tr('after',L)}${x.closedOn!=null?' · '+fd(x.closedOn):''}</figcaption>${ptPhoto(x,1)}</figure>`:''}</div>`;
+const ptBA=(x,L)=>!x.photo&&!x.cphoto?'':`<div class="ba ${x.photo&&x.cphoto?'pair':''}">${x.photo?`<figure><figcaption>${x.cphoto?tr('before',L):tr('pt_photo',L)}${x.on!=null?' · '+fd(x.on):''}</figcaption>${ptPhoto(x,0)}</figure>`:''}${x.cphoto?`<figure><figcaption>${tr('after',L)}${x.doneOn!=null?' · '+fd(x.doneOn):x.closedOn!=null?' · '+fd(x.closedOn):''}</figcaption>${ptPhoto(x,1)}</figure>`:''}</div>`;
 const sitePts=p=>DB.points.filter(x=>x.pid===p.id&&x.st==='open'&&!x.e);
 const pbar=(a,b,c)=>`<div class="bar ${c||''}"><i style="width:${b?Math.round(a/b*100):0}%"></i></div>`;
 const money=(n,cls)=>isOwner()?`<b class="num ${cls||''}">${inr(n)}</b>`:`<span class="lockd" title="Amounts are visible to the owner only">${ic('lock')}owner only</span>`;
@@ -442,8 +472,9 @@ function dwgDetail(d,dev){const p=pOf(d.pid),r=cur(d),s=DS[d.st],w=p.lines.filte
  const revs=d.revs.slice().reverse().map(x=>`<div class="tl ${x.st}"><i class="rev">${x.n}</i><div><div class="t1">Revision ${x.n} ${pill({draft:'Draft',awaiting:'Awaiting approval',approved:'Approved',released:'Released',superseded:'Superseded'}[x.st],{draft:'plain',awaiting:'wait',approved:'gold',released:'ok',superseded:'plain'}[x.st])}</div>
    <div class="t2">${x.note?esc(x.note)+'<br>':''}${x.back?'<span class="c-bad">Sent back: '+esc(x.back)+'</span><br>':''}${x.sentBy?'sent by '+esc(stf(x.sentBy).n)+' '+fd(x.sentOn):''}${x.apprBy&&x.apprOn!=null?' · approved by '+esc(stf(x.apprBy).n)+' '+fd(x.apprOn):''}${x.relOn!=null?' · released '+fd(x.relOn):''}</div>
    ${x.client&&x.client.dec==='change'?`<div class="note bad sm">${ic('edit')}<span>Change asked by ${esc(x.client.by)} on ${fd(x.client.on)}, ${x.client.at}: “${esc(x.client.note)}”</span></div>`:''}</div></div>`).join('');
- const qs=d.q.map(q=>`<div class="q"><div class="qb in"><div class="lbl">${esc(q.byName)} · ${q.by==='client'?'client':esc(agN(q.by))} · ${fd(q.on)}${q.via==='office'?' · logged from a call':''}</div>${esc(q.text)}${q.photo?phOf('question',q):''}</div>
-   ${q.ans?`<div class="qb out"><div class="lbl">${esc(stf(q.ansBy).n)} · ${fd(q.ansOn)}</div>${esc(q.ans)}</div>`:`<div class="qa">${fin(dev,'ans_'+q.id,'Type the answer…')}${Bt('Answer','answer',d.id+'|'+q.id,'sm gold')}</div>`}</div>`).join('');
+ /* the questions on this drawing, one thread per asker, as the Questions section shows them: answered here, or opened there */
+ const qs=qThreads([d.pid]).filter(t=>t.d.id===d.id).map(t=>`<div class="q thq"><div class="thqh"><b>${esc(thName(t))}</b>${t.open?pill(t.open>1?t.open+' to answer':'to answer','bad'):''}${Bt('Open as a chat','thread',t.id,'sm ghost','chat')}</div>${thBubbles(t)}
+   ${t.open?`<div class="qa">${fin(dev,thKey(t.id),'Type the answer…')}${Bt('Answer','thsend',t.id,'sm gold')}</div>`:''}</div>`).join('');
  const nq=d.q.filter(q=>!q.ans).length,qcard=card('Questions'+(nq?` <span class="cnt bad">${nq} to answer</span>`:''),Bt('Log a question from a call','sheet','logq|'+d.id,'sm ghost','plus'),qs||empty('No question on this drawing.','info'),nq?'hot':'');
  return `<div class="stack dd"><div class="ddh"><button type="button" class="shtb" data-a="view" data-v="${d.id}" aria-label="View the sheet">${sht(d,'md')}</button><div class="m"><div class="lbl">${sheetNo(d)} · ${d.t?esc(TX[d.t].n):'General set'}</div><h2 class="serif">${esc(d.title)}</h2><div class="t2">${esc(p.name)} · drawn by ${esc(stf(d.ds).n)} · ${d.st==='released'?'released '+fd(r.relOn):'due '+fdw(d.due)}</div>
    <div class="chips ro">${pill(s[0],s[1])}${d.forClient?pill('for client','gold'):''}${d.needsApproval?pill('client approves','plain'):''}</div></div></div>
@@ -462,19 +493,19 @@ const ptThumbs=x=>x.photo||x.cphoto?`<span class="pths">${x.photo?phOf('point',x
 function ptTable(list,dev,o){o=o||{};if(!list.length)return empty('Nothing here.');
  const line=x=>{const p=pOf(x.pid),v=x.vid?visOf(x.vid):null,open=x.st==='open',late=open&&x.due!=null&&x.due<0;
   return `<tr class="${x.st}"><td class="ar">${kn(x.n)}</td><td class="nw">${v?'Visit '+v.no:x.legacy?'earlier':'office'}</td>${o.proj?`<td>${esc(p.name)}</td>`:''}<td>${x.e?esc(entN(p,x.e)):'<span class="mu">Whole site</span>'}${x.t&&TX[x.t]?`<div class="t2">${esc(TX[x.t].n)}</div>`:''}</td>
-   <td class="ptc"><span class="lkm" role="button" tabindex="0" data-a="ptview" data-v="${x.id}"><span class="tx">${esc(x.text)}</span></span>${x.fresh&&open&&x.vid&&x.kind!=='staff'?' '+pill('new','gold'):''}${!open&&x.note?`<div class="t2 c-ok">${esc(x.note)}</div>`:open&&x.kind==='client'&&!x.confirmed?'<div class="t2 c-wait">not shown to the client until the office confirms</div>':x.pending?'<div class="t2 c-wait">saved on the phone · waiting to go</div>':''}</td>
+   <td class="ptc"><span class="lkm" role="button" tabindex="0" data-a="ptview" data-v="${x.id}"><span class="tx">${esc(x.text)}</span></span>${x.fresh&&open&&x.vid&&x.kind!=='staff'?' '+pill('new','gold'):''}${!open&&x.note?`<div class="t2 c-ok">${esc(x.note)}</div>`:open&&x.rev==='check'?`<div class="t2 c-gold">marked done${x.doneOn!=null?' '+fd(x.doneOn):''}${x.note?': '+esc(x.note):''}</div>`:open&&x.rev==='change'?`<div class="t2 c-bad">change asked: ${esc(x.chg)}</div>`:open&&x.kind==='client'&&!x.confirmed?'<div class="t2 c-wait">not shown to the client until the office confirms</div>':x.pending?'<div class="t2 c-wait">saved on the phone · waiting to go</div>':''}</td>
    <td><b class="pty k-${x.kind}">${esc(partyName(p,x))}</b></td><td>${x.by?esc(stf(x.by).n):''}</td><td class="nw">${x.on!=null?fd(x.on):v?fd(v.date):''}</td>
    <td class="nw">${open?`<span class="due ${dueCls(x.due)}">${dueW(x.due)}</span>`:x.closedOn!=null?`<span class="mu">closed ${fd(x.closedOn)}</span>`:''}</td><td>${ptThumbs(x)}</td>
-   <td>${open?(x.kind==='client'&&!x.confirmed?pill('to confirm','wait'):late?pill('past date','bad'):pill('open','work')):pill(x.doneBy?'done':'closed','ok','check')}${x.doneBy?`<div class="t2">${esc(x.doneBy)}</div>`:''}</td>
-   <td class="ar nw">${!open||o.ro?'':x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'sm gold'):Bt('Close','closept',x.id,'sm')}</td></tr>`};
+   <td>${open?(x.kind==='client'&&!x.confirmed?pill('to confirm','wait'):x.rev==='check'?pill('to check','gold','cam'):x.rev==='change'?pill('change asked','bad'):late?pill('past date','bad'):pill('open','work')):pill(x.doneBy?'done':'closed','ok','check')}${x.doneBy&&x.rev!=='change'?`<div class="t2">${esc(x.doneBy)}</div>`:''}</td>
+   <td class="ar nw">${!open||o.ro?'':x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'sm gold'):x.rev==='check'?Bt('Check','ptview',x.id,'sm gold','eye'):Bt('Close','closept',x.id,'sm')}</td></tr>`};
  return `<div class="tw"><table class="tb ptlog"><thead><tr><th class="ar">No</th><th>Visit</th>${o.proj?'<th>Project</th>':''}<th>Area</th><th>Point</th><th>For</th><th>Raised by</th><th>On</th><th>Due</th><th>Photo</th><th>Status</th><th></th></tr></thead><tbody>${list.map(line).join('')}</tbody></table></div>`}
 /* the same points: a log table on the desk, rows on a phone */
 const ptList=(list,dev,o)=>dev&&!dev.phone?ptTable(list,dev,o):`<div class="rows">${list.map(x=>ptRow(x,dev,o)).join('')||empty('Nothing here.')}</div>`;
 function ptRow(x,dev,o){o=o||{};const p=pOf(x.pid),nm=partyName(p,x),v=x.vid?visOf(x.vid):null;
  return `<div class="rw pt ${x.st}">${kn(x.n)}<div class="m lkm" role="button" tabindex="0" data-a="ptview" data-v="${x.id}"><div class="t1"><span class="tx">${esc(x.text)}</span></div>
   <div class="t2">${x.fresh&&x.st==='open'&&x.vid&&x.kind!=='staff'?pill('new','gold')+' ':''}<b class="pty k-${x.kind}">${esc(nm)}</b>${x.e?' · '+esc(entN(p,x.e)):''}${o.proj?' · '+esc(p.name):''}${v?' · visit '+v.no:x.legacy?'':' · raised from the office'}${x.legacy?' · moved from the earlier MOM':''}</div>
-  ${x.st==='closed'?`<div class="t2 c-ok">${ic('check')}${x.doneBy?'done by '+esc(x.doneBy)+' · ':'closed '}${fd(x.closedOn)}${x.note?' · '+esc(x.note):''}${x.photo&&x.cphoto?' · before and after':''}</div>`:x.kind==='client'&&!x.confirmed?`<div class="t2 c-wait">${ic('eye')}not shown to the client until the office confirms</div>`:x.pending?`<div class="t2 c-wait">${ic('off')}saved on the phone · waiting to go</div>`:''}</div>
-  <div class="r">${ptThumbs(x)}${x.st==='open'?`<span class="due ${dueCls(x.due)}">${dueW(x.due)}</span>${x.sent&&x.kind!=='staff'?`<span class="tick" title="sent">${ic('check')}${ic('check')}</span>`:''}${o.ro?'':x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'sm gold'):Bt('Close','closept',x.id,'sm')}`:''}</div></div>`}
+  ${x.st==='closed'?`<div class="t2 c-ok">${ic('check')}${x.doneBy?'done by '+esc(x.doneBy)+' · ':'closed '}${fd(x.closedOn)}${x.note?' · '+esc(x.note):''}${x.photo&&x.cphoto?' · before and after':''}</div>`:x.rev==='check'?`<div class="t2 c-gold">${ic('cam')}marked done${x.doneBy?' by '+esc(x.doneBy):''}${x.doneOn!=null?' · '+fd(x.doneOn):''} · look and decide</div>`:x.rev==='change'?`<div class="t2 c-bad">${ic('refresh')}change asked: ${esc(x.chg)}</div>`:x.kind==='client'&&!x.confirmed?`<div class="t2 c-wait">${ic('eye')}not shown to the client until the office confirms</div>`:x.pending?`<div class="t2 c-wait">${ic('off')}saved on the phone · waiting to go</div>`:''}</div>
+  <div class="r">${ptThumbs(x)}${x.st==='open'?`<span class="due ${dueCls(x.due)}">${dueW(x.due)}</span>${x.sent&&x.kind!=='staff'?`<span class="tick" title="sent">${ic('check')}${ic('check')}</span>`:''}${o.ro?'':x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'sm gold'):x.rev==='check'?Bt('Check','ptview',x.id,'sm gold'):Bt('Close','closept',x.id,'sm')}`:''}</div></div>`}
 function forOptions(p){const o=[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))].map(a=>[a,agN(a).split(' ')[0],'agency']);o.push(['client','Client','client']);
  [...new Set([p.principal,...p.designers,...p.coords])].forEach(s=>o.push([s,stf(s).n,'staff']));return o}
 function momCapture(v,dev){const p=pOf(v.pid),f=dev.f,opts=forOptions(p);if(f.m_vendor)opts.push(['vendor',f.m_vendor,'vendor']);if(!opts.some(o=>o[0]===f.m_for))f.m_for=opts[0][0];if(f.m_due==null)f.m_due=2;if(f.m_area&&!p.ents.some(e=>e.id===f.m_area))f.m_area=null;
@@ -487,10 +518,44 @@ function momCapture(v,dev){const p=pOf(v.pid),f=dev.f,opts=forOptions(p);if(f.m_
   <div class="lbl mt">This visit · ${plural(here.length,'point')}</div>${here.length?ptList(here,dev):`<div class="rows"><div class="empty sm">${ic('mom')}<span>Write the first point below. Under ten seconds each.</span></div></div>`}
   <div class="dock"><div class="composer"><div class="pickrow">${pickBtn(dev,'for','m_for',p.id,forLabel(p,f.m_for,f.m_vendor),'user',v.id)}${pickBtn(dev,'area','m_area',p.id,areaLabel(p,f.m_area),'pin')}</div>
    <p class="keep">${ic('lock')}<span>Both stay for the next points, until you change them.</span></p>
-   <div class="ctext">${fin(dev,'m_text','Type or speak the point…')}<button type="button" class="ib ${f.m_photo?'on':''}" data-a="tog" data-v="m_photo" aria-label="Photo" aria-pressed="${!!f.m_photo}">${ic('cam')}</button></div>
+   <div class="ctext">${fin(dev,'m_text','Type or speak the point…')}<button type="button" class="camb ${f.m_photo?'on':''}" data-a="tog" data-v="m_photo" aria-label="${f.m_photo?'Photo added: tap to remove it':'Take a photo'}" aria-pressed="${!!f.m_photo}">${f.m_photo&&pickedImg('m_photo')?`<img alt="" src="${pickedImg('m_photo')}">`:ic(f.m_photo?'check':'cam')}<span>${f.m_photo?'Added':'Photo'}</span></button></div>
    <div class="cr dt"><span class="lbl">Due</span>${dueChips(dev,'m_due',[[0,'Today'],[1,'Tmrw'],[2,dueW(2)],[5,dueW(5)],[7,fd(7)]],'scroll')}${Bt('Add','addpt',v.id,'gold','plus')}</div></div>
   <div class="sendbar"><span class="lbl">Send on WhatsApp</span><div class="chips">${sendKeys.map(k=>`<button type="button" class="btn sm wa" data-a="sendparty" data-v="${v.id}|${k}">${ic('wa')}<span>${esc(agN(k).split(' ')[0])} (${freshOf(k)||allOf(k)})${freshOf(k)?'':' ✓'}</span></button>`).join('')||'<span class="mu f12">Points for an agency appear here to send.</span>'}
    ${sendKeys.length>1?Bt('All','sendall',v.id,'sm wa','send'):''}${Bt('PDF','pdf','mom|'+v.id+'|all','sm ghost','file')}${v.st==='open'?Bt('Finish visit','finishvisit',v.id,'sm pri','check'):''}</div></div></div></div>`}
+/* ---------- visits, by date ----------
+   All of them, the latest first; or one day, chosen from the calendar: the visits held that day and, with them, the
+   visits whose points fall due that day, so the person on site opens that visit and closes what was promised for today. */
+function visitRow(v,dev,o){o=o||{};const p=pOf(v.pid),n=DB.points.filter(q=>q.vid===v.id),op=n.filter(q=>q.st==='open'),ck=op.filter(q=>q.rev==='check').length,late=op.filter(q=>q.due!=null&&q.due<0).length,dd=o.day!=null?op.filter(q=>q.due===o.day).length:0;
+ return `<div class="rw vis"><span class="cal"><i>${MON[dt(v.date).getUTCMonth()]}</i><b>${dt(v.date).getUTCDate()}</b></span><div class="m"><div class="t1">${o.proj?esc(p.name)+' · visit '+v.no:'Visit '+v.no} ${v.st==='open'?pill('open','work'):''}${dd?pill(plural(dd,'point')+' due '+(o.day===0?'today':fd(o.day)),o.day<0?'bad':'wait','clock'):''}</div>
+   <div class="t2">${fdw(v.date)}${v.by?' · by '+esc(stf(v.by).n):''} · ${plural(n.length,'point')} · ${op.length} open${ck?` · <b class="c-gold">${ck} to check</b>`:''}${late?` · <b class="c-bad">${late} past date</b>`:''}${o.att&&v.att.length?' · present: '+esc(v.att.join(', ')):''}</div></div>
+  <div class="r">${Bt('PDF','pdf','mom|'+v.id+'|all','sm ghost','file')}${Bt('Open','openvisit',v.id,'sm')}</div></div>`}
+function visitsCard(dev,pid,right){const pids=pid?[pid]:myPids(),day=dev.vd==null||dev.vd===''?null:+dev.vd,all=DB.visits.filter(v=>pids.includes(v.pid)).sort((a,b)=>b.date-a.date||b.no-a.no);
+ const pick=`<div class="chips vdc"><button type="button" class="chip" data-a="ui" data-v="vd=" aria-pressed="${day==null}">All</button><button type="button" class="chip" data-a="ui" data-v="vd=0" aria-pressed="${day===0}">Today</button><button type="button" class="chip calc" data-a="cal" data-v="ui|vd|${pid||0}" aria-pressed="${day!=null&&day!==0}" aria-label="Choose a day from the calendar">${ic('cal')}${day!=null&&day!==0?esc(fdw(day)):'Date'}</button></div>`;
+ let body;
+ if(day==null){const some=dev.vall?all:all.slice(0,8);body=`<div class="rows">${some.map(v=>visitRow(v,dev,{proj:!pid,att:!!pid})).join('')||empty('No visit yet. Start the first MOM.','mom')}</div>${all.length>some.length?`<button type="button" class="btn sm ghost blk" data-a="ui" data-v="vall=1">${ic('down')}<span>Show all ${all.length} visits</span></button>`:''}`}
+ else{const due=DB.points.filter(x=>pids.includes(x.pid)&&x.st==='open'&&x.due===day).sort((a,b)=>a.pid-b.pid||a.n-b.n),held=all.filter(v=>v.date===day),from=all.filter(v=>v.date!==day&&due.some(x=>x.vid===v.id));
+  body=`<div class="lbl">Held on ${fdw(day)} ${dt(day).getUTCFullYear()}</div><div class="rows">${held.map(v=>visitRow(v,dev,{proj:!pid,att:!!pid,day})).join('')||`<div class="empty sm">${ic('mom')}<span>No visit on this day.</span></div>`}</div>
+   <div class="lbl mt">Due on this day · ${plural(due.length,'point')}</div>${from.length?`<div class="rows">${from.map(v=>visitRow(v,dev,{proj:!pid,day})).join('')}</div>`:''}${due.length?ptList(due,dev,{proj:!pid}):`<div class="rows"><div class="empty sm">${ic('check')}<span>Nothing falls due on this day.</span></div></div>`}`}
+ return card('Visits',pick+(right||''),body,'visc')}
+
+/* ---------- questions: every conversation about a drawing, in one place ----------
+   A row says who asks, what, and what it is about; the thread says it in full (the project, the drawing, the work it
+   belongs to) and is answered where it stands, like a chat. */
+function qRow(t,dev,cur){const d=t.d,p=pOf(d.pid),nm=thName(t),ms=thMsgs(t),l=ms[ms.length-1],when=l?(l.on===0?(l.at||'today'):fd(l.on)):'';
+ return `<button type="button" class="rw lk qrow ${t.open?'unr':''} ${cur?'cur':''}" data-a="thread" data-v="${esc(t.id)}">${av(nm,'sm')}<div class="m"><div class="t1"><span class="tx">${esc(nm)}</span>${t.open?pill(t.open>1?t.open+' to answer':'to answer','bad'):''}<span class="mu f12 nw qwh">${esc(when)}</span></div>
+  <div class="t2 qtx">${l?(l.k==='out'?'<b>Revert:</b> ':'')+esc(l.text||'Photo'):''}</div><div class="t2"><b class="c-gold">${esc(p.name)}</b> · ${sheetNo(d)} ${esc(d.title)}${d.t&&TX[d.t]?' · '+esc(TX[d.t].n):''}</div></div></button>`}
+function thInfo(t){const d=t.d,p=pOf(d.pid),r=cur(d),nm=thName(t),who=[...new Set(t.qs.filter(q=>q.via!=='revert'&&q.byName).map(q=>q.byName))].filter(n=>n!==nm).join(', ');
+ return `<div class="thinfo"><button type="button" class="shtb" data-a="view" data-v="${d.id}" aria-label="View the sheet">${sht(d,'md')}</button><div class="m"><div class="lbl">Question on a drawing · ${sheetNo(d)}</div><h3>${esc(d.title)}</h3>
+  <div class="kv sm"><div><span>Project</span><b>${esc(p.name)}</b></div><div><span>Work</span><b>${d.t&&TX[d.t]?esc(TX[d.t].n):'General set'}${d.e&&entN(p,d.e)?' · '+esc(entN(p,d.e)):''}</b></div>
+   <div><span>Asked by</span><b>${esc(nm)}${t.by==='client'?' · client':''}${who?' · '+esc(who):''}</b></div><div><span>Drawing</span><b>revision ${r.n} · ${DS[d.st][0].toLowerCase()}${d.st==='released'&&r.relOn!=null?' '+fd(r.relOn):''}</b></div></div>
+  <div class="chips">${Bt('View the sheet','view',d.id,'sm','eye')}${Bt('Open the drawing','dwg',d.id,'sm ghost','dwg')}</div></div></div>`}
+const thKey=id=>'th_'+String(id).replace(/\W/g,'_');
+const thBubbles=t=>thMsgs(t).map(m=>m.k==='in'?`<div class="qb in"><div class="lbl">${esc(m.q.byName)} · ${m.on===0?'today':fd(m.on)}${m.at?' · '+esc(m.at):''}${m.q.via==='office'?' · logged from a call':''}</div>${esc(m.text)}${m.q.photo?phOf('question',m.q):''}</div>`
+   :`<div class="qb out"><div class="lbl">${esc(stf(m.q.ansBy).n)} · ${m.on===0?'today':fd(m.on)}${m.at?' · '+esc(m.at):''}</div>${esc(m.text)}</div>`).join('');
+function thView(t,dev){const nm=thName(t),k=thKey(t.id);
+ return `<div class="momc chat thv">${thInfo(t)}<div class="q thm">${thBubbles(t)}</div>
+  <div class="dock"><div class="composer"><div class="lbl">${t.open?(t.open>1?t.open+' questions wait for your answer':'Answer '+esc(nm)):'Write to '+esc(nm)}</div>
+   <div class="ctext">${fin(dev,k,t.open?'Type the answer…':'Type a message…')}<button type="button" class="ib snd" data-a="thsend" data-v="${esc(t.id)}" aria-label="Send">${ic('send')}</button></div></div></div></div>`}
 function pdfDoc(kind,a,b,o){ /* mom|vid|party  ·  open|pid  ·  points|pid|party (o.v visit, o.st open or all) */
  let p,title,meta,rows;
  if(kind==='points'){o=o||{};p=pOf(a);const v=o.v?visOf(o.v):null;rows=DB.points.filter(x=>x.pid===p.id&&(!v||x.vid===v.id)&&(b==='all'||partyKey(x)===b)&&(o.st==='all'||x.st==='open'));title=v?'Minutes of meeting':'Points';
@@ -571,18 +636,43 @@ SHEETS.logq=(dev,s)=>{const d=dOf(s.id),p=pOf(d.pid);return {title:'Log a questi
 
 SHEETS.point=(dev,s)=>{const p=pOf(s.pid),f=dev.f;return {title:'Raise a point',sub:p.name+' · from the office, without a visit',body:`<div class="pickrow">${pickBtn(dev,'for','rp_for',p.id,forLabel(p,f.rp_for),'user')}${pickBtn(dev,'area','rp_area',p.id,areaLabel(p,f.rp_area),'pin')}</div>`
   +fld('What is needed',fin(dev,'rp_text','e.g. Choose the kitchen platform stone'))+fld('By',dueChips(dev,'rp_due',[[0,'Today'],[1,'Tomorrow'],[2,dueW(2)],[5,dueW(5)],[7,fd(7)]]))
-  +`<div class="chips">${tog(dev,'rp_photo','Add a photo','cam')}</div>`+(f.rp_for==='client'&&DB.set.clientConfirm?`<div class="note wait">${ic('eye')}Client points wait for the office to confirm before the client sees them (a setting).</div>`:''),foot:cancelB()+Bt('Add point','doraise',p.id,'gold','plus')}};
+  +fld('Photo of the issue',photoTile(dev,'rp_photo','Take a photo','Photo added'),'It is shown beside the photo of the finished work, as before and after.')+(f.rp_for==='client'&&DB.set.clientConfirm?`<div class="note wait">${ic('eye')}Client points wait for the office to confirm before the client sees them (a setting).</div>`:''),foot:cancelB()+Bt('Add point','doraise',p.id,'gold','plus')}};
 SHEETS.vendor=(dev,s)=>({title:'Point for a vendor',sub:'A supplier or anyone outside the project’s agencies',body:fld('Name',fin(dev,'vn','e.g. Asian Tiles')),foot:cancelB()+Bt('Use','dovendor',null,'gold')});
-SHEETS.closept=(dev,s)=>{const x=ptOf(s.id),p=pOf(x.pid);return {title:'Close point '+x.n,sub:partyName(p,x)+' · '+x.text,body:fld('Closing note',fin(dev,'cp_note','e.g. Done, checked on site'))+`<div class="chips">${tog(dev,'cp_photo','Add a photo of the finished work','cam')}</div>`+(x.photo?`<div class="note">${ic('cam')}<span>This point has a photo from when it was raised. A photo added now is shown beside it as before and after.</span></div>`:''),foot:cancelB()+Bt('Close point','doclose',x.id,'gold','check')}};
-/* one point, whole: what was asked, of whom, where; the photo taken then and the photo taken when it was done */
+SHEETS.closept=(dev,s)=>{const x=ptOf(s.id),p=pOf(x.pid);return {title:'Close point '+x.n,sub:partyName(p,x)+' · '+x.text,body:fld('Closing note',fin(dev,'cp_note','e.g. Done, checked on site'))+fld('Photo of the finished work',photoTile(dev,'cp_photo','Take a photo','Photo added'))+(x.photo?`<div class="note">${ic('cam')}<span>This point has a photo from when it was raised. A photo added now is shown beside it as before and after.</span></div>`:''),foot:cancelB()+Bt('Close point','doclose',x.id,'gold','check')}};
+/* One point, whole: what was asked, of whom, where; the photo taken then and the photo taken when it was done.
+   A point the agency marked done is checked here: the two photos side by side, then "Issue solved" or "Change needed". */
 SHEETS.ptview=(dev,s)=>{const x=ptOf(s.id);if(!x)return {title:'Point',body:empty('This point is not there any more.','info'),foot:Bt('Close','close',null,'ghost')};
- const p=pOf(x.pid),v=x.vid?visOf(x.vid):null,open=x.st==='open',by=x.by?stf(x.by).n:'',who=x.doneBy?x.doneBy+' · '+partyName(p,x):x.closedBy==='client'?p.client.n:x.closedBy?stf(x.closedBy).n:'';
+ const p=pOf(x.pid),v=x.vid?visOf(x.vid):null,open=x.st==='open',chk=open&&x.rev==='check',chg=open&&x.rev==='change',ag=x.kind==='agency'&&agOf(x.party),by=x.by?stf(x.by).n:'',who=x.closedBy==='client'?p.client.n:x.closedBy?stf(x.closedBy).n:'';
  return {title:'Point '+x.n,sub:p.name+' · '+(x.e?entN(p,x.e):'whole site'),wide:!!(x.photo&&x.cphoto),
-  body:`<p class="ptx">${esc(x.text)}</p><div class="chips ro">${open?pill('open','work'):pill('closed','ok','check')}${open&&x.due!=null?`<span class="pill ${x.due<0?'bad':x.due<=1?'wait':'plain'}">${ic('clock')}by ${esc(dueW(x.due))}</span>`:''}${x.kind==='client'&&!x.confirmed?pill('not confirmed yet','wait','eye'):''}${x.pending?pill('waiting to go','wait','off'):''}</div>
+  body:`<p class="ptx">${esc(x.text)}</p><div class="chips ro">${chk?pill('marked done · to check','gold','cam'):chg?pill('change asked','bad','refresh'):open?pill('open','work'):pill('closed','ok','check')}${open&&x.due!=null?`<span class="pill ${x.due<0?'bad':x.due<=1?'wait':'plain'}">${ic('clock')}by ${esc(dueW(x.due))}</span>`:''}${x.kind==='client'&&!x.confirmed?pill('not confirmed yet','wait','eye'):''}${x.pending?pill('waiting to go','wait','off'):''}</div>
+   ${chk?`<div class="note gold chkq">${ic('eye')}<span><b>${esc(x.doneBy||partyName(p,x))} marked this done${x.doneOn!=null?(x.doneOn===0?' today':' on '+fd(x.doneOn)):''}.</b> ${x.photo&&x.cphoto?'Look at the two photos, before and after':'Look at the photo of the finished work'}: is it really solved?</span></div>`:''}
+   ${chg?`<div class="note bad">${ic('refresh')}<span><b>Change asked${x.chgBy?' by '+esc(stf(x.chgBy).n):''}${x.chgOn!=null?' · '+(x.chgOn===0?'today':fd(x.chgOn)):''}:</b> ${esc(x.chg)}${x.chgN>1?' · sent back '+x.chgN+' times':''}. It is with ${esc(partyName(p,x))} again.</span></div>`:''}
    ${ptBA(x,'en')}<div class="kv"><div><span>For</span><b>${esc(partyName(p,x))}${x.t&&TX[x.t]?' · '+esc(TX[x.t].n):''}</b></div><div><span>Raised</span><b>${by?esc(by)+' · ':''}${x.on!=null?fd(x.on)+' · ':''}${v?'visit '+v.no:x.legacy?'earlier MOM':'from the office'}</b></div>
-   ${open?'':`<div><span>${x.doneBy?'Marked done':'Closed'}</span><b>${who?esc(who)+' · ':''}${x.closedOn!=null?fd(x.closedOn):''}</b></div>${x.note?`<div><span>Note</span><b>${esc(x.note)}</b></div>`:''}`}</div>`,
-  foot:open?Bt('Back','close',null,'ghost')+(x.kind==='agency'&&agOf(x.party)?Bt('Remind','remind',x.party+'|'+p.id+'|Point '+x.n+': '+x.text,'wa','wa'):'')+(x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'gold'):Bt('Mark done','closept',x.id,'gold','check'))
-   :Bt('Back','close',null,'ghost')+Bt('Open again','reopenpt',x.id,'','refresh')}};
+   ${x.doneBy&&(x.cphoto||!open)?`<div><span>${chg?'Marked done before':'Marked done'}</span><b>${esc(x.doneBy)}${x.doneOn!=null?' · '+fd(x.doneOn):''}</b></div>`:''}${(chk||chg||!open)&&x.note?`<div><span>Note</span><b>${esc(x.note)}</b></div>`:''}
+   ${open?'':`<div><span>${x.doneBy?'Confirmed':'Closed'}</span><b>${who?esc(who)+' · ':''}${x.closedOn!=null?fd(x.closedOn):''}</b></div>`}</div>`,
+  foot:chk?Bt('Back','close',null,'ghost')+Bt('Change needed','ptchange',x.id,'bad','refresh')+Bt('Issue solved','solvept',x.id,'gold','check')
+   :open?Bt('Back','close',null,'ghost')+(ag?Bt('Remind','remind',x.party+'|'+p.id+'|Point '+x.n+': '+x.text+(chg?' · change asked: '+x.chg:''),'wa','wa'):'')+(x.kind==='client'&&!x.confirmed?Bt('Confirm','confirmpt',x.id,'gold'):Bt('Mark done','closept',x.id,'gold','check'))
+   :Bt('Back','close',null,'ghost')+(x.doneBy&&ag?Bt('Change needed','ptchange',x.id,'','refresh'):Bt('Open again','reopenpt',x.id,'','refresh'))}};
+/* not right yet: what has to change goes back to the agency, which does it and marks the point done again */
+SHEETS.ptchange=(dev,s)=>{const x=ptOf(s.id);if(!x)return {title:'Point',body:empty('This point is not there any more.','info'),foot:Bt('Close','close',null,'ghost')};const p=pOf(x.pid);
+ return {title:'Change needed · point '+x.n,sub:partyName(p,x)+' · '+x.text,body:fld('What has to change',fin(dev,'pc_note','e.g. The gap is still there at the top'),partyName(p,x)+' gets this on WhatsApp and in the app, does it, and marks the point done again with a new photo.'),
+  foot:Bt('Back','close',null,'ghost')+Bt('Send back','dochange',x.id,'gold','send')}};
+/* A calendar: tap a day, or type it as day month year. It serves the date a point is due by (mode f: a date of the form)
+   and the day the visits are looked up by (mode ui: it then marks the days with a visit, and the days points fall due). */
+const calMonth=o=>{const a=dt(o),t=dt(0);return (a.getUTCFullYear()-t.getUTCFullYear())*12+a.getUTCMonth()-t.getUTCMonth()};
+const calVal=(dev,s)=>{if(s.mode==='f'){if(dev.f[s.key+'_c'])return parseDMY(dev.f[s.key+'_t']);const v=dev.f[s.key];return v==null||v===''||isNaN(+v)?null:+v}const v=dev[s.key];return v==null||v===''?null:+v};
+function calMarks(pid){const pids=pid?[pid]:myPids(),m={};DB.visits.forEach(v=>{if(pids.includes(v.pid))m[v.date]=(m[v.date]||0)|1});DB.points.forEach(x=>{if(x.st==='open'&&x.due!=null&&pids.includes(x.pid))m[x.due]=(m[x.due]||0)|2});return m}
+SHEETS.cal=(dev,s)=>{const typed=dev.f.cal_t||'',to=parseDMY(typed);if(to!=null&&s.seen!==typed){s.seen=typed;s.mo=calMonth(to)}
+ const t0=dt(0),first=new Date(Date.UTC(t0.getUTCFullYear(),t0.getUTCMonth()+(s.mo||0),1)),y=first.getUTCFullYear(),m=first.getUTCMonth(),n=new Date(Date.UTC(y,m+1,0)).getUTCDate(),sel=calVal(dev,s),ui=s.mode==='ui',marks=ui?calMarks(s.pid):{};
+ let cells='<i></i>'.repeat(first.getUTCDay());
+ for(let d=1;d<=n;d++){const o=Math.round((Date.UTC(y,m,d)-BASE)/864e5),mk=marks[o]||0;
+  cells+=`<button type="button" class="cd${o===0?' now':''}${o<0?' past':''}${to===o?' typed':''}" data-a="calset" data-v="${o}" aria-pressed="${sel===o}" aria-label="${d} ${MONF[m]} ${y}${mk&1?', a visit':''}${mk&2?', points due':''}"><b>${d}</b>${mk?`<span>${mk&1?'<i class="v"></i>':''}${mk&2?`<i class="d${o<0?' late':''}"></i>`:''}</span>`:''}</button>`}
+ return {title:ui?'Visits by date':'By which date',sub:ui?'Choose a day: its visits, and the points that fall due on it':'Tap the day, or type it',
+  body:`<div class="calw"><div class="calh"><button type="button" class="ib" data-a="calmo" data-v="-1" aria-label="The month before">${ic('back')}</button><b>${MONF[m]} ${y}</b><button type="button" class="ib" data-a="calmo" data-v="1" aria-label="The month after">${ic('chev')}</button></div>
+   <div class="calg wd">${DOW.map(w=>`<span>${w}</span>`).join('')}</div><div class="calg">${cells}</div>
+   ${ui?`<div class="legend"><span><i class="sw gold"></i>a visit</span><span><i class="sw due"></i>points due</span><span><i class="sw late"></i>past their date</span></div>`:''}
+   <div class="dmy"><input class="inp" id="${dev.id}_cal_t" data-m="cal_t" data-ri="1" value="${esc(typed)}" placeholder="dd mm yy" inputmode="numeric" autocomplete="off" aria-label="Date, as day month year"><span class="f12 ${typed&&to==null?'c-bad':'mu'}">${typed&&to!=null?esc(fdw(to))+' '+dt(to).getUTCFullYear():typed?'not a date yet':'or type it: day month year, e.g. 25 11 26'}</span>${to!=null?Bt('Use','calset',to,'sm gold use','check'):''}</div></div>`,
+  foot:Bt(s.back?'Back':'Cancel','close',null,'ghost')+(ui&&sel!=null?Bt('All dates','calclear',null,'','x'):'')+Bt('Today','calset',0,'','clock')}};
 SHEETS.sitepts=(dev,s)=>{const p=pOf(s.id),list=sitePts(p);return {title:'Points for the whole site',sub:p.name+' · not tied to one room',body:`<div class="rows">${list.map(x=>ptRow(x,dev)).join('')||empty('Nothing here.')}</div>`,foot:Bt('Close','close',null,'ghost')}};
 /* one searchable list for a long choice: who a point is for, which room it is in */
 function pickOpts(s){const p=pOf(s.pid);if(!p)return [];if(s.src==='area')return [['','Whole site','not tied to one room']].concat(p.ents.map(e=>[e.id,e.n,e.ty&&e.ty!==e.n?e.ty:'']));
@@ -593,7 +683,7 @@ SHEETS.pick=(dev,s)=>{const q=(dev.f.pk_q||'').trim().toLowerCase(),all=pickOpts
   <div class="rows pklist">${list.map(o=>`<button type="button" class="rw lk ck" data-a="pickset" data-v="${esc(o[0])}" aria-pressed="${now!=null&&String(now)===String(o[0])}"><i class="box">${ic('check')}</i><div class="m"><div class="t1">${esc(o[1])}</div>${o[2]?`<div class="t2">${esc(o[2])}</div>`:''}</div></button>`).join('')||empty('Nothing matches.','search')}</div>
   ${s.src==='for'&&s.vendor?`<button type="button" class="btn blk" data-a="sheet" data-v="vendor|${s.vendor}">${ic('plus')}<span>A vendor outside the project</span></button>`:''}`}};
 /* notifications: what reached me, newest first; a tap goes to the thing itself */
-const NOTEI={drawing_question:'info',drawing_approval_needed:'check',point_done:'cam',bill_submitted:'bill',drawing_released:'dwg',drawing_client:'dwg',mom_party_pdf:'mom',client_item:'hand',remind:'bell',invite:'user',bill_asked:'bill',bill_returned:'bill',bill_accepted:'bill',bill_paid:'bill'};
+const NOTEI={drawing_question:'chat',drawing_approval_needed:'check',point_done:'cam',point_change:'refresh',bill_submitted:'bill',drawing_released:'dwg',drawing_client:'dwg',mom_party_pdf:'mom',client_item:'hand',remind:'bell',invite:'user',bill_asked:'bill',bill_returned:'bill',bill_accepted:'bill',bill_paid:'bill'};
 SHEETS.notes=(dev,s)=>{const list=DB.notes||[],fresh=s.fresh||[];return {title:'Notifications',sub:fresh.length?plural(fresh.length,'new one')+' since you last looked':'What reached you, newest first',
  body:`<div class="rows">${list.map(n=>`<button type="button" class="rw lk nt ${fresh.includes(n.id)?'unr':''}" data-a="noteopen" data-v="${n.id}"><span class="mi">${ic(NOTEI[n.ev]||'bell')}</span><div class="m"><div class="t1"><span class="tx">${esc(n.text)}</span></div><div class="t2">${n.on===0?'today':fd(n.on)} · ${esc(n.at||'')}${fresh.includes(n.id)?' · <b class="c-bad">new</b>':''}</div></div><div class="r">${n.ref?ic('chev','mu'):''}</div></button>`).join('')||empty('Nothing has reached you yet.','bell')}</div>`,foot:Bt('Close','close',null,'ghost')}};
 /* the MOM of a project as a PDF: every visit or one, every party or one agency, open points or all of them */
@@ -701,26 +791,26 @@ function obApply(ob){let p=ob.pid?pOf(ob.pid):null;const fresh=!p,was=p&&p.onb;
 /* ---- desk.js ---- */
 /* Revert Desk: the single window for staff in the browser (rvt_desk), in the Glass theme's own layout:
    a glass navbar on top, frosted panes on the colour field, one strong focus card. List on the left, the record on the right. */
-const DNAV=[['today','Today','home'],['projects','Projects','folder'],['drawings','Drawings','dwg'],['mom','MOM','mom'],['bills','Bills','bill'],['review','Review','review'],['setup','Setup','setup']];
+const DNAV=[['today','Today','home'],['projects','Projects','folder'],['drawings','Drawings','dwg'],['questions','Questions','chat'],['mom','MOM','mom'],['bills','Bills','bill'],['review','Review','review'],['setup','Setup','setup']];
 function deskCounts(){const ps=myProjects().filter(p=>p.onb).map(p=>p.id);return {today:todayFor(me()).length,projects:myProjects().length,drawings:DB.drawings.filter(d=>ps.includes(d.pid)&&d.st!=='released').length,
- q:openQs(),mom:DB.points.filter(x=>ps.includes(x.pid)&&x.st==='open').length,bills:DB.bills.filter(b=>ps.includes(b.pid)&&['submitted','asked','accepted','part_paid'].includes(b.st)).length}}
+ q:openQs(),questions:openQs(),mom:DB.points.filter(x=>ps.includes(x.pid)&&x.st==='open').length,bills:DB.bills.filter(b=>ps.includes(b.pid)&&['submitted','asked','accepted','part_paid'].includes(b.st)).length}}
 function deskLogin(dev){const u=me();return `<div class="bw"><div class="bw-bar"><i></i><i></i><i></i><div class="url">${ic('lock')}erp.revert.co.in/office/login</div></div><div class="scr"><div class="desk"><div class="dlogin enter">
   <section class="ink dl-art"><div class="tbr"><span>Revert Desk</span><span>${fdw(0)}</span></div><div class="dl-logo">${LOGO}</div><p class="atag">Architecture · Interior · Green Building</p><h1 class="serif">Every site, <em>drawn</em> and up to date.</h1>
    <p class="hnext">Set a project up once. After that there are two daily acts: releasing a drawing, and writing a point on site. The picture of every project follows from those.</p>${street(DB.projects,workShare,p=>p.area).replace(/data-a="proj"/g,'tabindex="-1"')}</section>
   <section class="dl-form"><h2 class="serif">Welcome back</h2><p class="t2">Log in to the back office.</p>${fld('Email',`<input class="inp" id="dk_login" value="${u.login}@revert.co.in" readonly>`)}${fld('Password',`<input class="inp" id="dk_pw" type="password" value="••••••••" readonly>`)}
    ${Bt('Log in','signin',null,'gold lg blk')}<div class="lbl mt">Demo · log in as</div><div class="chips">${demoUsers()}</div><p class="mu f12">Each person sees only their own projects; money is visible to the owner alone.</p></section></div>${sheetHTML(dev)}</div></div></div>`}
 function deskHTML(dev){if(!dev.signed)return deskLogin(dev);const u=me(),c=deskCounts(),sec=dev.sec==='onboard'?'projects':dev.sec,k=dev.sec+'|'+(dev.sec==='projects'?dev.pid+'|'+(dev.ptab||''):dev.sec==='onboard'&&dev.ob?dev.ob.step:''),fresh=dev._k!==k;dev._k=k;
- const body={today:deskToday,projects:deskProjects,drawings:deskDrawings,mom:deskMom,bills:deskBills,review:deskReview,setup:deskSetup,onboard:d=>`<div class="pad">${obWizard(d)}</div>`}[dev.sec](dev);
+ const body={today:deskToday,projects:deskProjects,drawings:deskDrawings,questions:deskQuestions,mom:deskMom,bills:deskBills,review:deskReview,setup:deskSetup,onboard:d=>`<div class="pad">${obWizard(d)}</div>`}[dev.sec](dev);
  return `<div class="bw"><div class="bw-bar"><i></i><i></i><i></i><div class="url">${ic('lock')}erp.revert.co.in/office</div></div>
  <div class="scr"><div class="desk"><header class="gnav"><button type="button" class="gn-home" data-a="nav" data-v="today" aria-label="Home">${ic('home')}</button><div class="gn-app">${LOGO}</div>
-  <nav class="gn-menu" aria-label="Revert Desk">${DNAV.map(n=>`<button type="button" data-a="nav" data-v="${n[0]}" ${sec===n[0]?'aria-current="page"':''}>${ic(n[2])}<span>${n[1]}</span>${c[n[0]]?`<b>${c[n[0]]}</b>`:''}${n[0]==='drawings'&&c.q?`<b class="q" title="${plural(c.q,'question')} waiting for an answer">${c.q} ?</b>`:''}</button>`).join('')}</nav>
+  <nav class="gn-menu" aria-label="Revert Desk">${DNAV.map(n=>`<button type="button" data-a="nav" data-v="${n[0]}" ${sec===n[0]?'aria-current="page"':''}>${ic(n[2])}<span>${n[1]}</span>${c[n[0]]?`<b ${n[0]==='questions'?`class="q" title="${plural(c.q,'question')} waiting for an answer"`:''}>${c[n[0]]}</b>`:''}</button>`).join('')}</nav>
   <div class="gn-r"><span class="gn-co"><i></i>Revert Architects</span><div class="gn-u">${av(u.n)}<div><b>${esc(u.full)}</b><small>${roleLabel(u)}</small></div></div><button type="button" class="ib gn-bell" data-a="notes" aria-label="Notifications" title="Notifications">${ic('bell')}${newNotes()?'<i class="ndot"></i>':''}</button><button type="button" class="ib gn-out" data-a="signout" aria-label="Log out" title="Log out">${ic('out')}</button></div></header>
   <main class="dmain${fresh?' enter':''}" data-sc="dmain_${dev.sec}">${body}</main></div>${sheetHTML(dev)}</div></div>`}
 const dhead=(title,sub,right)=>`<header class="dh"><div><h1 class="serif">${title}</h1>${sub?`<p>${sub}</p>`:''}</div><div class="dhr">${right||''}</div></header>`;
 const tabsH=(dev,key,list)=>`<div class="tabs" role="tablist">${list.map(t=>`<button type="button" role="tab" data-a="ui" data-v="${key}=${t[0]}" aria-selected="${(dev[key]||list[0][0])===t[0]}">${esc(t[1])}${t[2]!=null?`<i>${t[2]}</i>`:''}</button>`).join('')}</div>`;
 
 const SAY={approve:['drawing to approve','drawings to approve'],draw:['drawing to make','drawings to make'],change:['change to draw','changes to draw'],release:['drawing to release','drawings to release'],question:['question to answer','questions to answer'],decide:['agency to decide','agencies to decide'],
- confirm:['client point to confirm','client points to confirm'],bill:['bill to review','bills to review'],chase:['agency to chase','agencies to chase'],client:['client item to chase','client items to chase'],point:['open point of your own','open points of your own']};
+ confirm:['client point to confirm','client points to confirm'],check:['point to check','points to check'],bill:['bill to review','bills to review'],chase:['agency to chase','agencies to chase'],client:['client item to chase','client items to chase'],point:['open point of your own','open points of your own']};
 function summary(items){const parts=SECS.map(s=>{const n=items.filter(x=>x.sec===s[0]).length;return n?n+' '+SAY[s[0]][n===1?0:1]:''}).filter(Boolean);
  return parts.length?'You have '+(parts.length>1?parts.slice(0,-1).join(', ')+' and '+parts[parts.length-1]:parts[0])+'.':'All clear. Nothing waits for you.'}
 function weekLine(u){const mine=DB.drawings.filter(d=>d.st==='released'&&cur(d).relOn>-7&&(has(u,'designer')?d.ds===u.id:canSee(u,pOf(d.pid)))),rc=mine.flatMap(d=>cur(d).rc);
@@ -743,9 +833,9 @@ function projTab(p,dev){const t=dev.ptab||'picture',pic=picture(p),dws=DB.drawin
    ${card('Trades and agencies','',`<div class="rows">${p.plan.map(x=>`<div class="rw"><div class="m"><div class="t1">${esc(TX[x.t].n)}</div><div class="t2 ${x.ag?'':'c-bad'}">${x.ag?esc(agN(x.ag))+' · '+esc(agOf(x.ag).people.map(q=>q.n).join(', ')):'undecided · decide by '+fd(x.by)}</div></div><div class="r">${Bt(x.ag?'Change':'Assign','assign',p.id+'|'+x.t,x.ag?'sm':'sm gold')}</div></div>`).join('')}</div>`)}</div></div>`;
  if(t==='drawings')return card('Drawing register',Bt('Add drawings','onbstep',p.id+'|5','sm','plus'),`<div class="rows">${dws.slice().sort((a,b)=>a.due-b.due).map(d=>dwgRow(d,dev)).join('')||empty('No drawing on the list yet.','dwg')}</div>`);
  if(t==='mom'){const v=dev.vid&&visOf(dev.vid);if(v&&v.pid===p.id)return `<div class="stack">${Bt('All visits','ui','vid=','sm ghost','back')}${momCapture(v,dev)}</div>`;
-  const f=dev.mf||'open',list=pts.filter(x=>f==='all'||x.st===f).sort((a,b)=>b.n-a.n),vs=DB.visits.filter(x=>x.pid===p.id).sort((a,b)=>b.no-a.no);
-  return `<div class="stack">${card('Visits',Bt('Start MOM','startmom',p.id,'sm gold','plus'),`<div class="rows">${vs.map(x=>{const n=pts.filter(q=>q.vid===x.id);return `<div class="rw"><span class="cal"><i>${MON[dt(x.date).getUTCMonth()]}</i><b>${dt(x.date).getUTCDate()}</b></span><div class="m"><div class="t1">Visit ${x.no} ${x.st==='open'?pill('open','work'):''}</div><div class="t2">by ${esc(stf(x.by).n)} · ${plural(n.length,'point')} · ${n.filter(q=>q.st==='open').length} open · present: ${esc(x.att.join(', '))}</div></div><div class="r">${Bt('PDF','pdf','mom|'+x.id+'|all','sm ghost','file')}${Bt('Open','ui','vid='+x.id,'sm')}</div></div>`}).join('')||empty('No visit yet. Start the first MOM.','mom')}</div>`)}
-   ${card('Points',`<div class="seg sm">${[['open','Open'],['closed','Closed'],['all','All']].map(o=>`<button data-a="ui" data-v="mf=${o[0]}" aria-pressed="${f===o[0]}">${o[1]}</button>`).join('')}</div>${Bt('PDF','mompdf',p.id,'sm ghost','file')}${Bt('Raise point','raise',p.id,'sm','plus')}`,ptList(list,dev))}</div>`}
+  const f=dev.mf==='late'?'open':dev.mf||'open',nck=pts.filter(x=>x.st==='open'&&x.rev==='check').length,list=pts.filter(x=>f==='all'||(f==='check'?x.st==='open'&&x.rev==='check':x.st===f)).sort((a,b)=>b.n-a.n);
+  return `<div class="stack">${visitsCard(dev,p.id,Bt('Start MOM','startmom',p.id,'sm gold','plus'))}
+   ${card('Points',`<div class="seg sm">${[['open','Open'],['check','To check'+(nck?' · '+nck:'')],['closed','Closed'],['all','All']].map(o=>`<button data-a="ui" data-v="mf=${o[0]}" aria-pressed="${f===o[0]}">${o[1]}</button>`).join('')}</div>${Bt('PDF','mompdf',p.id,'sm ghost','file')}${Bt('Raise point','raise',p.id,'sm','plus')}`,ptList(list,dev))}</div>`}
  if(t==='client'){const un=pts.filter(x=>x.kind==='client'&&x.st==='open'&&!x.confirmed),cd=dws.filter(d=>d.forClient);
   return `<div class="stack"><div class="two">${card('Client access','',`<div class="rows">${p.client.contacts.map((c,i)=>`<div class="rw"><div class="m"><div class="t1">${av(c.n,'sm')}<span>${esc(c.n)}</span></div><div class="t2">${esc(c.ph)} · ${!c.inv?'not invited yet':c.invst&&c.invst!=='sent'?`<span class="c-wait">invitation ${esc(c.invst)}: it did not leave</span>`:'<span class="c-ok">invited · app or link</span>'}</div>${c.inv&&c.invwhy?`<div class="t2 c-wait">${esc(c.invwhy)}</div>`:''}</div><div class="r">${c.inv?Bt('Copy link','copylink',p.id,'sm ghost','link')+(c.invst&&c.invst!=='sent'?Bt('Invite again','invite',p.id+'|'+i,'sm wa','wa'):''):Bt('Invite','invite',p.id+'|'+i,'sm wa','wa')}</div></div>`).join('')}</div>
     <div class="note">${ic('eye')}The client sees two things only: the drawings marked for the client, and what Revert needs from them.</div>`)}
@@ -771,13 +861,19 @@ function deskDrawings(dev){const ps=myProjects().map(p=>p.id),mine=dev.dmine==='
 function deskMom(dev){const ps=myProjects().map(p=>p.id),pf=dev.mp?+dev.mp:0,pts=DB.points.filter(x=>ps.includes(x.pid)&&(!pf||x.pid===pf)),open=pts.filter(x=>x.st==='open'),f=dev.mf||'open';
  const by={};open.forEach(x=>{const k=partyName(pOf(x.pid),x);by[k]=by[k]||[0,0];by[k][0]++;if(x.due<0)by[k][1]++});const top7=Object.entries(by).sort((a,b)=>b[1][0]-a[1][0]).slice(0,7);
  const wk=[5,4,3,2,1,0].map(w=>{const a=-7*w-6,b=-7*w;return [fd(a),pts.filter(x=>{const v=x.vid&&visOf(x.vid),on=v?v.date:-1;return on>=a&&on<=b}).length,pts.filter(x=>x.st==='closed'&&x.closedOn>=a&&x.closedOn<=b).length]}),wm=Math.max(1,...wk.map(x=>Math.max(x[1],x[2])));
- const list=pts.filter(x=>f==='all'||(f==='late'?x.st==='open'&&x.due<0:x.st===f)).sort((a,b)=>a.due-b.due),vs=DB.visits.filter(v=>ps.includes(v.pid)&&(!pf||v.pid===pf)).sort((a,b)=>b.date-a.date);
+ const nck=open.filter(x=>x.rev==='check').length,list=pts.filter(x=>f==='all'||(f==='late'?x.st==='open'&&x.due<0:f==='check'?x.st==='open'&&x.rev==='check':x.st===f)).sort((a,b)=>a.due-b.due),vs=DB.visits.filter(v=>ps.includes(v.pid)&&(!pf||v.pid===pf)).sort((a,b)=>b.date-a.date);
  return dhead('MOM','Visits and points across projects. A point agreed on site is a MOM point in the app.',`<select class="inp sm" data-ui="mp" aria-label="Project"><option value="">All projects</option>${myProjects().map(p=>`<option value="${p.id}" ${pf===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select>`)
   +`<div class="kpis">${kpi('Open points',open.length)}${kpi('Past their date',open.filter(x=>x.due<0).length,'c-bad')}${kpi('Closed this week',pts.filter(x=>x.st==='closed'&&x.closedOn>-7).length,'c-ok')}${kpi('Visits this month',vs.filter(v=>v.date>-18).length,'c-gold')}</div>
   <div class="two">${card('Open points by person','<span class="mu f12">one tick per point · red = past its date</span>',`<div class="hbars">${top7.map(e=>`<div class="hb"><span>${esc(e[0])}</span>${ticks(e[1][1],e[1][0],'split')}<b class="num">${e[1][0]}</b></div>`).join('')||empty('No open point.')}</div>`)}
   ${card('Raised and closed, by week','',`<div class="vbars">${wk.map(x=>`<div class="vb"><div class="vbt"><i style="height:${x[1]/wm*100}%" title="${x[1]} raised"></i><i class="ok" style="height:${x[2]/wm*100}%" title="${x[2]} closed"></i></div><span>${x[0]}</span></div>`).join('')}</div><div class="legend"><span><i class="sw gold"></i>raised</span><span><i class="sw done"></i>closed</span></div>`)}</div>
-  ${card('Points',`<div class="seg sm">${[['open','Open'],['late','Past date'],['closed','Closed'],['all','All']].map(o=>`<button data-a="ui" data-v="mf=${o[0]}" aria-pressed="${f===o[0]}">${o[1]}</button>`).join('')}</div>`,ptTable(list,dev,{proj:1}))}
-  ${card('Visits','',`<div class="rows">${vs.map(v=>{const n=DB.points.filter(q=>q.vid===v.id);return `<div class="rw"><span class="cal"><i>${MON[dt(v.date).getUTCMonth()]}</i><b>${dt(v.date).getUTCDate()}</b></span><div class="m"><div class="t1">${esc(pOf(v.pid).name)} · visit ${v.no}</div><div class="t2">by ${esc(stf(v.by).n)} · ${plural(n.length,'point')}, ${n.filter(q=>q.st==='open').length} open</div></div><div class="r">${Bt('PDF','pdf','mom|'+v.id+'|all','sm ghost','file')}${Bt('Open','openvisit',v.id,'sm')}</div></div>`}).join('')}</div>`)}`}
+  ${visitsCard(dev,pf)}
+  ${card('Points',`<div class="seg sm">${[['open','Open'],['check','To check'+(nck?' · '+nck:'')],['late','Past date'],['closed','Closed'],['all','All']].map(o=>`<button data-a="ui" data-v="mf=${o[0]}" aria-pressed="${f===o[0]}">${o[1]}</button>`).join('')}</div>`,ptTable(list,dev,{proj:1}))}`}
+
+/* questions: the threads on the left, the one in hand on the right with what it is about, answered in place */
+function deskQuestions(dev){const all=qThreads(myPids()),nOpen=all.filter(t=>t.open).length,f=dev.qf==='all'?'all':'open',list=all.filter(t=>f==='all'||t.open),cur=all.find(t=>t.id===dev.qt)||list[0];
+ return dhead('Questions','Every question asked on a drawing, by an agency or by a client. Open one to see what it is about, and answer it there.',`<div class="seg sm">${[['open','To answer',nOpen],['all','All',all.length]].map(o=>`<button data-a="ui" data-v="qf=${o[0]}" aria-pressed="${f===o[0]}">${o[1]}<i>${o[2]}</i></button>`).join('')}</div>`)
+  +`<div class="split in qsp"><aside class="sl" data-sc="qlist"><div class="rows sel">${list.map(t=>qRow(t,dev,cur&&cur.id===t.id)).join('')||empty(f==='all'?'No question has been asked yet.':'No question waits for an answer.','chat')}</div></aside>
+   <section class="sd" data-sc="qdetail">${cur?`<div class="card thc">${thView(cur,dev)}</div>`:`<div class="card">${empty('Questions from agencies and clients appear here.','chat')}</div>`}</section></div>`}
 
 function deskBills(dev){const ps=myProjects().map(p=>p.id),all=DB.bills.filter(b=>ps.includes(b.pid)),G={review:all.filter(b=>b.st==='submitted'),asked:all.filter(b=>b.st==='asked'||b.st==='returned'),unpaid:all.filter(b=>b.st==='accepted'||b.st==='part_paid'),paid:all.filter(b=>b.st==='paid'),all};
  const t=dev.btab||'review';return dhead('Bills','Revert asks, the agency uploads, Revert records what is paid and by whom. No advances.',Bt('Ask for a bill','askbill','','gold','plus'))
@@ -845,7 +941,7 @@ function staffHTML(dev){const u=me();
  const t=top(dev),c=deskCounts(),nq=openQs(),nav=bnav(dev,[['today','Today','home',c.today],['projects','Projects','folder'],['drawings','Drawings','dwg',nq||''],['mom','MOM','mom']],true);
  let bar='',body='',key=t.s+(t.id||''),hideNav=false,bodyCls='';
  if(t.s==='today'){const it=todayFor(u),first=it[0],ps=myProjects();
-  bar=abar(`Hello, ${esc(u.n)}`,fdw(0)+' · '+roleLabel(u),{cls:'hh',subFirst:1,serif:1,left:`<button type="button" class="avb" data-a="go" data-v="more" aria-label="Profile and more">${av(u.n,'lg')}</button>`,right:`<button type="button" class="ib" data-a="notes" aria-label="Notifications">${ic('bell')}${newNotes()?'<i class="ndot"></i>':''}</button>`});
+  bar=abar(`Hello, ${esc(u.n)}`,fdw(0)+' · '+roleLabel(u),{cls:'hh',subFirst:1,serif:1,left:`<button type="button" class="avb" data-a="go" data-v="more" aria-label="Profile and more">${av(u.n,'lg')}</button>`,right:`<button type="button" class="ib qib" data-a="go" data-v="questions" aria-label="Questions${nq?': '+nq+' to answer':''}">${ic('chat')}${nq?`<b class="nb">${nq}</b>`:''}</button><button type="button" class="ib" data-a="notes" aria-label="Notifications">${ic('bell')}${newNotes()?'<i class="ndot"></i>':''}</button>`});
   body=`<section class="ink hero"><div class="tbr"><span>Today</span><span>${plural(ps.length,'site')}</span></div><div class="hnum"><b data-cu="${it.length}">${it.length}</b><span>${it.length===1?'thing':'things'} to do<br>right now</span>${first?`<button type="button" class="btn brz" data-a="startq">${ic('play')}<span>Start</span></button>`:''}</div>
     ${first?`<p class="hnext"><span class="lbl">First</span>${esc(first.text)} · ${esc(first.p.name)}</p>`:'<p class="hnext">All clear. Nothing waits for you.</p>'}${street(ps,workShare,p=>p.onb?DB.points.filter(x=>x.pid===p.id&&x.st==='open').length+' open':'configure')}</section>
    <div class="sech"><h3>To do</h3>${weekChip(u)}</div>${todoList(dev,it)}`}
@@ -863,9 +959,15 @@ function staffHTML(dev){const u=me();
  if(t.s==='mom'){const ps=myProjects(),ids=ps.map(p=>p.id),open=DB.points.filter(x=>ids.includes(x.pid)&&x.st==='open'),ov=DB.visits.filter(v=>ids.includes(v.pid)&&v.st==='open');
   bar=abar('Site visits','write a point, send it before you leave the room',{serif:1});
   body=`<section class="ink"><div class="tbr"><span>Start a MOM</span><span>pick the site</span></div>${street(ps,workShare,p=>'visit '+(ov.find(v=>v.pid===p.id)||{no:p.visitNo+1}).no,null).replace(/data-a="proj"/g,'data-a="startmom"')}</section>
-   <div class="kpis">${kpi('Open',open.length)}${kpi('Past date',open.filter(x=>x.due<0).length,'c-bad')}${kpi('Due soon',open.filter(x=>x.due===0||x.due===1).length,'c-wait')}</div>
+   <div class="kpis">${kpi('Open',open.length)}${kpi('Past date',open.filter(x=>x.due<0).length,'c-bad')}${kpi('To check',open.filter(x=>x.rev==='check').length,'c-gold')}</div>
+   ${visitsCard(dev,0)}
    ${card('Open points','',`<div class="rows">${open.sort((a,b)=>a.due-b.due).map(x=>ptRow(x,dev,{proj:1})).join('')||empty('No open point.')}</div>`)}`}
  if(t.s==='visit'){const v=visOf(t.id);hideNav=true;bodyCls='momb';bar=abar('Visit '+v.no,esc(pOf(v.pid).name),{back:1,right:`<button type="button" class="ib ${UI.offline?'on':''}" data-a="offline" aria-label="Flight mode" aria-pressed="${UI.offline}">${ic('off')}</button>`});body=momCapture(v,dev)}
+ if(t.s==='questions'){hideNav=true;const all=qThreads(myPids()),f=dev.qf==='all'?'all':'open',list=all.filter(x=>f==='all'||x.open);key+=f;
+  bar=abar('Questions',nq?plural(nq,'question')+' waiting for an answer':'asked on drawings, by agencies and clients',{back:1,serif:1})+tabsH(Object.assign({},dev,{qf:f}),'qf',[['open','To answer',all.filter(x=>x.open).length],['all','All',all.length]]);
+  body=`<div class="card flush"><div class="rows">${list.map(x=>qRow(x,dev)).join('')||empty(f==='all'?'No question has been asked yet.':'No question waits for an answer.','chat')}</div></div>`}
+ if(t.s==='qchat'){const th=thOf(t.id);hideNav=true;if(!th){bar=abar('Questions','',{back:1});body=`<div class="card">${empty('This conversation is not there any more.','chat')}</div>`}
+  else{bodyCls='momb';bar=abar(esc(thName(th)),sheetNo(th.d)+' · '+esc(pOf(th.d.pid).name),{back:1});body=thView(th,dev)}}
  if(t.s==='more'){hideNav=true;bar=abar(esc(u.full),roleLabel(u),{back:1,serif:1});const it=[['bills','Bills','bill','Ask, review, record payments'],['review','Review','review','The weekly board, one row per project'],['setup','Setup','setup','Rules, day limits, WhatsApp']];
   body=`<div class="card flush"><div class="rows">${it.map(x=>`<button type="button" class="rw lk" data-a="go" data-v="${x[0]}"><i class="mi">${ic(x[2])}</i><div class="m"><div class="t1">${x[1]}</div><div class="t2">${x[3]}</div></div><div class="r">${ic('chev','mu')}</div></button>`).join('')}
    <button type="button" class="rw lk" data-a="onb" data-v=""><i class="mi">${ic('plus')}</i><div class="m"><div class="t1">New project</div><div class="t2">Onboard in six steps, from the phone</div></div><div class="r">${ic('chev','mu')}</div></button>
@@ -890,11 +992,11 @@ function signinFlow(dev,L,who,name){const si=dev.si||(dev.si={step:'lang'});
 const calTile=(o,L)=>`<span class="cal ${o<0?'bad':o<=1?'soon':''}"><i>${MON[dt(o).getUTCMonth()]}</i><b>${dt(o).getUTCDate()}</b></span>`;
 function agencyHTML(dev){const a=agOf(UI.agency),L=UI.lang.agency,T=k=>tr(k,L),gu=L!=='en'?'gu':'';
  if(!dev.signed)return phone(dev,{key:'si',cls:'p-auth '+gu,body:signinFlow(dev,L,'agency',a.people[0].n+' · '+a.n)});
- const ps=agProjects(a.id),pts=DB.points.filter(x=>x.kind==='agency'&&x.party===a.id&&x.st==='open'&&!x.pending).sort((x,y)=>x.due-y.due);
+ const ps=agProjects(a.id),mine=DB.points.filter(x=>x.kind==='agency'&&x.party===a.id&&x.st==='open'&&!x.pending),pts=mine.filter(x=>x.rev!=='check').sort((x,y)=>(y.rev==='change')-(x.rev==='change')||x.due-y.due),sentPts=mine.filter(x=>x.rev==='check').sort((x,y)=>(y.doneOn||0)-(x.doneOn||0));
  const dws=DB.drawings.filter(d=>d.st==='released'&&cur(d).rc.some(r=>r.to===a.id)),nw=dws.filter(d=>cur(d).rc.find(r=>r.to===a.id).opened==null),bills=DB.bills.filter(b=>b.ag===a.id),asks=bills.filter(b=>b.st==='asked'||b.st==='returned');
  const t=top(dev),nav=bnav(dev,[['home',T('home'),'home',pts.length+nw.length+asks.length||''],['sites',T('sites'),'folder'],['drawings',T('drawings'),'dwg',nw.length||''],['bills',T('bills'),'bill',asks.length||'']]);
  const myShare=p=>{const ls=p.lines.filter(l=>lineAg(p,l)===a.id);return ls.length?ls.filter(l=>l.st==='done').length/ls.length:0};
- const prow=x=>`<button type="button" class="rw lk" data-a="go" data-v="point|${x.id}">${x.st==='closed'?`<span class="mi ok">${ic('check')}</span>`:calTile(x.due,L)}<div class="m"><div class="t1"><span class="tx">${esc(x.text)}</span></div><div class="t2">${esc(pOf(x.pid).name)}${x.e?' · '+esc(entN(pOf(x.pid),x.e)):''}${x.st==='closed'&&x.closedOn!=null?' · '+fd(x.closedOn):''}</div></div><div class="r">${x.photo?phOf('point',x):''}${ic('chev','mu')}</div></button>`;
+ const prow=x=>`<button type="button" class="rw lk" data-a="go" data-v="point|${x.id}">${x.st==='closed'?`<span class="mi ok">${ic('check')}</span>`:x.rev==='check'?`<span class="mi brz">${ic('clock')}</span>`:calTile(x.due,L)}<div class="m"><div class="t1"><span class="tx">${esc(x.text)}</span></div><div class="t2">${esc(pOf(x.pid).name)}${x.e?' · '+esc(entN(pOf(x.pid),x.e)):''}${x.st==='closed'&&x.closedOn!=null?' · '+fd(x.closedOn):''}</div>${x.st==='open'&&x.rev==='change'?`<div class="t2 c-bad">${ic('refresh')}${T('pt_chg')}: ${esc(x.chg)}</div>`:x.st==='open'&&x.rev==='check'?`<div class="t2 c-gold">${T('pt_wait')}</div>`:''}</div><div class="r">${x.photo?phOf('point',x):''}${ic('chev','mu')}</div></button>`;
  const donePts=DB.points.filter(x=>x.kind==='agency'&&x.party===a.id&&x.st==='closed').sort((x,y)=>(y.closedOn||0)-(x.closedOn||0));
  const dcard=d=>{const r=cur(d),un=r.rc.find(x=>x.to===a.id).opened==null;return `<button type="button" class="dcard" data-a="adwg" data-v="${d.id}">${sht(d,'lg')}<div class="t1"><span class="tx">${esc(d.title)}</span>${un?pill(T('new'),'gold'):''}</div><div class="t2">${T('rev')} ${r.n} · ${esc(pOf(d.pid).name)}</div></button>`};
  const brow=b=>`<button type="button" class="rw lk" data-a="go" data-v="bill|${b.id}"><span class="mi">${ic('bill')}</span><div class="m"><div class="t1">${esc(b.what)}</div><div class="t2">${esc(pOf(b.pid).name)}${b.amount!=null?' · <b class="num">'+inr(b.amount)+'</b>':''}</div>${b.st==='returned'?`<div class="t2 c-bad">${T('reason')}: ${esc(b.reason)}</div>`:''}</div><div class="r">${pill(T(b.st),BS[b.st][1])}</div></button>`;
@@ -904,23 +1006,25 @@ function agencyHTML(dev){const a=agOf(UI.agency),L=UI.lang.agency,T=k=>tr(k,L),g
     ${street(ps,myShare,p=>{const ls=p.lines.filter(l=>lineAg(p,l)===a.id);return ls.filter(l=>l.st==='done').length+'/'+ls.length},'go')}</section>
    ${asks.map(b=>`<button type="button" class="askc" data-a="go" data-v="bill|${b.id}"><span class="mi">${ic('bill')}</span><div><h3>${b.st==='returned'?T('again'):T('upload')}</h3><p>${esc(pOf(b.pid).name)} · ${esc(b.what)}</p></div>${ic('chev')}</button>`).join('')}
    <div class="sech"><h3>${T('points')}</h3><span class="cnt">${pts.length}</span></div><div class="card flush solid"><div class="rows">${pts.map(prow).join('')||empty(T('allclear'))}</div></div>
+   ${sentPts.length?`<div class="sech"><h3>${T('pt_waitl')}</h3><span class="cnt">${sentPts.length}</span></div><div class="card flush solid"><div class="rows">${sentPts.map(prow).join('')}</div></div>`:''}
    <div class="sech"><h3>${T('newdw')}</h3><span class="cnt">${nw.length}</span></div>${nw.length?`<div class="hscroll">${nw.map(dcard).join('')}</div>`:`<div class="card solid">${empty(T('allclear'))}</div>`}`}
  if(t.s==='sites'){bar=abar(T('sites'),plural(ps.length,'site'),{serif:1});body=`<div class="stack">${ps.map(p=>{const ls=p.lines.filter(l=>lineAg(p,l)===a.id),c=s=>ls.filter(l=>l.st===s).length;return `<button type="button" class="site wide solid" data-a="go" data-v="site|${p.id}"><div class="site-art">${elev(p.kind,myShare(p))}</div><div class="m"><h3>${esc(p.name)}</h3><p class="t2">${ic('pin')}${esc(p.area)} · ${esc(p.plan.filter(x=>x.ag===a.id).map(x=>TX[x.t][L]||TX[x.t].n).join(', '))}</p>${ticks(c('done'),ls.length,'ok',c('work'))}
    <div class="site-m"><span class="c-ok"><b>${c('done')}</b> ${T('done')}</span><span class="c-work"><b>${c('work')}</b> ${T('work')}</span><span class="c-wait"><b>${c('wait')}</b> ${T('wait')}</span><span><b>${c('ns')}</b> ${T('ns')}</span></div></div></button>`}).join('')}</div>`}
  if(t.s==='site'){const p=pOf(t.id),ls=p.lines.filter(l=>lineAg(p,l)===a.id);hide=true;bar=abar(esc(p.name),esc(p.address),{back:1,serif:1});
   body=`<div class="card solid"><header class="hd"><h3>${T('rooms')}</h3></header>${planView(p,dev,{ro:1,ag:a.id})}<div class="rows">${ls.map(l=>`<div class="rw"><div class="m"><div class="t1">${esc(entN(p,l.e))}</div><div class="t2">${esc(TX[l.t][L]||TX[l.t].n)}${l.st==='wait'&&l.cause==='drawing'&&dOf(l.ref)?' · '+T('waiting4')+': '+esc(dOf(l.ref).title):''}</div></div><div class="r">${pill(T(l.st),LS[l.st][1])}</div></div>`).join('')}</div></div>
    <div class="sech"><h3>${T('points')}</h3></div><div class="card flush solid"><div class="rows">${pts.filter(x=>x.pid===p.id).map(prow).join('')||empty(T('allclear'))}</div></div>
+   ${sentPts.some(x=>x.pid===p.id)?`<div class="sech"><h3>${T('pt_waitl')}</h3></div><div class="card flush solid"><div class="rows">${sentPts.filter(x=>x.pid===p.id).map(prow).join('')}</div></div>`:''}
    ${donePts.some(x=>x.pid===p.id)?`<div class="sech"><h3>${T('pt_closed')}</h3></div><div class="card flush solid"><div class="rows">${donePts.filter(x=>x.pid===p.id).slice(0,12).map(prow).join('')}</div></div>`:''}
    <div class="sech"><h3>${T('drawings')}</h3></div>${dws.some(d=>d.pid===p.id)?`<div class="dgal">${dws.filter(d=>d.pid===p.id).map(dcard).join('')}</div>`:`<div class="card solid">${empty(T('allclear'),'dwg')}</div>`}`}
  if(t.s==='point'){const x=ptOf(t.id),p=x&&pOf(x.pid);hide=true;
   if(!x||!p){bar=abar(T('points'),'',{back:1});body=`<div class="card solid">${empty(T('allclear'))}</div>`}
-  else{const open=x.st==='open',f=dev.f;bar=abar(T('pt_no')+' '+x.n,esc(p.name)+' · '+esc(x.e?entN(p,x.e):T('pt_site')),{back:1,right:open?'':pill(T('done'),'ok','check')});
-   body=`<div class="card solid"><div class="rw">${open?calTile(x.due,L):`<span class="mi ok">${ic('check')}</span>`}<div class="m"><div class="t1"><span class="tx ptx">${esc(x.text)}</span></div><div class="t2">${T('pt_from')}${x.on!=null?' · '+fd(x.on):''}${open&&x.due!=null?' · '+T('by')+' '+fd(x.due):''}</div></div></div>${ptBA(x,L)}</div>
-    ${open?`<div class="card solid"><header class="hd"><h3>${T('pt_done')}</h3></header><button type="button" class="drop ${f.ad_photo?'on':''}" data-a="tog" data-v="ad_photo">${ic(f.ad_photo?'check':'cam')}<span>${T('pt_proof')}${f.ad_photo?' ✓':''}</span></button>${fld(T('pt_note'),fin(dev,'ad_note',''))}${Bt(T('pt_done'),'agdone',x.id,'gold lg blk','check')}</div>`
+  else{const open=x.st==='open',f=dev.f,chk=open&&x.rev==='check',chg=open&&x.rev==='change';bar=abar(T('pt_no')+' '+x.n,esc(p.name)+' · '+esc(x.e?entN(p,x.e):T('pt_site')),{back:1,right:chk?pill(T('pt_sentp'),'gold','clock'):open?'':pill(T('done'),'ok','check')});
+   body=`<div class="card solid"><div class="rw">${open?calTile(x.due,L):`<span class="mi ok">${ic('check')}</span>`}<div class="m"><div class="t1"><span class="tx ptx">${esc(x.text)}</span></div><div class="t2">${T('pt_from')}${x.on!=null?' · '+fd(x.on):''}${open&&x.due!=null?' · '+T('by')+' '+fd(x.due):''}</div></div></div>${chg?`<div class="note bad chgn">${ic('refresh')}<span><b>${T('pt_chg')}</b>${x.chgOn!=null?' · '+fd(x.chgOn):''}<br>${esc(x.chg)}</span></div>`:''}${ptBA(x,L)}</div>
+    ${chk?`<div class="note gold">${ic('clock')}<span>${T('pt_wait')}${x.doneOn!=null?' · '+fd(x.doneOn):''}${x.note?' · '+esc(x.note):''}</span></div>`:open?`<div class="card solid"><header class="hd"><h3>${chg?T('pt_again'):T('pt_done')}</h3></header><button type="button" class="drop pht ${f.ad_photo?'on':''}" data-a="tog" data-v="ad_photo" aria-pressed="${!!f.ad_photo}">${f.ad_photo&&pickedImg('ad_photo')?`<img alt="" src="${pickedImg('ad_photo')}">`:ic(f.ad_photo?'check':'cam')}<span>${T('pt_proof')}${f.ad_photo?' ✓':''}</span></button>${fld(T('pt_note'),fin(dev,'ad_note',''))}${Bt(T('pt_done'),'agdone',x.id,'gold lg blk','check')}</div>`
      :`<div class="note ok">${ic('check')}<span>${T('done')}${x.closedOn!=null?' · '+fd(x.closedOn):''}${x.doneBy?' · '+esc(x.doneBy):''}${x.note?' · '+esc(x.note):''}</span></div>`}`}}
  if(t.s==='drawings'){bar=abar(T('drawings'),T('current'),{serif:1});body=dws.length?`<div class="dgal">${dws.map(dcard).join('')}</div>`:`<div class="card solid">${empty(T('allclear'),'dwg')}</div>`}
  if(t.s==='dwg'){const d=dOf(t.id),r=cur(d),qs=d.q.filter(q=>q.by===a.id);hide=true;bodyCls='momb';bar=abar(esc(d.title),sheetNo(d)+' · '+T('rev')+' '+r.n+' · '+esc(pOf(d.pid).name),{back:1});
-  body=`<div class="momc chat"><div class="viewer">${dwgPaper(d)}</div><div class="note ok">${ic('check')}${T('current')} · ${fd(r.relOn)}</div>${qs.map(q=>`<div class="q"><div class="qb out"><div class="lbl">${T('yourq')} · ${fd(q.on)}</div>${esc(q.text)}${q.photo?phOf('question',q):''}</div>${q.ans?`<div class="qb in"><div class="lbl">Revert · ${esc(stf(q.ansBy).n)}</div>${esc(q.ans)}</div>`:''}</div>`).join('')}
+  body=`<div class="momc chat"><div class="viewer">${dwgPaper(d)}</div><div class="note ok">${ic('check')}${T('current')} · ${fd(r.relOn)}</div>${qs.length?`<div class="q">${thMsgs({d,by:a.id,qs}).map(m=>m.k==='in'?`<div class="qb out"><div class="lbl">${T('yourq')} · ${fd(m.on)}</div>${esc(m.text)}${m.q.photo?phOf('question',m.q):''}</div>`:`<div class="qb in"><div class="lbl">Revert · ${esc(stf(m.q.ansBy).n)}</div>${esc(m.text)}</div>`).join('')}</div>`:''}
    <div class="dock"><div class="composer"><div class="lbl">${T('ask')}</div>${dev.f.aq_photo?`<button type="button" class="qph" data-a="tog" data-v="aq_photo">${ic('cam')}<span>${T('q_photo')}</span>${ic('x')}</button>`:''}
     <div class="ctext">${fin(dev,'aq',T('q_hint'))}<button type="button" class="ib ${dev.f.aq_photo?'on':''}" data-a="tog" data-v="aq_photo" aria-label="${T('pt_photo')}">${ic('cam')}</button><button type="button" class="ib snd" data-a="aask" data-v="${d.id}" aria-label="${T('send')}">${ic('send')}</button></div></div></div></div>`}
  if(t.s==='bills'){bar=abar(T('bills'),'',{serif:1});body=`<div class="card flush solid"><div class="rows">${bills.map(brow).join('')||empty(T('nobills'),'bill')}</div></div>`}
@@ -993,20 +1097,34 @@ const A={
  go(v,el,dev){const [s,id]=v.split('|');dev.stack.push({s,id:id&&/^\d+$/.test(id)?+id:id});if(s==='point'){dev.f.ad_note='';dev.f.ad_photo=false}if(s==='bill'&&dev.id==='agency'){const b=billOf(id);dev.f.ab_no='';dev.f.ab_amt='';dev.f.ab_doc=false}},
  ui(v,el,dev){const i=v.indexOf('='),k=v.slice(0,i),val=v.slice(i+1);if(k==='vid'&&dev.phone&&val){dev.stack.push({s:'visit',id:val});return}dev[k]=val},
  set(v,el,dev){const i=v.indexOf('='),k=v.slice(0,i);dev.f[k]=v.slice(i+1);if((k+'_c') in dev.f)dev.f[k+'_c']=false;if(k==='c_cause'){dev.f.c_ref='';dev.f.c_note=''}},tog(v,el,dev){dev.f[v]=!dev.f[v]},close(v,el,dev){dev.sheet=(dev.sheet&&dev.sheet.back)||null},
- /* a date typed by hand, as day month year */
- duec(v,el,dev){dev.f[v+'_c']=!dev.f[v+'_c'];if(dev.f[v+'_c'])UI.focus=dev.id+'_'+v+'_t'},
+ /* the calendar: for a date of the form (f|key) or for a date the screen is looked up by (ui|key|project).
+    It opens on the month of the date already chosen; the sheet it was opened from comes back. */
+ cal(v,el,dev){const [mode,key,pid]=v.split('|'),s={mode,key,pid:+pid||0,mo:0,back:dev.sheet&&dev.sheet.k!=='cal'?dev.sheet:null},now=calVal(dev,s);dev.f.cal_t='';if(now!=null)s.mo=calMonth(now);openSheet(dev,'cal',s);if(!dev.phone)UI.focus=dev.id+'_cal_t'},
+ calmo(v,el,dev){const s=dev.sheet;if(s&&s.k==='cal'){s.mo=(s.mo||0)+(+v);s.seen=dev.f.cal_t||''}},
+ calset(v,el,dev){const s=dev.sheet;if(!s||s.k!=='cal'||isNaN(+v))return;if(s.mode==='f'){dev.f[s.key+'_c']=true;dev.f[s.key+'_t']=fdmy(+v)}else dev[s.key]=String(+v);dev.f.cal_t='';dev.sheet=s.back||null},
+ calclear(v,el,dev){const s=dev.sheet;if(!s||s.k!=='cal')return;dev[s.key]='';dev.f.cal_t='';dev.sheet=s.back||null},
  /* the searchable choice: who a point is for, which room; the sheet it was opened from comes back */
  pick(v,el,dev){const [src,key,pid,vendor]=v.split('|'),back=dev.sheet&&dev.sheet.k!=='pick'?dev.sheet:null;dev.f.pk_q='';openSheet(dev,'pick',{src,key,pid:+pid,vendor:vendor||'',back})},
  pickset(v,el,dev){const s=dev.sheet;if(!s)return;dev.f[s.key]=v;dev.f.pk_q='';dev.sheet=s.back||null},
  /* a point, whole */
  ptview(v,el,dev){if(dev.id==='agency'||dev.id==='client'||!ptOf(v))return;openSheet(dev,'ptview',{id:v})},
  reopenpt(v,el,dev){const x=ptOf(v);if(!x)return;OP.reopenPoint(x);dev.sheet=null;toast(`Point ${x.n} is open again.`)},
+ /* the check of a point an agency marked done: solved, or back to the agency with what has to change */
+ solvept(v,el,dev){const x=ptOf(v);if(!x)return;const p=pOf(x.pid);OP.solvePoint(x);dev.sheet=null;flash(dev,'Solved');toast(`Point ${x.n} is solved and closed.`);
+  const l=x.e&&x.t&&p.lines.find(q=>q.e===x.e&&q.t===x.t);if(l&&l.st!=='done'&&!DB.points.some(q=>q.pid===p.id&&q.st==='open'&&q.e===x.e&&q.t===x.t))openSheet(dev,'offerdone',{pid:p.id,lid:l.id})},
+ ptchange(v,el,dev){if(!ptOf(v))return;dev.f.pc_note='';openSheet(dev,'ptchange',{id:v,back:dev.sheet&&dev.sheet.k==='ptview'?dev.sheet:null});if(!dev.phone)UI.focus=dev.id+'_pc_note'},
+ dochange(v,el,dev){const x=ptOf(v),t=(dev.f.pc_note||'').trim();if(!x)return;if(!t)return toast('Say what has to change.','wait');OP.changePoint(x,t);dev.f.pc_note='';dev.sheet=null;flash(dev,'Sent back','send');toast(`Point ${x.n} is back with ${partyName(pOf(x.pid),x)} · ${sent()}.`)},
+ /* questions: open a thread, and write in it. An answer goes to every question of the thread that waits; with none waiting it is a line of its own. */
+ thread(v,el,dev){dev.qt=v;dev.sheet=null;dev.toEnd=true;if(dev.phone){if(!(top(dev).s==='qchat'&&top(dev).id===v))dev.stack.push({s:'qchat',id:v})}else{const t=thOf(v);if(dev.sec!=='questions'&&t&&!t.open)dev.qf='all';dev.sec='questions'}},
+ thsend(v,el,dev){const t=thOf(v);if(!t)return;const k=thKey(v),text=(dev.f[k]||'').trim(),open=t.qs.filter(q=>!q.ans),nm=thName(t);if(!text)return toast(open.length?'Type the answer first.':'Type the message first.','wait');
+  if(open.length){const ts=Math.floor(Date.now()/1000);open.forEach(q=>{OP.answer(t.d,q.id,text);q.ansTs=ts})}else OP.say(t.d,t.by,text);dev.f[k]='';dev.toEnd=true;UI.focus=dev.id+'_'+k;toast(`${open.length?'Answered':'Sent'}. ${nm} sees it in the app.`)},
  agdone(v,el,dev){const x=ptOf(v),a=agOf(UI.agency),L=UI.lang.agency;if(!x)return;if(!dev.f.ad_photo)return toast(tr('pt_proof',L),'wait');
   OP.agencyDone(x,(dev.f.ad_note||'').trim(),true,a.people[0].n);dev.f.ad_note='';dev.f.ad_photo=false;if(dev.stack.length>1)dev.stack.pop();flash(dev,'✓');pushStaff(a.n+' marked point '+x.n+' done',[x.by,...pOf(x.pid).coords]);toast(tr('pt_sent',L))},
  /* notifications */
  notes(v,el,dev){const fresh=(DB.notes||[]).filter(n=>!n.seen).map(n=>n.id);openSheet(dev,'notes',{fresh});if(fresh.length)OP.seenNotes()},
  noteopen(v,el,dev){const n=(DB.notes||[]).find(x=>String(x.id)===String(v)),r=n&&n.ref;if(!r)return;const [k,id]=r;dev.sheet=null;
-  if(k==='dwg'&&dOf(id))return openDwg(dev,id);if(k==='point'&&ptOf(id))return openSheet(dev,'ptview',{id});if(k==='bill'&&billOf(id))return A.bill(id,el,dev);if(k==='visit'&&visOf(id))return A.openvisit(id,el,dev);if(k==='proj'&&pOf(id))return openProj(dev,id,'picture');
+  if(k==='dwg'&&n.ev==='drawing_question'&&dOf(id)){const th=qThreads(myPids()).find(x=>x.d.id===id&&x.open)||qThreads(myPids()).find(x=>x.d.id===id);if(th)return A.thread(th.id,el,dev)}
+  if(k==='dwg'&&dOf(id))return openDwg(dev,id);if(k==='point'&&ptOf(id))return dev.id==='agency'?A.go('point|'+id,el,dev):openSheet(dev,'ptview',{id});if(k==='bill'&&billOf(id))return A.bill(id,el,dev);if(k==='visit'&&visOf(id))return A.openvisit(id,el,dev);if(k==='proj'&&pOf(id))return openProj(dev,id,'picture');
   toast('That is not on your screens any more.','wait')},
  /* the MOM as a PDF, cut by visit and by party */
  mompdf(v,el,dev){Object.assign(dev.f,{pf_v:'',pf_p:'',pf_st:'open'});openSheet(dev,'mompdf',{id:+v})},
@@ -1236,7 +1354,9 @@ function boot(){const root=document.getElementById('app'),html=document.document
  root.addEventListener('input',e=>{const el=e.target,dev=devOf(el);if(el.dataset.m)dev.f[el.dataset.m]=el.value;if(el.dataset.mo&&dev.ob)setPath(dev.ob,el.dataset.mo,el.value);queueSave();if(el.dataset.ri&&!e.isComposing)render()});
  root.addEventListener('change',e=>{const el=e.target,dev=devOf(el);if(el.dataset.top){UI[el.dataset.top]=/^\d+$/.test(el.value)?+el.value:el.value;if(el.dataset.top!=='user'){UI.devs.agency.stack=[{s:'home'}];UI.devs.client.stack=[{s:'home'}]}if(el.dataset.top==='agency')UI.lang.agency=agOf(el.value).lang;return render()}
   if(el.dataset.ui){dev[el.dataset.ui]=el.value;return render()}if(el.dataset.r)render()});
- root.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'){const id=e.target.id||'';const b=id.endsWith('_m_text')?'addpt':id.endsWith('_aq')?'aask':null;if(b){const btn=e.target.closest('.composer').querySelector(`[data-a="${b}"]`);if(btn){e.preventDefault();btn.click()}}}
+ root.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'){const id=e.target.id||'';const b=id.endsWith('_m_text')?'addpt':id.endsWith('_aq')?'aask':/_th_/.test(id)?'thsend':null;if(b){const box=e.target.closest('.composer,.qa'),btn=box&&box.querySelector(`[data-a="${b}"]`);if(btn){e.preventDefault();btn.click()}}
+   /* Enter on a date typed in the calendar uses it; Enter on what has to change sends it back */
+   const own=id.endsWith('_cal_t')?'.calw .use':id.endsWith('_pc_note')?'.ovl [data-a="dochange"]':null,ob=own&&e.target.closest('.dlg')&&e.target.closest('.dlg').querySelector(own);if(ob){e.preventDefault();ob.click()}}
   if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('g[data-a]')){e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true}))}});
  /* a phone's bar turns to glass once its page is scrolled; on the desk a soft light follows the pointer across a card */
  root.addEventListener('scroll',e=>{const t=e.target;if(t.classList&&t.classList.contains('pbody')){const s=t.closest('.pscr');if(s)s.classList.toggle('scrolled',t.scrollTop>6)}queueSave()},true);
@@ -1416,6 +1536,10 @@ wrapOP('answer',(r,d,qid,text)=>sync('answer',{question:qid,text}));
 wrapOP('remind',(r,to,pid,text)=>sync('remind',{to,project:pid,text}));
 wrapOP('confirmPoint',(r,x)=>sync('confirm_point',{point:x.id}));
 wrapOP('reopenPoint',(r,x)=>sync('reopen_point',{point:x.id}));
+/* the check of a point an agency marked done, and a line of the office in a thread about a drawing */
+wrapOP('solvePoint',(r,x)=>sync('solve_point',{point:x.id}));
+wrapOP('changePoint',(r,x,note)=>sync('change_point',{point:x.id,note:note||''}));
+wrapOP('say',(r,d,by,text)=>sync('say',{drawing:d.id,to:by,text},d.q[d.q.length-1].id));
 wrapOP('agencyDone',(r,x,note)=>send('POST','/agency/points/'+num(x.id)+'/done',{note:note||'',photo:takeImg('ad_photo')}));
 wrapOP('seenNotes',()=>send('POST','/me/notifications/seen',{}));
 wrapOP('sendParty',(n,v,key)=>{if(n)sync('send_party',{visit:v.id,key})});
@@ -1485,7 +1609,11 @@ const tog0=A.tog;A.tog=function(v,el,dev){if(!PHOTO_KEYS.includes(v))return tog0
  /* asked from inside a sheet (raise a point, close a point, a bill): that sheet comes back, with the photo, after the camera */
  dev.f[v]=false;openSheet(dev,'picksrc',{key:v,back:dev.sheet&&dev.sheet.k!=='picksrc'?dev.sheet:null})};
 SHEETS.picksrc=function(dev,s){return {title:T('addphoto'),body:`<div class="langs">${Bt(T('camera'),'pickimg',s.key+'|camera','gold lg blk','cam')}${Bt(T('gallery'),'pickimg',s.key+'|gallery','lg blk','layers')}</div>`}};
-A.pickimg=function(v,el,dev){const [key,kind]=v.split('|');dev.sheet=(dev.sheet&&dev.sheet.back)||null;pick(kind).then(g=>{if(g){APP.img[key]=g;dev.f[key]=true}render()}).catch(e=>{toast(e.message,'bad');render()})};
+/* the photo just taken shows on its button: a small copy of it, made once */
+const thumbOf=b64=>new Promise(done=>{const im=new Image();im.onload=()=>{try{const k=Math.min(1,180/Math.max(im.naturalWidth,im.naturalHeight)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.naturalWidth*k));c.height=Math.max(1,Math.round(im.naturalHeight*k));
+   c.getContext('2d').drawImage(im,0,0,c.width,c.height);done(c.toDataURL('image/jpeg',.72))}catch(e){done('')}};im.onerror=()=>done('');im.src='data:image/jpeg;base64,'+b64});
+pickedImg=function(k){const g=APP.img[k];return g&&g.thumb?g.thumb:''};
+A.pickimg=function(v,el,dev){const [key,kind]=v.split('|');dev.sheet=(dev.sheet&&dev.sheet.back)||null;pick(kind).then(g=>{if(g){APP.img[key]=g;dev.f[key]=true;if(kind!=='pdf')thumbOf(g.b64).then(t=>{if(t&&APP.img[key]===g){g.thumb=t;render()}})}render()}).catch(e=>{toast(e.message,'bad');render()})};
 A.pickpdf=function(v,el,dev){pick('pdf').then(g=>{if(!g)return;if(g.size>15e6){toast('That file is larger than 15 MB. Send it from the desk.','wait')}else{APP.pdf=g;dev.f.sa_file=true}render()}).catch(e=>{toast(e.message,'bad');render()})};
 A.droppdf=function(v,el,dev){APP.pdf=null;dev.f.sa_file=false};
 const sendappr0=SHEETS.sendappr;SHEETS.sendappr=function(dev,s){const o=sendappr0(dev,s),f=dev.f,p=APP.pdf,r=cur(dOf(s.id)),on=!!(f.sa_file&&p);

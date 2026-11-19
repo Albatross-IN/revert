@@ -81,7 +81,23 @@ class TestDeskDrawing(DrawingCommon):
         self.op("ask", {"drawing": ref, "by": "client", "name": "", "text": "Can it be white?"})
         self.assertEqual(self.row(drawing)["q"][1]["by"], "client")
         self.op("answer", {"question": result["id"], "text": "24 in."})
-        self.assertEqual(self.row(drawing)["q"][0]["ans"], "24 in.")
+        answered = self.row(drawing)["q"][0]
+        self.assertEqual(answered["ans"], "24 in.")
+        self.assertTrue(answered["ts"] and answered["ansTs"] >= answered["ts"] and answered["at"] and answered["ansAt"],
+                        "the moments, so the thread reads in the order things were said")
+        # the office adds a line to the same conversation, with no question waiting
+        carp = "a%s" % self.ag_carp.id
+        said = self.op("say", {"drawing": ref, "to": carp, "text": "We are on site on Friday: keep the ply ready."})
+        line = next(q for q in self.row(drawing)["q"] if q["id"] == said["id"])
+        self.assertEqual((line["by"], line["via"], line["text"], line["ans"], line["ansBy"], line["photo"]),
+                         (carp, "revert", "", "We are on site on Friday: keep the ply ready.", "s%s" % self.designer.id, False))
+        self.assertEqual(self.env["rvt.drawing.question"].browse(int(said["id"][1:])).state, "answered", "it asks nothing")
+        with self.assertRaises(UserError):
+            self.op("answer", {"question": said["id"], "text": "x"})
+        with self.assertRaises(UserError):
+            self.op("say", {"drawing": ref, "to": carp, "text": "  "})
+        with self.assertRaises(AccessError):
+            self.op("say", {"drawing": ref, "to": carp, "text": "x"}, self.outsider)
         # the next revision
         self.op("new_revision", {"drawing": ref})
         row = self.row(drawing)

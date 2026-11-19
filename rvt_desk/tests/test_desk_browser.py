@@ -59,6 +59,22 @@ TOUR = """
         type('desk_pk_q', 'kit'); await sleep(200);
         if (document.querySelectorAll('.pklist [data-a="pickset"]').length !== 1) throw new Error('the search should leave the kitchen alone');
         click(q('.pklist [data-a="pickset"]')); await sleep(200);
+        // the date comes from the calendar: the ninth day from today, in this month or the next
+        if (!q('.ovl .drop.pht')) throw new Error('no clear button for the photo of the issue');
+        click(q('.ovl [data-a="cal"]')); await sleep(200);
+        if (document.querySelectorAll('.calw .cd').length < 28 || !q('.calw .cd.now')) throw new Error('the calendar did not open on this month');
+        const pickDay = async n => {
+            // the day is in the month shown, the one after, or the one before
+            const find = () => q('.calw [data-a="calset"][data-v="' + n + '"]');
+            for (const move of [0, 1, -2]) {
+                for (let i = 0; i < Math.abs(move); i++) click(q('.calw [data-a="calmo"][data-v="' + (move > 0 ? 1 : -1) + '"]'));
+                if (move) await sleep(200);
+                if (find()) break;
+            }
+            click(find()); await sleep(250);
+        };
+        await pickDay(9);
+        if (!q('.ovl [data-a="doraise"]') || q('.ovl .chip.calc').getAttribute('aria-pressed') !== 'true') throw new Error('the date from the calendar was not taken back to the point');
         click(q('.ovl [data-a="doraise"]'));
         await until(() => !document.documentElement.dataset.sync && !q('.ovl'), 'the point to reach the server');
         await sleep(300);
@@ -68,6 +84,20 @@ TOUR = """
         if (!line) throw new Error('the point is not a line of the log');
         const cells = [...line.children].map(c => c.textContent.trim());
         if (cells[0] !== '1' || cells[1] !== 'office' || !/^Kitchen/.test(cells[2])) throw new Error('the line reads: ' + cells.join(' | '));
+        if (!/^\\d{1,2} [A-Z][a-z]{2}$/.test(cells[7])) throw new Error('the date chosen in the calendar is not the due date: ' + cells[7]);
+        // visits are looked up by date: the day the point falls due shows it, another day does not
+        if (!q('.card.visc [data-a="cal"]')) throw new Error('no date search on the visits');
+        click(q('.card.visc [data-a="cal"]')); await sleep(200);
+        if (!q('.calw .cd i.d')) throw new Error('the calendar does not mark the day a point falls due');
+        await pickDay(9);
+        if (!/Tour point/.test(q('.card.visc').textContent)) throw new Error('the point is not listed on the day it falls due');
+        click(q('.card.visc [data-a="cal"]')); await sleep(200);
+        await pickDay(3);
+        if (/Tour point/.test(q('.card.visc').textContent)) throw new Error('the point is listed on a day it is not due');
+        act('ui', 'vd='); await sleep(100);
+        // Questions has its own place in the bar on top
+        act('nav', 'questions'); await sleep(200);
+        if (!q('.dh h1') || q('.dh h1').textContent !== 'Questions' || !q('.qsp')) throw new Error('the Questions section did not open');
         console.log('test successful');
     } catch (e) {
         console.error('desk tour: ' + e.message);

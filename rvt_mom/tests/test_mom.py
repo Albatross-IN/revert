@@ -164,15 +164,62 @@ class TestMom(MomCommon):
         with self.assertRaises(AccessError):
             theirs.with_user(self.agency_user).rvt_agency_done("done", PNG)
         self.assertTrue(mine.with_user(self.agency_user).rvt_agency_done("Shutter aligned", PNG))
-        self.assertEqual((mine.state, mine.closed_on, mine.close_note, mine.closed_by_partner_id),
-                         ("closed", self.today, "Shutter aligned", person))
-        self.assertFalse(mine.closed_by_id, "closed by the agency's person, not by staff")
+        # done by the agency is not closed: the office looks at the photo first
+        self.assertEqual((mine.state, mine.review_state, mine.done_on, mine.close_note, mine.closed_by_partner_id),
+                         ("open", "to_check", self.today, "Shutter aligned", person))
+        self.assertFalse(mine.closed_by_id or mine.closed_on, "nobody has closed it yet")
         self.assertTrue(mine.has_photo and mine.has_close_photo, "before and after are both on the point")
         self.assertTrue(mine.with_user(self.agency_user).rvt_agency_done("again", PNG), "a second tap changes nothing")
         self.assertEqual(mine.close_note, "Shutter aligned")
-        # not right: the office opens it again
+        # not right: the office asks for a change and says what
+        with self.assertRaises(UserError, msg="a change is asked with a note"):
+            mine.with_user(self.coordinator).action_ask_change("  ")
+        with self.assertRaises(AccessError, msg="the check is the office's"):
+            mine.with_user(self.agency_user).action_ask_change("no")
+        with self.assertRaises(AccessError):
+            mine.with_user(self.agency_user).action_solved()
+        mine.with_user(self.coordinator).action_ask_change("The gap is still 4 mm at the top")
+        self.assertEqual(
+            (mine.state, mine.review_state, mine.change_note, mine.change_by_id, mine.change_on, mine.change_count),
+            ("open", "change", "The gap is still 4 mm at the top", self.coordinator, self.today, 1))
+        with self.assertRaises(UserError, msg="it is back with the agency: there is nothing to check"):
+            mine.with_user(self.coordinator).action_ask_change("again")
+        mine.with_user(self.coordinator).action_solved()
+        self.assertEqual(mine.state, "open", "nothing to confirm either")
+        # the agency does it and marks the point done again, with a new photo
+        with self.assertRaises(UserError):
+            mine.with_user(self.agency_user).rvt_agency_done("Planed and hung again")
+        mine.with_user(self.agency_user).rvt_agency_done("Planed and hung again", PNG)
+        self.assertEqual((mine.review_state, mine.close_note), ("to_check", "Planed and hung again"))
+        # solved: the point closes, with the agency's note and photo, and who confirmed it
+        mine.with_user(self.coordinator).action_solved()
+        self.assertEqual(
+            (mine.state, mine.review_state, mine.closed_by_id, mine.closed_on, mine.closed_by_partner_id, mine.close_note),
+            ("closed", False, self.coordinator, self.today, person, "Planed and hung again"))
+        self.assertTrue(mine.has_close_photo)
+        # a closed point whose work turns out not to be right goes back the same way
+        mine.with_user(self.coordinator).action_ask_change("The shutter rubs again")
+        self.assertEqual((mine.state, mine.review_state, mine.change_count, mine.closed_on), ("open", "change", 2, False))
+        # the office may close a point itself: one that waits to be checked keeps the agency's note and photo
+        mine.with_user(self.agency_user).rvt_agency_done("Done", PNG)
+        mine.with_user(self.coordinator).action_close()
+        self.assertEqual((mine.state, mine.review_state, mine.close_note, mine.has_close_photo), ("closed", False, "Done", True))
+        # and the plain "open again" clears the lot
         mine.with_user(self.coordinator).action_reopen()
-        self.assertEqual((mine.state, mine.closed_by_partner_id.id, mine.has_close_photo), ("open", False, False))
+        self.assertEqual((mine.state, mine.review_state, mine.closed_by_partner_id.id, mine.has_close_photo),
+                         ("open", False, False, False))
+        with self.assertRaises(UserError, msg="a point the agency never marked done has nothing to send back"):
+            theirs.with_user(self.coordinator).action_ask_change("x")
+
+    def test_the_pdf_says_what_waits_and_what_has_to_change(self):
+        item = self.add("Fix the wardrobe shutter gap", partner=self.ag_carp, entity_id=self.master.id, photo=PNG)
+        html = lambda: self.env["ir.actions.report"]._render_qweb_html("rvt_mom.action_report_open_points", self.project.ids)[0].decode()
+        item.with_user(self.agency_user).rvt_agency_done("Aligned", PNG)
+        self.assertIn("marked done, to be checked", html())
+        item.with_user(self.coordinator).action_ask_change("The gap is still 4 mm at the top")
+        page = html()
+        self.assertIn("Change asked:", page)
+        self.assertIn("The gap is still 4 mm at the top", page)
 
     def test_every_project_counts_its_own_points(self):
         other, _ = self.onboard(name="Mehta Office")

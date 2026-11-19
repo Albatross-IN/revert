@@ -1,6 +1,6 @@
 from odoo.tests import tagged
 
-from .common import MomCommon
+from .common import PNG, MomCommon
 
 
 @tagged("post_install", "-at_install")
@@ -74,6 +74,34 @@ class TestMomPicture(MomCommon):
         todo = next(i for i in self.Project.with_user(self.designer).rvt_today() if i["section"] == "point")
         self.assertEqual(todo["text"], "Send the revised kitchen elevation")
         self.assertEqual(todo["sub"], "point %s · by tomorrow" % mine.number)
+
+    def test_a_point_marked_done_waits_for_the_office(self):
+        point = self.add("Fix the wardrobe shutter gap", partner=self.ag_carp, due=-1)
+        self.add("Shift the TV unit", partner=self.ag_carp, due=5)
+        point.with_user(self.agency_user).rvt_agency_done("Aligned", PNG)
+        picture = self.pic()
+        self.assertEqual(picture["progress"]["points"], [0, 2, 2, 1], "not closed until the office has looked")
+        row = self.blockers(picture, "B7")[0]
+        self.assertEqual((row["text"], row["actor"], row["action"]),
+                         ("Mahadev Furniture: point %s done, to be checked" % point.number, "Office",
+                          {"key": "ptview", "label": "Check", "point_id": point.id}))
+        agency = next(a for a in picture["next"]["agencies"] if a["name"] == "Mahadev Furniture")
+        self.assertEqual((agency["points"], agency["overdue"]), (1, 0), "the agency has done its part on that one")
+        todo = lambda user: [i for i in self.Project.with_user(user).rvt_today() if i["section"] == "check"]
+        mine = todo(self.coordinator)
+        self.assertEqual((len(mine), mine[0]["text"], mine[0]["sub"], mine[0]["action"]["key"]),
+                         (1, "Check point %s: Mahadev Furniture marked it done" % point.number, "Fix the wardrobe shutter gap", "ptview"))
+        self.assertTrue(todo(self.owner), "the office's items also show to an owner")
+        self.assertFalse(todo(self.designer))
+        # sent back, it is the agency's again
+        point.with_user(self.coordinator).action_ask_change("The gap is still there")
+        picture = self.pic()
+        self.assertEqual(self.blockers(picture, "B7")[0]["action"]["key"], "remind")
+        self.assertEqual(next(a for a in picture["next"]["agencies"] if a["name"] == "Mahadev Furniture")["points"], 2)
+        self.assertFalse(todo(self.coordinator))
+        point.with_user(self.agency_user).rvt_agency_done("Planed", PNG)
+        point.with_user(self.coordinator).action_solved()
+        self.assertEqual(self.pic()["progress"]["points"], [1, 2, 1, 0])
 
     def test_agency_slice(self):
         first = self.add("Wardrobe loft depth 24 in.", partner=self.ag_carp, due=-1)

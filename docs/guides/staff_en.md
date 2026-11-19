@@ -10,9 +10,8 @@ same thing.
 
 ## Today
 The things that need *you*, across all sites: a drawing to approve or release, an agency to decide,
-a client point to confirm, a bill to review, an agency to chase. Each has its button. "Start" walks
-you through them one by one. The **bell** lists what reached you (a question on a drawing, a point an
-agency marked done, a bill uploaded); a tap opens it. Screens update by themselves; pull down to read again.
+a client point to confirm or check, a bill to review, an agency to chase. Each has its button. The
+**bell** lists what reached you; a tap opens it. Screens update by themselves.
 
 ## A project
 - **Picture:** status, blockers (what holds what, who must act), next actions per party.
@@ -20,14 +19,16 @@ agency marked done, a bill uploaded); a tap opens it. Screens update by themselv
   the cause (a drawing, a point, material, the client).
 - **Drawings:** the designer uploads the PDF and sends it for approval; the principal approves;
   it is released to the agencies and, if marked, to the client. They get it on WhatsApp and always
-  see the latest revision. You see who opened it. A **question** from an agency shows as a number on
-  Drawings; open the Questions list and answer.
+  see the latest revision. You see who opened it.
+- **Questions** (top of the desk; the speech bubble on the phone): every question asked on a drawing.
+  Open one: it shows the project, the drawing and the work it is about. Answer there, like a chat.
 - **MOM:** at site, start the visit on the phone. Choose **For** and **Area** once (search the list);
-  both stay for the next points. Then only the text and a photo change. The date: a quick choice, or
-  type it as day month year (25 11 26). Before you leave the room, send each party its own PDF. No
-  network? Keep writing; it goes out when the network is back.
-- **A point:** tap it to see it whole. Close it with a photo of the finished work, or the agency does
-  from its app; the two photos sit side by side as before and after. Not right? Open it again.
+  both stay. Then only the text and the **Photo** button change. The date: a quick choice, or **Date**
+  for the calendar. Send each party its own PDF before you leave. No network? Keep writing.
+- **Visits by date:** on Visits tap **Today** or **Date**: that day's visits, and the visits whose
+  points fall due that day. Open the visit and close them.
+- **A point:** an agency marks it done with a photo; it shows **to check**. Open it, compare before
+  and after: **Issue solved** closes it, **Change needed** sends it back with your note.
 - **MOM as a PDF:** Points → PDF: every visit or one, every party or one agency, open or all.
 - **Client:** invite the client's contact, copy the link that opens the project without the app.
 - **Bills:** ask the agency for a bill; it uploads a photo from its app; accept it or return it
@@ -38,9 +39,8 @@ agency marked done, a bill uploaded); a tap opens it. Screens update by themselv
 the agencies per trade, the drawing list, a last look. About five minutes.
 
 ## Agencies
-All agencies are kept on the desk: **Setup → Agencies → Add an agency** (firm, trade, contact person,
-WhatsApp number, language). When you decide the agency of a trade on a project, only the agencies of
-that trade are listed, and "New agency" adds one there and then.
+**Setup → Agencies → Add an agency** (firm, trade, contact person, WhatsApp number, language). Deciding
+a trade's agency on a project lists that trade's agencies only; "New agency" adds one there.
 
 ## Rules the system keeps for you
 - An agency never sees an old revision, another agency's points, or anyone's amounts.

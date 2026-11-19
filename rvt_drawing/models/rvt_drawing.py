@@ -325,6 +325,23 @@ class RvtDrawing(models.Model):
             self.env["rvt.notify"].send("drawing_question", question, staff)
         return question.id
 
+    def rvt_say(self, partner, text):
+        """A line from the office in the conversation with one party about this drawing, when no
+        question of theirs is waiting: it sits in the same thread as their questions and the answers."""
+        self.ensure_one()
+        self._rvt_staff()
+        text = (text or "").strip()
+        if not text:
+            raise UserError(self.env._("Type the message first."))
+        partner = partner.sudo().commercial_partner_id
+        if not partner:
+            raise UserError(self.env._("Choose who the message is for."))
+        now = fields.Datetime.now()
+        return self.env["rvt.drawing.question"].sudo().create({
+            "drawing_id": self.id, "partner_id": partner.id, "asked_by_name": self.env.user.name, "via": "revert",
+            "text": text, "asked_on": now, "answered_by_id": self.env.uid, "answered_on": now,
+        }).id
+
 
 class RvtDrawingRevision(models.Model):
     _name = "rvt.drawing.revision"
@@ -415,7 +432,11 @@ class RvtDrawingQuestion(models.Model):
     project_id = fields.Many2one(related="drawing_id.project_id", store=True, index=True)
     partner_id = fields.Many2one("res.partner", string="Asked by", required=True, ondelete="restrict", index=True)
     asked_by_name = fields.Char(string="Person")
-    via = fields.Selection([("app", "The app"), ("office", "Logged from a call")], default="app", required=True)
+    via = fields.Selection(
+        [("app", "The app"), ("office", "Logged from a call"), ("revert", "A message from the office")],
+        default="app", required=True,
+        help="A message from the office is a line Revert wrote to the party in the same conversation: "
+             "it asks nothing, so it never waits for an answer.")
     text = fields.Text(required=True)
     photo = fields.Binary(attachment=True)
     asked_on = fields.Datetime(default=fields.Datetime.now, required=True)
@@ -424,10 +445,10 @@ class RvtDrawingQuestion(models.Model):
     answered_on = fields.Datetime()
     state = fields.Selection([("open", "Open"), ("answered", "Answered")], compute="_compute_state", store=True, index=True)
 
-    @api.depends("answer")
+    @api.depends("answer", "via")
     def _compute_state(self):
         for question in self:
-            question.state = "answered" if question.answer else "open"
+            question.state = "answered" if question.answer or question.via == "revert" else "open"
 
     def action_answer(self, text):
         self.ensure_one()
@@ -435,5 +456,7 @@ class RvtDrawingQuestion(models.Model):
         text = (text or "").strip()
         if not text:
             raise UserError(self.env._("Type the answer first."))
+        if self.via == "revert":
+            raise UserError(self.env._("That is a message from the office, not a question."))
         self.sudo().write({"answer": text, "answered_by_id": self.env.uid, "answered_on": fields.Datetime.now()})
         return True

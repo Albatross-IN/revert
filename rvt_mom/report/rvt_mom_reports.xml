@@ -38,6 +38,8 @@
                         table.rvm-t td.d.late { color: #DC3535; font-weight: 700; }
                         .rvm-new { background: #E2A534; color: #3A2500; font-size: 9px; font-weight: 800; border-radius: 4px; padding: 1px 5px; margin-left: 5px; }
                         .rvm-closed { color: #0E9453; font-style: italic; }
+                        .rvm-change { display: block; margin-top: 3px; color: #DC3535; font-weight: 700; }
+                        .rvm-check { color: #9A6B00; font-style: italic; }
                         .rvm-ph { display: block; margin-top: 6px; max-height: 190px; max-width: 260px; border-radius: 6px; }
                         table.rvm-ba { margin-top: 6px; border-collapse: separate; border-spacing: 0; }
                         table.rvm-ba td { border: 0 none !important; padding: 0 8px 0 0 !important; }
@@ -65,6 +67,8 @@
                                     <td>
                                         <span t-out="row['text']" style="white-space: pre-line"/><span t-if="row['new']" class="rvm-new">NEW</span>
                                         <span t-if="row['closed']" class="rvm-closed"> (closed<t t-if="row['close_note']">: <t t-out="row['close_note']"/></t>)</span>
+                                        <span t-if="row.get('to_check')" class="rvm-check"> (marked done, to be checked)</span>
+                                        <span t-if="row.get('change')" class="rvm-change">Change asked: <t t-out="row['change']"/></span>
                                         <table t-if="row['after']" class="rvm-ba"><tr>
                                             <td t-if="row['photo']"><span>Before</span><img t-att-src="row['photo']" alt="Before"/></td>
                                             <td><span>After</span><img t-att-src="row['after']" alt="After"/></td>

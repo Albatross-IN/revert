@@ -121,7 +121,7 @@ class RvtDesk(models.AbstractModel):
             arg = "%s|%s|%s" % (to, action["project_id"], action.get("text", ""))
         elif key in ("dwg", "approve", "release"):
             arg = "d%s" % action["drawing_id"]
-        elif key in ("closept", "confirmpt"):
+        elif key in ("closept", "confirmpt", "ptview"):
             arg = "pt%s" % action["point_id"]
         elif key == "bill":
             arg = "b%s" % action["bill_id"]

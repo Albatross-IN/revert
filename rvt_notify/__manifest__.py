@@ -14,7 +14,7 @@ every send is logged with its outcome.
 test copy of the database whatever the switch says: such messages are
 logged as held.
 """,
-    "version": "20.0.1.2.0",
+    "version": "20.0.1.3.0",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Albatross",

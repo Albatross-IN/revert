@@ -102,7 +102,14 @@ class ProjectProject(models.Model):
             if point.for_kind == "client" or not point.due_date or point.due_date >= ctx["today"]:
                 continue
             party = point._rvt_party_label()
-            if point.for_kind == "agency" and point.partner_id:
+            text = self.env._("%(party)s: point %(no)s past its date", party=party, no=point.number)
+            actor = party
+            if point.review_state == "to_check":
+                # the agency has done its part: the point now waits for the office to look at the photo
+                action = {"key": "ptview", "label": self.env._("Check"), "point_id": point.id}
+                text = self.env._("%(party)s: point %(no)s done, to be checked", party=party, no=point.number)
+                actor = self.env._("Office")
+            elif point.for_kind == "agency" and point.partner_id:
                 action = {"key": "remind", "label": self.env._("Remind"), "project_id": self.id, "agency_id": point.partner_id.id,
                           "text": self.env._("Point %(no)s: %(text)s", no=point.number, text=point.text)}
             else:
@@ -112,8 +119,8 @@ class ProjectProject(models.Model):
                 holds += " · %s" % point.trade_id.name
             out.append({
                 "rule": "B7", "critical": False,
-                "text": self.env._("%(party)s: point %(no)s past its date", party=party, no=point.number),
-                "sub": point.text, "holds": holds, "actor": party, "who": ctx["coords"].ids,
+                "text": text,
+                "sub": point.text, "holds": holds, "actor": actor, "who": ctx["coords"].ids,
                 "age": (ctx["today"] - point.due_date).days, "action": action,
             })
         return out
@@ -129,7 +136,17 @@ class ProjectProject(models.Model):
     def _rvt_next_points(self, ctx, nxt):
         today = ctx["today"]
         for point in ctx["open_points"]:
-            if point.for_kind == "client" and not point.client_confirmed:
+            if point.review_state == "to_check":
+                # the agency marked it done with a photo: whoever raised it, and the coordinators, look and decide
+                who = (point.raised_by_id | ctx["coords"]).filtered(lambda u: u.active and not u.share)
+                nxt["revert"].append({
+                    "section": "check", "who": who.ids, "who_name": self.env._("Office"), "office": True,
+                    "text": self.env._("Check point %(no)s: %(agency)s marked it done",
+                                       no=point.number, agency=point.partner_id.name or point._rvt_party_label()),
+                    "sub": point.text, "warn": "", "late": False,
+                    "action": {"key": "ptview", "label": self.env._("Check"), "point_id": point.id},
+                })
+            elif point.for_kind == "client" and not point.client_confirmed:
                 nxt["revert"].append({
                     "section": "confirm", "who": ctx["coords"].ids, "who_name": self.env._("Office"), "office": True,
                     "text": self.env._("Confirm client point %s before the client sees it", point.number),
@@ -148,7 +165,9 @@ class ProjectProject(models.Model):
     def _rvt_agency_summary(self, agency, ctx):
         row = super()._rvt_agency_summary(agency, ctx)
         today = ctx["today"]
-        mine = ctx["open_points"].filtered(lambda p: p.for_kind == "agency" and p.partner_id == agency)
+        # what the agency still has to do: a point it marked done waits for the office, not for the agency
+        mine = ctx["open_points"].filtered(
+            lambda p: p.for_kind == "agency" and p.partner_id == agency and p.review_state != "to_check")
         row["points"] = len(mine)
         row["overdue"] = len(mine.filtered(lambda p: p.due_date and p.due_date < today))
         nxt = mine.sorted(lambda p: (not p.due_date, p.due_date or today, p.number))[:1]

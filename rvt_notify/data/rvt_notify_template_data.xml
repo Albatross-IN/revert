@@ -182,4 +182,19 @@
         <field name="lang">en</field>
         <field name="text">{site}: {agency} marked point {no} done: “{text}”. Have a look at the photo.</field>
     </record>
+    <record id="tpl_point_change_en" model="rvt.notify.template">
+        <field name="event">point_change</field>
+        <field name="lang">en</field>
+        <field name="text">{site}: point {no} “{text}” needs a change: {note}. Please do it and mark it done again with a new photo.</field>
+    </record>
+    <record id="tpl_point_change_gu" model="rvt.notify.template">
+        <field name="event">point_change</field>
+        <field name="lang">gu</field>
+        <field name="text">{site}: મુદ્દો {no} “{text}” માં ફેરફાર જોઈએ છે: {note}. કામ કરીને નવા ફોટા સાથે ફરી પૂર્ણ તરીકે નોંધશો.</field>
+    </record>
+    <record id="tpl_point_change_hi" model="rvt.notify.template">
+        <field name="event">point_change</field>
+        <field name="lang">hi</field>
+        <field name="text">{site}: बिंदु {no} “{text}” में बदलाव चाहिए: {note}. काम करके नई फ़ोटो के साथ फिर से पूरा दर्ज करें।</field>
+    </record>
 </odoo>

@@ -193,10 +193,11 @@ class TestRoles(ApiCase):
         self.assertRefused(self.post("/agency/points/%s/done" % self.mine.id, {"note": "done"}, token), 422)
         done = self.post("/agency/points/%s/done" % self.mine.id, {"note": "Loft fixed", "photo": PNG}, token)
         self.assertEqual((done.status_code, done.json()), (200, {"ok": True}), done.text)
-        self.assertEqual((self.mine.state, self.mine.close_note, self.mine.closed_by_partner_id.name), ("closed", "Loft fixed", "Bherubhai Suthar"))
+        self.assertEqual((self.mine.state, self.mine.review_state, self.mine.close_note, self.mine.closed_by_partner_id.name),
+                         ("open", "to_check", "Loft fixed", "Bherubhai Suthar"), "done by the agency waits for the office to look")
         self.assertEqual(self.get("/files/point/%s/photo?close=1" % self.mine.id, token).status_code, 200)
         row = next(p for p in self.get("/agency/snapshot", token).json()["points"] if p["id"] == "pt%s" % self.mine.id)
-        self.assertEqual((row["st"], row["cphoto"], row["doneBy"]), ("closed", True, "Bherubhai Suthar"))
+        self.assertEqual((row["st"], row["rev"], row["cphoto"], row["doneBy"], row["doneOn"]), ("open", "check", True, "Bherubhai Suthar", 0))
         self.assertRefused(self.post("/agency/points/%s/done" % self.theirs.id, {"photo": PNG}, token), 403)
         self.assertEqual(self.post("/me/notifications/seen", {}, token).json(), {"ok": True})
         # what belongs to another agency, to the client or to staff is refused

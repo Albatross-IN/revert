@@ -53,14 +53,26 @@ class RvtDesk(models.AbstractModel):
             "forClient": drawing.for_client, "needsApproval": drawing.needs_client_approval,
             "st": STATE_OUT.get(drawing.state, drawing.state),
             "revs": revisions,
-            "q": [{
-                "id": "q%s" % q.id,
-                "by": "client" if q.partner_id in client_partners else "a%s" % q.partner_id.id,
-                "byName": q.asked_by_name or q.partner_id.name, "via": q.via, "text": q.text,
-                "photo": bool(q.photo), "on": off(local(q.asked_on)),
-                "ans": q.answer or None, "ansBy": s(q.answered_by_id), "ansOn": off(local(q.answered_on)),
-            } for q in drawing.question_ids.sorted("asked_on")],
+            "q": [self._question_row(q, off, client_partners) for q in drawing.question_ids.sorted(lambda q: (q.asked_on, q.id))],
         }
+
+    def _question_row(self, q, off, client_partners):
+        """One line of the conversation about a drawing. ``at`` and ``ansAt`` are the clock times, ``ts`` and
+        ``ansTs`` the moments as numbers, so a thread reads in the order things were said.
+        A message the office wrote without a question waiting is a line with an answer and no question."""
+        local = self.env["rvt.config"].to_date
+        stamp = lambda moment: int(moment.timestamp()) if moment else None
+        row = {
+            "id": "q%s" % q.id,
+            "by": "client" if q.partner_id in client_partners else "a%s" % q.partner_id.id,
+            "byName": q.asked_by_name or q.partner_id.name, "via": q.via, "text": q.text,
+            "photo": bool(q.photo), "on": off(local(q.asked_on)), "at": self._clock(q.asked_on), "ts": stamp(q.asked_on),
+            "ans": q.answer or None, "ansBy": "s%s" % q.answered_by_id.id if q.answered_by_id else None,
+            "ansOn": off(local(q.answered_on)), "ansAt": self._clock(q.answered_on), "ansTs": stamp(q.answered_on),
+        }
+        if q.via == "revert":
+            row.update({"text": "", "photo": False, "ans": q.text, "byName": q.partner_id.name})
+        return row
 
     def _snapshot_extra(self, data, projects, off, today):
         super()._snapshot_extra(data, projects, off, today)
@@ -156,3 +168,12 @@ class RvtDesk(models.AbstractModel):
             raise UserError(self.env._("Choose who asked."))
         qid = drawing.rvt_ask(partner, a.get("text"), via="office", person_name=person)
         return {"id": "q%s" % qid}
+
+    def _op_say(self, a):
+        """A line from the office in the conversation with one party about a drawing."""
+        drawing = self._drawing(a.get("drawing"))
+        if a.get("to") == "client":
+            partner = drawing.project_id.sudo().rvt_client_id
+        else:
+            partner = self.env["res.partner"].sudo().browse(_num(a.get("to"))).exists()
+        return {"id": "q%s" % drawing.rvt_say(partner, a.get("text"))}

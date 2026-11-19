@@ -39,6 +39,10 @@ class RvtDesk(models.AbstractModel):
             "doneBy": point.closed_by_partner_id.name or None,
             "on": off(self.env["rvt.config"].to_date(point.raised_on)) if point.raised_on else None,
             "closedOn": off(point.closed_on), "note": point.close_note or "", "cphoto": point.has_close_photo,
+            # the check of a point the agency marked done: "check" waits for the office, "change" is back with the agency
+            "rev": {"to_check": "check", "change": "change"}.get(point.review_state) if point.state == "open" else None,
+            "doneOn": off(point.done_on), "chg": point.change_note or "", "chgOn": off(point.change_on),
+            "chgBy": "s%s" % point.change_by_id.id if point.change_by_id else None, "chgN": point.change_count,
             "confirmed": point.client_confirmed, "sent": point.sent_count,
             "fresh": point.state == "open" and not point.sent_count and not point.legacy_activity_id,
             "by": "s%s" % point.raised_by_id.id if point.raised_by_id else None,
@@ -135,6 +139,14 @@ class RvtDesk(models.AbstractModel):
 
     def _op_reopen_point(self, a):
         self._point(a.get("point")).action_reopen()
+
+    def _op_solve_point(self, a):
+        """The office looked at the agency's photo: the point is solved."""
+        self._point(a.get("point")).action_solved()
+
+    def _op_change_point(self, a):
+        """The office looked and asks for a change, with a note: the point goes back to the agency."""
+        self._point(a.get("point")).action_ask_change(a.get("note"))
 
     def _op_send_party(self, a):
         visit = self._visit(a.get("visit"))

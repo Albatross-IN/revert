@@ -75,6 +75,30 @@ class TestDeskMom(MomCommon):
             self.op("add_point", {"pid": self.project.id, "kind": "staff", "party": "s%s" % self.designer.id, "text": "x"}, self.outsider)
         with self.assertRaises(UserError):
             self.op("close_point", {"point": "pt0"})
+        # the agency marks its point done with a photo: the desk shows it waiting to be checked, and has it on Today
+        point = self.env["rvt.point"].browse(int(p1[2:]))
+        point.with_user(self.agency_user).rvt_agency_done("Fitted", PNG)
+        snap = self.snap()
+        row = next(p for p in snap["points"] if p["id"] == p1)
+        self.assertEqual((row["st"], row["rev"], row["doneBy"], row["doneOn"], row["note"], row["cphoto"]),
+                         ("open", "check", self.agency_user.partner_id.name, 0, "Fitted", True))
+        todo = next(i for i in snap["today"] if i["sec"] == "check")
+        self.assertEqual(todo["act"], ["ptview", p1, "Check"])
+        # not right: a change is asked, with a note
+        with self.assertRaises(UserError):
+            self.op("change_point", {"point": p1, "note": ""})
+        self.op("change_point", {"point": p1, "note": "The edge band is missing"})
+        row = next(p for p in self.snap()["points"] if p["id"] == p1)
+        self.assertEqual((row["st"], row["rev"], row["chg"], row["chgBy"], row["chgOn"], row["chgN"]),
+                         ("open", "change", "The edge band is missing", "s%s" % self.coordinator.id, 0, 1))
+        # done again, and this time it is solved
+        point.with_user(self.agency_user).rvt_agency_done("Edge band on", PNG)
+        self.op("solve_point", {"point": p1})
+        row = next(p for p in self.snap()["points"] if p["id"] == p1)
+        self.assertEqual((row["st"], row["rev"], row["closedBy"], row["doneBy"], row["note"], row["cphoto"], row["closedOn"]),
+                         ("closed", None, "s%s" % self.coordinator.id, self.agency_user.partner_id.name, "Edge band on", True, 0))
+        with self.assertRaises(AccessError):
+            self.op("solve_point", {"point": p1}, self.outsider)
 
     def test_client_point_without_confirmation_is_told_at_once(self):
         self.env["ir.config_parameter"].sudo().set_bool("rvt.client_points_need_confirmation", False)
