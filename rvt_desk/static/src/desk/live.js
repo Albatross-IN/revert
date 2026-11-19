@@ -129,7 +129,7 @@ const bill0=SHEETS.bill;SHEETS.bill=function(dev,s){const o=bill0(dev,s),b=billO
  o.body=o.body.replace(/<div class="docrow">[^]*?<\/div>/,b.doc&&+id<9e6?`<a class="docrow" href="/rvt/desk/bill/${id}/document" target="_blank" rel="noopener">${ic('file')}<span><b>${b.doc==='pdf'?'PDF':'Photo'} of the bill</b> · open</span></a>`:'');return o};
 const digits=v=>String(v==null?'':v).replace(/\D/g,'');
 phOf=function(kind,x,after){const id=digits(x.id);if(!id||+id>=LOCAL0)return `<span class="ph ${after?'aft':''}"></span>`;
- const q=after?'&close=1':'',cap=(x.text||'')+(kind==='point'&&x.photo&&x.cphoto?(after?' · after':' · before'):'');
+ const q=(after?'&close=1':'')+'&v='+(x.pv||0),cap=(x.text||'')+(kind==='point'&&x.photo&&x.cphoto?(after?' · after':' · before'):'');
  /* data-big and data-cap: the larger picture and its line, shown while the pointer rests on the small one (photoHover below) */
  return `<span class="ph real ${after?'aft':''}" role="button" tabindex="0" data-a="photo" data-v="${kind}|${x.id}${after?'|1':''}" data-big="/rvt/desk/${kind}/${id}/photo?size=view${q}" data-cap="${esc(cap)}" aria-label="${after?'Photo after: open':'Photo: open'}" style="background-image:url(/rvt/desk/${kind}/${id}/photo?size=thumb${q})"></span>`};
 /* The pointer rests on a small photo: the larger one shows beside it, with what the point says, as the earlier MOM
@@ -150,10 +150,10 @@ const photoHover=(()=>{let box=null,cur=null;const hide=()=>{cur=null;if(box)box
 /* a redraw takes the small photo away from under the pointer: the large one goes with it */
 const renderD=render;render=function(){photoHover.hide();renderD()};
 ptPhoto=function(x,after){const id=digits(x.id);if(!id||+id>=LOCAL0)return `<span class="ph full ${after?'aft':''}"></span>`;
- return `<img class="phv" alt="${after?'After':'Photo'}" role="button" tabindex="0" data-a="photo" data-v="point|${x.id}|${after?1:0}" src="/rvt/desk/point/${id}/photo?size=view${after?'&close=1':''}">`};
+ return `<img class="phv" alt="${after?'After':'Photo'}" role="button" tabindex="0" data-a="photo" data-v="point|${x.id}|${after?1:0}" src="/rvt/desk/point/${id}/photo?size=view${after?'&close=1':''}&v=${x.pv||0}">`};
 A.photo=function(v,el,dev){const [a,b,c]=String(v).split('|'),s=b?{kind:a,id:b,close:c==='1'}:{kind:'point',id:a};s.back=dev.sheet&&dev.sheet.k!=='photo'?dev.sheet:null;openSheet(dev,'photo',s)};
 SHEETS.photo=function(dev,s){const x=s.kind==='point'?ptOf(s.id):null;return {title:x?(x.cphoto?(s.close?'After':'Before'):'Photo')+' · point '+x.n:'Photo sent with the question',sub:x?x.text:'',wide:true,
- body:`<div class="phw"><img class="phv" alt="Photo" src="/rvt/desk/${s.kind==='question'?'question':'point'}/${digits(s.id)}/photo?size=view${s.close?'&close=1':''}"></div>`,foot:Bt(s.back?'Back':'Close','close',null,'ghost')}};
+ body:`<div class="phw"><img class="phv" alt="Photo" src="/rvt/desk/${s.kind==='question'?'question':'point'}/${digits(s.id)}/photo?size=view${s.close?'&close=1':''}${x?'&v='+(x.pv||0):''}"></div>`,foot:Bt(s.back?'Back':'Close','close',null,'ghost')}};
 SHEETS.pdf=function(dev,s){return {title:s.kind==='open'?'Open points PDF':'MOM PDF',sub:s.kind==='points'?'The points of the project, as chosen. Save or print it from the bar above the page.':'What the party receives on WhatsApp',wide:true,
  body:`<div class="pdfw"><iframe class="pdfv" title="PDF" src="/rvt/desk/mom/pdf?kind=${encodeURIComponent(s.kind)}&a=${encodeURIComponent(s.a||'')}&b=${encodeURIComponent(s.b||'all')}&v=${encodeURIComponent(s.v||'')}&st=${encodeURIComponent(s.st||'open')}#view=FitH"></iframe></div>`,foot:Bt('Close','close',null,'ghost')}};
 /* Setup › Earlier MOM: the real verification report of the move, read when the tab is opened */

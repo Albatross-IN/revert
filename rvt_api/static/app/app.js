@@ -1636,13 +1636,13 @@ A.pdf=function(v){const [kind,a,b]=v.split('|');let path,title;
 /* the MOM of a project, cut by visit and by party: the real PDF, full screen */
 A.dopdf=function(v,el,dev){const f=dev.f,p=pOf(v),q=['party='+encodeURIComponent(f.pf_p||'all'),'state='+(f.pf_st==='all'?'all':'open')];if(f.pf_v)q.push('visit_id='+num(f.pf_v));dev.sheet=null;
  local('pdf/open',{path:API+'/files/project/'+num(v)+'/points-pdf?'+q.join('&'),title:f.pf_v&&visOf(f.pf_v)?'MOM · visit '+visOf(f.pf_v).no:'Points',sub:p?p.name:''}).catch(e=>toast(e.message,'bad'))};
-phOf=function(kind,x,after){const id=num(x.id);if(!id||+id>=LOCAL0)return `<span class="ph ${after?'aft':''}"></span>`;const src=`${API}/files/${kind}/${id}/photo?size=thumb${after?'&close=1':''}`;
+phOf=function(kind,x,after){const id=num(x.id);if(!id||+id>=LOCAL0)return `<span class="ph ${after?'aft':''}"></span>`;const src=`${API}/files/${kind}/${id}/photo?size=thumb${after?'&close=1':''}&v=${x.pv||0}`;
  return `<span class="ph real ${after?'aft':''}" role="button" tabindex="0" data-a="photo" data-v="${kind}|${x.id}${after?'|1':''}" aria-label="${esc(T('aphoto'))}" ${WEB?`data-asrc="${src}"`:`style="background-image:url(${src})"`}></span>`};
 ptPhoto=function(x,after){const id=num(x.id);if(!id||+id>=LOCAL0)return `<span class="ph full ${after?'aft':''}"></span>`;
- return `<img class="phv" alt="" role="button" tabindex="0" data-a="photo" data-v="point|${x.id}|${after?1:0}" ${WEB?'data-asrc':'src'}="${API}/files/point/${id}/photo?size=view${after?'&close=1':''}">`};
+ return `<img class="phv" alt="" role="button" tabindex="0" data-a="photo" data-v="point|${x.id}|${after?1:0}" ${WEB?'data-asrc':'src'}="${API}/files/point/${id}/photo?size=view${after?'&close=1':''}&v=${x.pv||0}">`};
 A.photo=function(v,el,dev){const [a,b,c]=v.split('|');openSheet(dev,'photo',b?{kind:a,id:b,close:c==='1',back:dev.sheet&&dev.sheet.k!=='photo'?dev.sheet:null}:{kind:'point',id:a})};
 SHEETS.photo=function(dev,s){const x=s.kind==='point'?ptOf(s.id):null,b=s.kind==='bill'?billOf(s.id):null;
- return {title:b?(b.no||T('bills')):(x&&x.cphoto?tr(s.close?'after':'before',L()):T('aphoto'))+(x&&APP.role==='staff'?' · point '+x.n:''),sub:x?x.text:b?b.what:'',body:`<div class="phw"><img class="phv" alt="" ${WEB?'data-asrc':'src'}="${API}/files/${s.kind}/${num(s.id)}/${b?'document':'photo?size=view'+(s.close?'&close=1':'')}"></div>`,foot:Bt(T('shut'),'close',null,'ghost')}};
+ return {title:b?(b.no||T('bills')):(x&&x.cphoto?tr(s.close?'after':'before',L()):T('aphoto'))+(x&&APP.role==='staff'?' · point '+x.n:''),sub:x?x.text:b?b.what:'',body:`<div class="phw"><img class="phv" alt="" ${WEB?'data-asrc':'src'}="${API}/files/${s.kind}/${num(s.id)}/${b?'document':'photo?size=view'+(s.close?'&close=1':'')+(x?'&v='+(x.pv||0):'')}"></div>`,foot:Bt(T('shut'),'close',null,'ghost')}};
 /* a bill's document is the file that was uploaded, or nothing: never a made-up file name */
 const bill0=SHEETS.bill;SHEETS.bill=function(dev,s){const o=bill0(dev,s),b=billOf(s.id);
  o.body=o.body.replace(/<div class="docrow">[^]*?<\/div>/,b.doc&&+num(b.id)<LOCAL0?`<button type="button" class="docrow" data-a="billdoc" data-v="${b.id}">${ic('file')}<span><b>${b.doc==='pdf'?'PDF':'Photo'} of the bill</b> · open</span></button>`:'');return o};

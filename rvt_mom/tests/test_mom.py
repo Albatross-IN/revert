@@ -189,8 +189,10 @@ class TestMom(MomCommon):
         # the agency does it and marks the point done again, with a new photo
         with self.assertRaises(UserError):
             mine.with_user(self.agency_user).rvt_agency_done("Planed and hung again")
+        version = mine.photo_version
         mine.with_user(self.agency_user).rvt_agency_done("Planed and hung again", PNG)
         self.assertEqual((mine.review_state, mine.close_note), ("to_check", "Planed and hung again"))
+        self.assertEqual(mine.photo_version, version + 1, "a new photo has a new address: no screen shows the earlier one from memory")
         # solved: the point closes, with the agency's note and photo, and who confirmed it
         mine.with_user(self.coordinator).action_solved()
         self.assertEqual(

@@ -34,7 +34,7 @@ class RvtDesk(models.AbstractModel):
             "e": "e%s" % point.entity_id.id if point.entity_id else None,
             "t": point.trade_id.code or None,
             "dwg": "d%s" % point.drawing_id.id if point.drawing_id else None,
-            "photo": point.has_photo, "due": off(point.due_date),
+            "photo": point.has_photo, "pv": point.photo_version, "due": off(point.due_date),
             "st": point.state, "closedBy": "s%s" % point.closed_by_id.id if point.closed_by_id else None,
             "doneBy": point.closed_by_partner_id.name or None,
             "on": off(self.env["rvt.config"].to_date(point.raised_on)) if point.raised_on else None,

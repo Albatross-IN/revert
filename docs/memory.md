@@ -198,6 +198,7 @@ Written questionnaire answers: none yet (expected back as an md file). Copy answ
 - **A new item of Today needs its words in three places.** The section list (`SECS` in `core.js`), its colour (`SECC`) and the sentence of the greeting (`SAY` in `desk.js`). With the last one missing the desk does not draw at all: the greeting is built before anything else. The server's tests do not see it; the desk's browser tour does.
 - **A point an agency marked done is still open.** `state` stays `open` and `review_state` is `to_check` until the office confirms it; code that asks "what must the agency still do" must leave those out (`_rvt_agency_summary`), code that counts open points must not.
 - **The app's stylesheet build wants each narrow-screen block exactly once.** `build_web.py` rewrites the three `@container` headers by exact match, so a rule for narrow screens goes inside the existing block, never in a second block with the same header.
+- **A photo that can be replaced needs an address that changes with it.** Photos are kept by the phone and the browser for an hour. After "Change needed" the agency's new photo sat on the server while the office's phone still showed the earlier one under the same address (found on the M31). `rvt.point.photo_version` counts the changes and is part of every point photo's address (`&v=`).
 
 ## 7. Glossary
 | Term | Meaning |

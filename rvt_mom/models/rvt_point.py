@@ -49,6 +49,9 @@ class RvtPoint(models.Model):
     change_by_id = fields.Many2one("res.users", string="Change asked by", copy=False)
     change_on = fields.Date(string="Change asked on", copy=False)
     change_count = fields.Integer(string="Times sent back", copy=False)
+    photo_version = fields.Integer(
+        copy=False, help="Counts the changes of the two photos. It is part of a photo's address on the screens, "
+                         "so a phone or a browser never shows an earlier photo from its own memory.")
     close_note = fields.Text(string="Closing note")
     close_photo = fields.Binary(attachment=True)
     has_close_photo = fields.Boolean(compute="_compute_has_photo", store=True)
@@ -151,6 +154,13 @@ class RvtPoint(models.Model):
             last[pid] += 1
             vals["number"] = last[pid]
         return super().create(vals_list)
+
+    def write(self, vals):
+        res = super().write(vals)
+        if "photo" in vals or "close_photo" in vals:
+            for point in self:
+                super(RvtPoint, point).write({"photo_version": point.photo_version + 1})
+        return res
 
     # ------------------------------------------------------------------
     def _rvt_staff(self):

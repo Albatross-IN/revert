@@ -92,7 +92,9 @@ class TestDeskMom(MomCommon):
         self.assertEqual((row["st"], row["rev"], row["chg"], row["chgBy"], row["chgOn"], row["chgN"]),
                          ("open", "change", "The edge band is missing", "s%s" % self.coordinator.id, 0, 1))
         # done again, and this time it is solved
+        before = row["pv"]
         point.with_user(self.agency_user).rvt_agency_done("Edge band on", PNG)
+        self.assertEqual(next(p for p in self.snap()["points"] if p["id"] == p1)["pv"], before + 1, "the new photo is asked for anew")
         self.op("solve_point", {"point": p1})
         row = next(p for p in self.snap()["points"] if p["id"] == p1)
         self.assertEqual((row["st"], row["rev"], row["closedBy"], row["doneBy"], row["note"], row["cphoto"], row["closedOn"]),

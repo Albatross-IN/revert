@@ -15,7 +15,7 @@ with a note or a photo; a point for the client is shown to the client after
 the office confirms it (a setting). The earlier MOM entries are moved into
 these records by tools/etl_mom.py with a verification report.
 """,
-    "version": "20.0.1.2.0",
+    "version": "20.0.1.2.1",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Albatross",
