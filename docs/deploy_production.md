@@ -20,6 +20,7 @@ are announced to the other project first, as are restarts of `erp-odoo20`, which
 | nginx | `sites-available/erp-revert.conf` + shared `snippets/erp-odoo.conf`, `erp-tls.conf`; pre-release lock `snippets/erp-revert-prerelease.conf` |
 | certificates | Let's Encrypt, `certbot.timer` renews and reloads nginx |
 | firewall | ufw: 22, 80, 443 only |
+| WhatsApp helper (Revert) | `erp-revert-whatsapp.service` (Node 22, user `erp`, 127.0.0.1:3100), code `/opt/erp/sidecar/revert-whatsapp`, sessions `/opt/erp/data/whatsapp/revert`, key `/etc/erp/revert-whatsapp.env`, log `/var/log/erp/revert-whatsapp.log` |
 | backups | `erp-backup.timer`, daily 20:30 UTC: every `erp` database + filestore to `/opt/erp/backups/<db>/<stamp>/`, checked, `SHA256SUMS`, 14 days kept |
 | releases | `/opt/erp/releases/revert/` (uploaded dump, filestore archive, deploy scripts) |
 
