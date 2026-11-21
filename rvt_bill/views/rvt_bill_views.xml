@@ -74,5 +74,5 @@
         <field name="res_model">rvt.bill</field>
         <field name="view_mode">list,form</field>
     </record>
-    <menuitem id="menu_rvt_bills" name="Bills" parent="rvt_base.menu_rvt_config" action="action_rvt_bill" sequence="66" groups="rvt_base.group_rvt_owner,base.group_system"/>
+    <menuitem id="menu_rvt_bills" name="Bills" parent="rvt_base.menu_rvt_config" action="action_rvt_bill" sequence="66" groups="rvt_base.group_rvt_owner,-base.group_system"/>
 </odoo>

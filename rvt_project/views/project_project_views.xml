@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="project.edit_project"/>
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
-                <page string="Revert" name="rvt" groups="rvt_base.group_rvt_staff,base.group_system">
+                <page string="Revert" name="rvt" groups="rvt_base.group_rvt_staff">
                     <group>
                         <group string="Client and site">
                             <field name="rvt_client_id"/>
@@ -58,8 +58,8 @@
         <field name="inherit_id" ref="project.view_project_project_filter"/>
         <field name="arch" type="xml">
             <xpath expr="//search" position="inside">
-                <filter name="rvt_onboarded" string="Onboarded" domain="[('rvt_onboarded', '=', True)]"/>
-                <filter name="rvt_not_onboarded" string="Not onboarded yet" domain="[('rvt_onboarded', '=', False)]"/>
+                <filter name="rvt_onboarded" string="Onboarded" domain="[('rvt_onboarded', '=', True)]" groups="rvt_base.group_rvt_staff"/>
+                <filter name="rvt_not_onboarded" string="Not onboarded yet" domain="[('rvt_onboarded', '=', False)]" groups="rvt_base.group_rvt_staff"/>
             </xpath>
         </field>
     </record>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The WhatsApp connector is here to carry Revert's messages. Its own application is for the owners
+         (who pair the number), its buttons on a contact for the people given a Revert role; nobody else sees
+         them, an administrator without a Revert role included: the office moves over one person at a time. -->
+    <record id="open_whatsapp_connector.menu_owa_root" model="ir.ui.menu">
+        <field name="group_ids" eval="[(6, 0, [ref('rvt_base.group_rvt_owner')])]"/>
+    </record>
+    <record id="res_partner_view_form_owa_for_revert" model="ir.ui.view">
+        <field name="name">res.partner.form.owa.for.revert</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="open_whatsapp_connector.res_partner_view_form_inherit_owa"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_open_wa_discuss']" position="attributes">
+                <attribute name="groups">rvt_base.group_rvt_staff</attribute>
+            </xpath>
+            <xpath expr="//field[@name='owa_channel_count']/.." position="attributes">
+                <attribute name="groups">rvt_base.group_rvt_staff</attribute>
+            </xpath>
+            <xpath expr="//page[@name='owa_whatsapp']" position="attributes">
+                <attribute name="groups">rvt_base.group_rvt_staff</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

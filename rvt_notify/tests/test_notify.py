@@ -188,6 +188,39 @@ class TestNotify(MomCommon):
         note = self.env["rvt.notify.log"].with_user(self.agency_user).rvt_mine()[0]
         self.assertEqual((note["ev"], note["ref"]), ("point_change", ["point", "pt%s" % point.id]), "and a tap on it opens the point")
 
+    def test_an_employee_without_a_revert_role_keeps_the_earlier_back_office(self):
+        """On the live database the office moves over one person at a time: until somebody is given a
+        Revert role, nothing of Revert (nor of the WhatsApp connector that carries its messages) shows."""
+        from odoo.tests import new_test_user
+        employee = new_test_user(self.env, "t_plain_employee", groups="base.group_user,project.group_project_user",
+                                 name="Plain Employee")
+        menus = self.env["ir.ui.menu"].with_user(employee)
+        roots = menus.get_user_roots()
+        self.assertNotIn(self.env.ref("rvt_base.menu_rvt_root"), roots)
+        self.assertNotIn(self.env.ref("open_whatsapp_connector.menu_owa_root"), roots)
+        self.assertIn(self.env.ref("project.menu_main_pm"), roots, "the earlier apps stay")
+        # an administrator given the owner role (the "admin" of the live database) has both, and pairs the number
+        owner = new_test_user(self.env, "t_plain_owner", groups="base.group_user,base.group_system,rvt_base.group_rvt_owner", name="Owner Role")
+        owner_roots = self.env["ir.ui.menu"].with_user(owner).get_user_roots()
+        self.assertIn(self.env.ref("open_whatsapp_connector.menu_owa_root"), owner_roots, "an owner pairs the number")
+        self.assertIn(self.env.ref("rvt_base.menu_rvt_root"), owner_roots)
+        # an administrator without a Revert role sees nothing of it either, until somebody gives the role
+        sysadmin = new_test_user(self.env, "t_plain_sysadmin", groups="base.group_user,base.group_system", name="System Admin")
+        admin_roots = self.env["ir.ui.menu"].with_user(sysadmin).get_user_roots()
+        self.assertNotIn(self.env.ref("rvt_base.menu_rvt_root"), admin_roots)
+        self.assertNotIn(self.env.ref("open_whatsapp_connector.menu_owa_root"), admin_roots)
+        self.assertNotIn("action_open_wa_discuss", self.env["res.partner"].with_user(sysadmin).get_views([(False, "form")])["views"]["form"]["arch"])
+        arch = lambda model, kind, user: self.env[model].with_user(user).get_views([(False, kind)])["views"][kind]["arch"]
+        form = arch("res.partner", "form", employee)
+        for hidden in ("action_open_wa_discuss", "owa_channel_count", "owa_whatsapp", 'name="rvt"'):
+            self.assertNotIn(hidden, form, "%s shows to an employee without a Revert role" % hidden)
+        self.assertIn("action_open_wa_discuss", arch("res.partner", "form", self.coordinator), "a Revert role sees it")
+        for model, hidden in (("project.project", "rvt_onboarded"), ("project.task", "rvt_entities"), ("res.partner", "rvt_agencies")):
+            self.assertNotIn(hidden, arch(model, "search", employee))
+        self.assertIn("rvt_onboarded", arch("project.project", "search", self.coordinator))
+        # and every project stays in sight, onboarded or not, as before
+        self.assertIn(self.project, self.env["project.project"].with_user(employee).search([]))
+
     def test_a_persons_own_notifications(self):
         self.go_live()
         point = self.add("Fix the wardrobe shutter gap", partner=self.ag_carp, photo=PNG)

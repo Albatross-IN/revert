@@ -7,6 +7,31 @@ on a neutralised copy of the live database on a development machine; the server 
 The base procedure, the server layout and its traps are in `deploy_production.md`. This page
 adds what is new with Release 1.
 
+## 0. Released 2026-11-21, administrator only
+
+At the owner's request Release 1 went to the live database **for the administrator only**: the office
+keeps working the earlier way until each person is trained and given a Revert role by hand.
+
+- **What decides who sees Revert:** a Revert role (Settings → Users → the person → Revert: Staff,
+  Principal consultant or Owner, plus Designer or Coordinator). Without one nothing of Revert shows:
+  no Revert app, no "Revert" tab on projects, tasks or contacts, no extra search filters, and none of the
+  WhatsApp connector's screens. An administrator without a role sees none of it either.
+  The two rules on projects and tasks leave everyone without a role as they were.
+- **Given on the day:** the user `admin` holds the Owner role, nobody else.
+- **Log-in page:** the standard one for everybody (`rvt.desk_login` = False). Switch it on when the
+  office moves to the desk.
+- **Not done on the day, on purpose:** `assign_roles.py` (roles), the move of the earlier MOM
+  (`etl_mom.py`), the three look-and-feel modules (`identity`, `web_theme_glass`, `web_glass_workspace`:
+  they change everybody's back office), the WhatsApp helper service and pairing, and the sending switch
+  (stays off: nothing leaves).
+- **To give a person access later:** give the role(s), and tell them to log out and in once. To move the
+  earlier MOM of a project into the desk, run `etl_mom.py` as in §3.6 (all projects at once).
+- **The app:** built for `https://erp.revert.co.in` (`docs/Revert_app_production.apk` on the development
+  machine, debug-signed until a release key exists). Staff sign in with their office login; agencies and
+  clients cannot sign in until the WhatsApp number is paired and sending is on (their code comes on WhatsApp).
+- **The way back:** the backup taken before the release is `/opt/erp/releases/revert/release1/backup-20261121T074811Z`
+  on the server (database and files, `SHA256SUMS` checked). See §6.
+
 ## 1. What goes out
 
 | Piece | Where from | Version |
@@ -88,7 +113,7 @@ Run as on `deploy_production.md`: root on the server, `erp` owns the files.
 | "Copy link" on a pilot project's Client tab | the link opens that project in a phone browser without sign-in |
 | Message log (Setup → WhatsApp) | "sent", not "held" |
 | Open the desk in two browsers, change a line in one | the other shows it within a second or two, untouched (the live line); if it takes about 15 seconds, `/websocket` is not reaching the service |
-| Module tests | were run before the release on a copy: 178 pass (`/rvt_base,/rvt_project,/rvt_drawing,/rvt_mom,/rvt_notify,/rvt_desk,/rvt_api,/rvt_bill`). Never run tests on the live database |
+| Module tests | were run before the release on a copy: 179 pass (`/rvt_base,/rvt_project,/rvt_drawing,/rvt_mom,/rvt_notify,/rvt_desk,/rvt_api,/rvt_bill`). Never run tests on the live database |
 
 ## 5. The app
 

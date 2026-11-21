@@ -159,9 +159,12 @@ class RvtHome(Home):
 
     @http.route()
     def web_login(self, redirect=None, **kw):
-        """The standard log-in in every respect, shown as the desk's own page."""
+        """The standard log-in in every respect, shown as the desk's own page. The system parameter
+        ``rvt.desk_login`` (on unless set to False) switches it off: everybody then gets the standard
+        page, as on a live database where the office has not moved to the desk yet."""
         response = super().web_login(redirect=redirect, **kw)
-        if getattr(response, "is_qweb", False) and response.template == "web.login" and not kw.get("classic"):
+        own = request.env["ir.config_parameter"].sudo().get_bool("rvt.desk_login", True)
+        if own and getattr(response, "is_qweb", False) and response.template == "web.login" and not kw.get("classic"):
             today = request.env["rvt.config"].today()
             response.qcontext.update({
                 "stamp": _stamp(), "redirect": redirect or False,

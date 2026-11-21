@@ -14,7 +14,7 @@ every send is logged with its outcome.
 test copy of the database whatever the switch says: such messages are
 logged as held.
 """,
-    "version": "20.0.1.3.0",
+    "version": "20.0.1.3.1",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Albatross",
@@ -24,6 +24,7 @@ logged as held.
         "security/ir.access.csv",
         "data/rvt_notify_template_data.xml",
         "views/rvt_notify_views.xml",
+        "views/owa_access_views.xml",
     ],
     "installable": True,
 }

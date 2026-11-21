@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="project.view_task_form2"/>
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
-                <page string="Revert" name="rvt" groups="rvt_base.group_rvt_staff,base.group_system"
+                <page string="Revert" name="rvt" groups="rvt_base.group_rvt_staff"
                       invisible="not rvt_kind">
                     <group>
                         <group>
@@ -50,11 +50,11 @@
         <field name="inherit_id" ref="project.view_task_search_form_base"/>
         <field name="arch" type="xml">
             <xpath expr="//search" position="inside">
-                <field name="rvt_trade_id"/>
-                <field name="rvt_agency_id"/>
-                <filter name="rvt_entities" string="Rooms and zones" domain="[('rvt_kind', '=', 'entity')]"/>
-                <filter name="rvt_lines" string="Work lines" domain="[('rvt_kind', '=', 'work')]"/>
-                <filter name="rvt_hand_made" string="Made by hand" domain="[('rvt_kind', '=', False)]"/>
+                <field name="rvt_trade_id" groups="rvt_base.group_rvt_staff"/>
+                <field name="rvt_agency_id" groups="rvt_base.group_rvt_staff"/>
+                <filter name="rvt_entities" string="Rooms and zones" domain="[('rvt_kind', '=', 'entity')]" groups="rvt_base.group_rvt_staff"/>
+                <filter name="rvt_lines" string="Work lines" domain="[('rvt_kind', '=', 'work')]" groups="rvt_base.group_rvt_staff"/>
+                <filter name="rvt_hand_made" string="Made by hand" domain="[('rvt_kind', '=', False)]" groups="rvt_base.group_rvt_staff"/>
             </xpath>
         </field>
     </record>

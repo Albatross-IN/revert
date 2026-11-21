@@ -6,7 +6,7 @@
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
             <xpath expr="//notebook" position="inside">
-                <page string="Revert" name="rvt" groups="rvt_base.group_rvt_staff,base.group_system">
+                <page string="Revert" name="rvt" groups="rvt_base.group_rvt_staff">
                     <group>
                         <group>
                             <field name="rvt_is_agency"/>
@@ -24,8 +24,8 @@
         <field name="inherit_id" ref="base.view_res_partner_filter"/>
         <field name="arch" type="xml">
             <xpath expr="//search" position="inside">
-                <field name="rvt_trade_ids"/>
-                <filter name="rvt_agencies" string="Agencies" domain="[('rvt_is_agency', '=', True)]"/>
+                <field name="rvt_trade_ids" groups="rvt_base.group_rvt_staff"/>
+                <filter name="rvt_agencies" string="Agencies" domain="[('rvt_is_agency', '=', True)]" groups="rvt_base.group_rvt_staff"/>
             </xpath>
         </field>
     </record>

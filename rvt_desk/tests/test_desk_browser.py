@@ -125,6 +125,11 @@ class TestDeskBrowser(HttpCase):
         self.assertNotIn("Powered by", page)
         classic = self.url_open("/web/login?classic=1").text
         self.assertNotIn("dlogin", classic)
+        # switched off (a live database where the office still works the earlier way): the standard page for everybody
+        self.env["ir.config_parameter"].sudo().set_bool("rvt.desk_login", False)
+        standard = self.url_open("/web/login").text
+        self.assertNotIn("dlogin", standard)
+        self.assertIn('name="csrf_token"', standard)
 
     def test_staff_land_on_the_desk(self):
         self.authenticate("t_tour_coord", "t_tour_coord")

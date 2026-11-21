@@ -7,7 +7,7 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app data-string="Revert" string="Revert" name="rvt_base" groups="rvt_base.group_rvt_owner,base.group_system">
+                <app data-string="Revert" string="Revert" name="rvt_base" groups="rvt_base.group_rvt_owner">
                     <block title="Drawings and points" name="rvt_rules">
                         <setting string="Release needs approval"
                                  help="A drawing goes out only after the principal consultant approves it. When off, the designer releases directly.">
