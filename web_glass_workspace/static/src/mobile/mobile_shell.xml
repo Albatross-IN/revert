@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="web_glass_workspace.MobileShell">
+        <t t-if="this.active">
+
+            <!-- scrim behind any open sheet -->
+            <div t-if="this.state.overlay" class="o_glass_m_scrim" t-on-click="this.closeOverlay"/>
+
+            <!-- ============ STAGE picker (grouped kanban) ============ -->
+            <div t-if="this.state.overlay === 'stages'" class="o_glass_m_sheet o_glass_m_stages">
+                <div class="o_glass_m_grab"/>
+                <div class="o_glass_m_sheet_head">Open a stage</div>
+                <div class="o_glass_m_seclist">
+                    <button class="o_glass_m_sec" t-att-class="{ o_active: !this.isStageFiltered }"
+                            t-on-click="() => this.selectStage(undefined)">
+                        <span class="o_glass_m_stage_name">All stages</span>
+                        <i t-if="!this.isStageFiltered" class="oi" data-icon="check"/>
+                    </button>
+                    <t t-foreach="this.stages" t-as="st" t-key="st.value">
+                        <button class="o_glass_m_sec" t-att-class="{ o_active: this.isStageSelected(st.value) }"
+                                t-on-click="() => this.selectStage(st.value)">
+                            <span class="o_glass_m_stage_name" t-out="st.label"/>
+                            <span class="o_glass_m_stage_count" t-out="st.count"/>
+                        </button>
+                    </t>
+                </div>
+            </div>
+
+            <!-- ============ STAGE picker floating button (only on a grouped kanban) ====== -->
+            <button t-if="this.showStagePicker and !this.state.overlay"
+                    class="o_glass_m_stagefab" t-att-class="{ o_filtered: this.isStageFiltered }"
+                    t-on-click="() => this.openOverlay('stages')">
+                <i class="oi" data-icon="view_column"/>
+                <span t-out="this.currentStageLabel"/>
+            </button>
+
+            <!-- ============ BOTTOM TAB BAR ============ -->
+            <nav class="o_glass_m_tabbar">
+                <button class="o_glass_m_tab" t-on-click="this.openApps" data-available-offline="">
+                    <i class="oi" data-icon="apps"/><span>Apps</span>
+                </button>
+                <button class="o_glass_m_tab" t-on-click="this.openMenu" data-available-offline="">
+                    <i class="oi" data-icon="menu"/><span>Menu</span>
+                </button>
+                <button class="o_glass_m_tab" t-on-click="this.openActivity">
+                    <i class="oi" data-icon="schedule"/><span>Activity</span>
+                </button>
+                <button class="o_glass_m_tab" t-on-click="this.openAccount" data-available-offline="">
+                    <i class="oi" data-icon="account_circle"/><span>Account</span>
+                </button>
+            </nav>
+
+        </t>
+    </t>
+
+</templates>

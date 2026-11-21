@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="web_glass_workspace.LeftPane">
+        <aside t-if="this.active" class="o_glass_pane" t-att-class="{ o_glass_pane_is_mini: this.mini }"
+               t-on-mouseenter="this.onPaneEnter" t-on-mouseleave="this.onPaneLeave">
+            <div class="o_glass_pane_scroll">
+                <div class="o_glass_pane_head">
+                    <span class="o_glass_pane_label">Apps</span>
+                    <button class="o_glass_pane_lock btn btn-link" t-att-title="this.prefs.nav === 'mini' ? 'Keep pane open' : 'Collapse to icons'" t-on-click="this.toggleLock">
+                        <i class="oi" t-att-data-icon="this.prefs.nav === 'mini' ? 'push_pin' : 'chevron_left'"/>
+                    </button>
+                </div>
+                <t t-foreach="this.apps" t-as="app" t-key="app.id">
+                    <button class="o_glass_pane_app" t-att-class="{ o_active: this.isCurrentApp(app), o_fly: this.fly.app === app.id }"
+                            t-att-data-menu-xmlid="app.xmlid" t-on-click="() => this.onAppClick(app)" t-att-title="app.name"
+                            t-on-mouseenter="(ev) => this.onAppHover(app, ev)">
+                        <span class="o_glass_pane_icon">
+                            <div t-if="this.identityIconStyle(app)" class="o_identity_icon" t-att-style="this.identityIconStyle(app)"/>
+                            <img t-elif="app.webIconData" t-att-src="app.webIconData" alt=""/>
+                            <i t-else="" class="oi" data-icon="apps"/>
+                        </span>
+                        <span class="o_glass_pane_name" t-out="app.name"/>
+                    </button>
+                    <div t-if="this.isCurrentApp(app)" class="o_glass_pane_sections">
+                        <!-- full menu tree, like the native dropdown: parents expand, leaves navigate -->
+                        <t t-foreach="this.visibleMenuNodes(app.id)" t-as="row" t-key="row.node.id">
+                            <button class="o_glass_pane_sec"
+                                    t-att-class="{ o_glass_pane_leaf: !this.hasChildren(row.node), o_active: this.isCurrentMenu(row.node) }"
+                                    t-attf-style="padding-left: {{ 14 + row.depth * 13 }}px"
+                                    t-on-click="() => this.onMenuClick(row.node)" t-att-title="row.node.name">
+                                <span class="o_glass_pane_sec_name" t-out="row.node.name"/>
+                                <i t-if="this.hasChildren(row.node)" class="o_glass_pane_caret oi" t-att-data-icon="this.isExpanded(row.node) ? 'keyboard_arrow_down' : 'chevron_right'"/>
+                            </button>
+                        </t>
+                    </div>
+                </t>
+            </div>
+
+            <!-- the app's menu on hover: one card per top-level section (icon · title · fold),
+                 its sub-menus as headings, the pages as bulleted links — Odoo's own menu tree,
+                 every link navigates through menu.selectMenu -->
+            <div t-if="this.flyApp" class="o_glass_fly_wrap" t-attf-style="top: {{ this.fly.top }}px" t-ref="this.flyRef">
+                <div class="o_glass_fly" t-att-class="{ o_glass_fly_2col: this.flyCards.length >= 3 }" role="menu" t-att-aria-label="this.flyApp.name">
+                    <div class="o_glass_fly_head">
+                        <span class="o_glass_fly_app">
+                            <div t-if="this.identityIconStyle(this.flyApp)" class="o_identity_icon" t-att-style="this.identityIconStyle(this.flyApp)"/>
+                            <img t-elif="this.flyApp.webIconData" t-att-src="this.flyApp.webIconData" alt=""/>
+                            <span t-out="this.flyApp.name"/>
+                        </span>
+                        <button class="o_glass_fly_open btn btn-link" t-on-click="() => this.onAppClick(this.flyApp)">Open <i class="oi" data-icon="arrow_forward"/></button>
+                    </div>
+                    <div class="o_glass_fly_cols">
+                        <t t-foreach="this.flyCards" t-as="card" t-key="card.node.id">
+                            <section class="o_glass_fly_card" t-att-class="{ o_folded: this.isFolded(card.node) }">
+                                <header class="o_glass_fly_card_head">
+                                    <i class="o_glass_fly_glyph oi oi-fw" t-att-data-icon="card.glyph"/>
+                                    <span class="o_glass_fly_title" t-out="card.node.name"/>
+                                    <button class="o_glass_fly_fold btn btn-link" t-att-title="this.isFolded(card.node) ? 'Show' : 'Hide'" t-on-click="() => this.toggleFold(card.node)">
+                                        <i class="oi" t-att-data-icon="this.isFolded(card.node) ? 'add_circle' : 'remove_circle'"/>
+                                    </button>
+                                </header>
+                                <div t-if="!this.isFolded(card.node)" class="o_glass_fly_body">
+                                    <t t-foreach="card.rows" t-as="row" t-key="row.node.id">
+                                        <t t-if="row.header">
+                                            <button t-if="row.node.actionID" class="o_glass_fly_sub o_glass_fly_link" t-attf-style="margin-left: {{ row.depth * 12 }}px" t-on-click="() => this.onFlyClick(row.node)" t-out="row.node.name"/>
+                                            <div t-else="" class="o_glass_fly_sub" t-attf-style="margin-left: {{ row.depth * 12 }}px" t-out="row.node.name"/>
+                                        </t>
+                                        <button t-else="" class="o_glass_fly_item" t-att-class="{ o_active: this.isCurrentMenu(row.node) }"
+                                                t-attf-style="margin-left: {{ row.depth * 12 }}px" t-on-click="() => this.onFlyClick(row.node)">
+                                            <span class="o_glass_fly_dot"/><span class="o_glass_fly_item_name" t-out="row.node.name"/>
+                                        </button>
+                                    </t>
+                                </div>
+                            </section>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </t>
+
+</templates>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- The back office keeps a plain list for the administrator. Staff work in the desk and the app. -->
+    <record id="view_rvt_bill_list" model="ir.ui.view">
+        <field name="name">rvt.bill.list</field>
+        <field name="model">rvt.bill</field>
+        <field name="arch" type="xml">
+            <list create="0">
+                <field name="asked_on"/>
+                <field name="project_id"/>
+                <field name="agency_id"/>
+                <field name="trade_id"/>
+                <field name="what"/>
+                <field name="bill_number"/>
+                <field name="amount" sum="Billed"/>
+                <field name="paid_amount" sum="Paid"/>
+                <field name="billed_to"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_rvt_bill_form" model="ir.ui.view">
+        <field name="name">rvt.bill.form</field>
+        <field name="model">rvt.bill</field>
+        <field name="arch" type="xml">
+            <form create="0">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="asked,submitted,accepted,part_paid,paid"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Asked">
+                            <field name="project_id"/>
+                            <field name="agency_id"/>
+                            <field name="trade_id"/>
+                            <field name="what"/>
+                            <field name="asked_by_id"/>
+                            <field name="asked_on"/>
+                            <field name="up_to_amount"/>
+                            <field name="billed_to"/>
+                        </group>
+                        <group string="The bill">
+                            <field name="bill_number"/>
+                            <field name="bill_date"/>
+                            <field name="amount"/>
+                            <field name="document" filename="document_name"/>
+                            <field name="document_name" invisible="1"/>
+                            <field name="submitted_on"/>
+                            <field name="return_reason" invisible="not return_reason"/>
+                            <field name="paid_amount"/>
+                            <field name="balance"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Payments" name="payments">
+                            <field name="payment_ids">
+                                <list editable="bottom">
+                                    <field name="date"/>
+                                    <field name="amount" sum="Paid"/>
+                                    <field name="paid_by"/>
+                                    <field name="mode"/>
+                                    <field name="proof" filename="proof_name"/>
+                                    <field name="proof_name" column_invisible="1"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_rvt_bill" model="ir.actions.act_window">
+        <field name="name">Bills</field>
+        <field name="res_model">rvt.bill</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_rvt_bills" name="Bills" parent="rvt_base.menu_rvt_config" action="action_rvt_bill" sequence="66" groups="rvt_base.group_rvt_owner,-base.group_system"/>
+</odoo>

@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- docs/masters_draft.md §2: entity types with their usual trades. The extras (terrace, study, …) carry assumed trades. -->
+    <record id="entity_type_living" model="rvt.entity.type">
+        <field name="name">Living room</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_tile'), ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_alu'), ref('trade_ac'), ref('trade_av'), ref('trade_sf'), ref('trade_soft')])]"/>
+        <field name="sequence">10</field>
+    </record>
+    <record id="entity_type_dining" model="rvt.entity.type">
+        <field name="name">Dining</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_ac'), ref('trade_sf')])]"/>
+        <field name="sequence">20</field>
+    </record>
+    <record id="entity_type_kitchen" model="rvt.entity.type">
+        <field name="name">Kitchen</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_tile'), ref('trade_stone'), ref('trade_elec'), ref('trade_plmb'), ref('trade_pop'), ref('trade_carp'), ref('trade_col')])]"/>
+        <field name="sequence">30</field>
+    </record>
+    <record id="entity_type_bedroom" model="rvt.entity.type">
+        <field name="name">Bedroom</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_alu'), ref('trade_ac'), ref('trade_soft')])]"/>
+        <field name="sequence">40</field>
+    </record>
+    <record id="entity_type_master_bedroom" model="rvt.entity.type">
+        <field name="name">Master bedroom</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_alu'), ref('trade_ac'), ref('trade_av'), ref('trade_soft')])]"/>
+        <field name="sequence">50</field>
+    </record>
+    <record id="entity_type_toilet" model="rvt.entity.type">
+        <field name="name">Toilet</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_tile'), ref('trade_stone'), ref('trade_elec'), ref('trade_plmb'), ref('trade_pop'), ref('trade_alu')])]"/>
+        <field name="sequence">60</field>
+    </record>
+    <record id="entity_type_pooja" model="rvt.entity.type">
+        <field name="name">Pooja room</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_stone'), ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col')])]"/>
+        <field name="sequence">70</field>
+    </record>
+    <record id="entity_type_balcony" model="rvt.entity.type">
+        <field name="name">Balcony / wash area</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_tile'), ref('trade_elec'), ref('trade_plmb'), ref('trade_col'), ref('trade_fab')])]"/>
+        <field name="sequence">80</field>
+    </record>
+    <record id="entity_type_passage" model="rvt.entity.type">
+        <field name="name">Passage / foyer</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col')])]"/>
+        <field name="sequence">90</field>
+    </record>
+    <record id="entity_type_staircase" model="rvt.entity.type">
+        <field name="name">Staircase</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_stone'), ref('trade_elec'), ref('trade_col'), ref('trade_fab')])]"/>
+        <field name="sequence">100</field>
+    </record>
+    <record id="entity_type_garden" model="rvt.entity.type">
+        <field name="name">Garden / backyard</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_elec'), ref('trade_plmb'), ref('trade_fab'), ref('trade_land')])]"/>
+        <field name="is_extra" eval="True"/>
+        <field name="sequence">110</field>
+    </record>
+    <record id="entity_type_cabin" model="rvt.entity.type">
+        <field name="name">Cabin</field>
+        <field name="site_kind">office</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_alu'), ref('trade_ac'), ref('trade_av'), ref('trade_sf')])]"/>
+        <field name="sequence">120</field>
+    </record>
+    <record id="entity_type_conference" model="rvt.entity.type">
+        <field name="name">Conference / board room</field>
+        <field name="site_kind">office</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_alu'), ref('trade_ac'), ref('trade_av'), ref('trade_sf'), ref('trade_soft')])]"/>
+        <field name="sequence">130</field>
+    </record>
+    <record id="entity_type_workstation" model="rvt.entity.type">
+        <field name="name">Workstation area</field>
+        <field name="site_kind">office</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_ac'), ref('trade_av'), ref('trade_sf')])]"/>
+        <field name="sequence">140</field>
+    </record>
+    <record id="entity_type_reception" model="rvt.entity.type">
+        <field name="name">Reception / waiting</field>
+        <field name="site_kind">office</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_stone'), ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_alu'), ref('trade_ac'), ref('trade_av'), ref('trade_sf')])]"/>
+        <field name="sequence">150</field>
+    </record>
+    <record id="entity_type_pantry" model="rvt.entity.type">
+        <field name="name">Pantry</field>
+        <field name="site_kind">office</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_tile'), ref('trade_stone'), ref('trade_elec'), ref('trade_plmb'), ref('trade_pop'), ref('trade_carp'), ref('trade_col')])]"/>
+        <field name="sequence">160</field>
+    </record>
+    <record id="entity_type_server" model="rvt.entity.type">
+        <field name="name">Server / store room</field>
+        <field name="site_kind">office</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_elec'), ref('trade_carp'), ref('trade_col'), ref('trade_ac'), ref('trade_av')])]"/>
+        <field name="sequence">170</field>
+    </record>
+    <record id="entity_type_consulting" model="rvt.entity.type">
+        <field name="name">Consulting room</field>
+        <field name="site_kind">clinic</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_elec'), ref('trade_plmb'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_alu'), ref('trade_ac'), ref('trade_av'), ref('trade_sf')])]"/>
+        <field name="sequence">180</field>
+    </record>
+    <record id="entity_type_procedure" model="rvt.entity.type">
+        <field name="name">Procedure room</field>
+        <field name="site_kind">clinic</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_tile'), ref('trade_elec'), ref('trade_plmb'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_alu'), ref('trade_ac')])]"/>
+        <field name="sequence">190</field>
+    </record>
+    <record id="entity_type_lab" model="rvt.entity.type">
+        <field name="name">Lab</field>
+        <field name="site_kind">clinic</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_tile'), ref('trade_stone'), ref('trade_elec'), ref('trade_plmb'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_ac')])]"/>
+        <field name="sequence">200</field>
+    </record>
+    <record id="entity_type_terrace" model="rvt.entity.type">
+        <field name="name">Terrace</field>
+        <field name="site_kind">other</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_tile'), ref('trade_elec'), ref('trade_plmb'), ref('trade_col'), ref('trade_fab')])]"/>
+        <field name="is_extra" eval="True"/>
+        <field name="sequence">210</field>
+    </record>
+    <record id="entity_type_home_theatre" model="rvt.entity.type">
+        <field name="name">Home theatre</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_ac'), ref('trade_av'), ref('trade_soft')])]"/>
+        <field name="is_extra" eval="True"/>
+        <field name="sequence">220</field>
+    </record>
+    <record id="entity_type_study" model="rvt.entity.type">
+        <field name="name">Study</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_ac')])]"/>
+        <field name="is_extra" eval="True"/>
+        <field name="sequence">230</field>
+    </record>
+    <record id="entity_type_guest_room" model="rvt.entity.type">
+        <field name="name">Guest room</field>
+        <field name="site_kind">home</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_elec'), ref('trade_pop'), ref('trade_carp'), ref('trade_col'), ref('trade_alu'), ref('trade_ac'), ref('trade_soft')])]"/>
+        <field name="is_extra" eval="True"/>
+        <field name="sequence">240</field>
+    </record>
+    <record id="entity_type_store" model="rvt.entity.type">
+        <field name="name">Store</field>
+        <field name="site_kind">other</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_tile'), ref('trade_elec'), ref('trade_carp'), ref('trade_col')])]"/>
+        <field name="is_extra" eval="True"/>
+        <field name="sequence">250</field>
+    </record>
+    <record id="entity_type_parking" model="rvt.entity.type">
+        <field name="name">Parking</field>
+        <field name="site_kind">other</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_tile'), ref('trade_elec'), ref('trade_col')])]"/>
+        <field name="is_extra" eval="True"/>
+        <field name="sequence">260</field>
+    </record>
+    <record id="entity_type_lift" model="rvt.entity.type">
+        <field name="name">Lift</field>
+        <field name="site_kind">other</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_elec'), ref('trade_fab')])]"/>
+        <field name="is_extra" eval="True"/>
+        <field name="sequence">270</field>
+    </record>
+    <record id="entity_type_other_room" model="rvt.entity.type">
+        <field name="name">Other room</field>
+        <field name="site_kind">other</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_elec'), ref('trade_col')])]"/>
+        <field name="sequence">280</field>
+    </record>
+    <record id="entity_type_whole_site" model="rvt.entity.type">
+        <field name="name">Whole site</field>
+        <field name="site_kind">other</field>
+        <field name="trade_ids" eval="[(6, 0, [ref('trade_civ'), ref('trade_elec'), ref('trade_plmb'), ref('trade_col'), ref('trade_av')])]"/>
+        <field name="is_whole_site" eval="True"/>
+        <field name="sequence">290</field>
+    </record>
+</odoo>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="web_glass_workspace.SplitPanel">
+        <div class="o_glass_split_divider" t-on-pointerdown="this.onDividerDown" role="separator"/>
+        <aside class="o_glass_split_panel" t-ref="this.panelRef" t-att-data-side="this.props.side or 'right'"
+               t-att-class="{ o_glass_chatter_floating: this.chatterFloating, o_glass_pane_mid: this.paneMid, o_glass_pane_narrow: this.paneNarrow }">
+            <div class="o_glass_split_hd">
+                <span class="o_glass_split_ic"><i class="oi" data-icon="view_column_2"/></span>
+                <div class="o_glass_split_ttl">
+                    <small>Split form view</small>
+                    <b t-out="this.state.displayName or ''"/>
+                </div>
+                <div class="o_glass_split_nav" t-if="this.total > 1">
+                    <span class="o_glass_split_count" t-out="(this.index + 1) + ' / ' + this.total"/>
+                    <button type="button" class="btn btn-link" title="Previous" t-on-click="() => this.step(-1)"><i class="oi" data-icon="chevron_left"/></button>
+                    <button type="button" class="btn btn-link" title="Next" t-on-click="() => this.step(1)"><i class="oi" data-icon="chevron_right"/></button>
+                </div>
+                <!-- floating chatter: manual float / dock (the preference decides the default) -->
+                <button type="button" class="btn btn-link o_glass_split_chatbtn" t-if="this.chatterAvailable"
+                        t-att-class="{ o_on: this.chatterFloating }"
+                        t-att-title="this.chatterFloating ? 'The chatter is floating — click to dock it back below the form' : 'Pop the chatter out into a floating window'"
+                        t-on-click="this.toggleChatterFloat">
+                    <i class="oi" data-icon="forum"/><span t-out="this.chatterFloating ? 'Floating' : 'Float chatter'"/>
+                </button>
+                <button type="button" class="btn btn-link" title="Open full form" t-on-click="this.expand"><i class="oi" data-icon="expand_content"/></button>
+                <button type="button" class="btn btn-link o_glass_split_close" title="Close" t-on-click="this.close"><i class="oi" data-icon="close"/></button>
+            </div>
+            <div class="o_glass_split_body">
+                <View t-props="this.viewProps" t-key="this.props.resModel + '/' + this.props.resId"/>
+            </div>
+            <!-- shown in place of the docked chatter while it floats -->
+            <div class="o_glass_split_chatph" t-if="this.chatterFloating">
+                <span class="o_glass_split_chatph_ic"><i class="oi" data-icon="forum"/></span>
+                <div class="o_glass_split_chatph_txt">
+                    <b>Chatter is floating</b>
+                    <small t-if="this.chatter.follow">It follows the record selected in the list · drag it anywhere, resize from any edge</small>
+                    <small t-else="">Pinned to <t t-out="this.chatter.displayName"/> · the list can move on</small>
+                </div>
+                <button type="button" class="btn btn-link" t-on-click="this.toggleChatterFloat"><i class="oi" data-icon="login"/> Dock here</button>
+            </div>
+            <button type="button" class="o_glass_split_edge" t-if="(this.props.side or 'right') === 'right'"
+                    t-att-title="this.props.collapsed ? 'Show the list' : 'Hide the list'" t-on-click="() => this.props.onToggleCollapse()">
+                <i class="oi" t-att-data-icon="this.props.collapsed ? 'chevron_right' : 'chevron_left'"/>
+            </button>
+        </aside>
+    </t>
+
+</templates>

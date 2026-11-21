@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Below 768px the gantt controller renders the vertical phone renderer (gantt_phone.js)
+         instead of Odoo's horizontal timeline. Registered FIRST in the bundle so every primary
+         copy of web_gantt.GanttController (planning, project, MRP…) gets it. -->
+    <t t-name="web_glass_workspace.GanttController.phone" t-inherit="web_gantt.GanttController" t-inherit-mode="extension">
+        <xpath expr="//t[@t-component='this.props.Renderer']" position="attributes">
+            <attribute name="t-component">this.uiService.isSmall ? this.glassGanttRenderer : this.props.Renderer</attribute>
+            <!-- the action's "no content" help for the phone renderer ({} on the desktop) -->
+            <attribute name="t-props">this.glassRendererProps</attribute>
+        </xpath>
+    </t>
+
+    <t t-name="web_glass_workspace.GanttPhoneRenderer">
+        <div class="o_glass_gantt_v o_gantt_renderer_phone" t-ref="this.rootRef">
+            <GanttRendererControls model="this.model" displayExpandCollapseButtons="false"
+                                   showConnectors="false" toggleShowConnectors="() => {}"
+                                   focusToday="() => this.focusToday()" getCurrentFocusDate="() => this.getCurrentFocusDate()"/>
+            <!-- Odoo's controller measures these two elements of its own renderer to place its
+                 "no content" helper (gantt_controller.js useLayoutEffect): hidden placeholders, so
+                 the effect finds them (height 0) instead of crashing — BUG-0041 -->
+            <div class="o_gantt_header_groups d-none"/>
+            <div class="o_gantt_header_columns d-none"/>
+            <!-- no record in the period: Odoo's own help text (the action's noContentHelp, the
+                 controller's showNoContentHelp decision) as a block under the controls; the sample
+                 pills below are faint and inert (o_sample_data_disabled, passed as props.class) -->
+            <div t-if="this.props.showNoContentHelp" class="o_glass_gantt_v_nocontent">
+                <ActionHelper noContentHelp="this.props.noContentHelp"/>
+            </div>
+            <t t-set="vslots" t-value="this.slots"/>
+            <t t-set="vcols" t-value="this.columns"/>
+            <div class="o_glass_gantt_v_scroller" t-att-class="this.props.class" t-ref="this.scrollerRef">
+                <div class="o_glass_gantt_v_grid" t-att-style="this.gridStyle(vcols, vslots)" t-ref="this.gridRef">
+                    <!-- header row: corner + one head per column -->
+                    <div class="o_glass_gantt_v_corner"/>
+                    <div t-foreach="vcols" t-as="column" t-key="column.id" class="o_glass_gantt_v_head" t-att-class="{ o_focused: this.state.focusColumnId === column.id }"
+                         t-att-title="column.name" t-on-click="() => this.toggleColumnFocus(column)">
+                        <span t-out="column.name"/>
+                        <i t-if="this.allColumns.length > 1" class="oi ms-auto" t-att-data-icon="this.state.focusColumnId === column.id ? 'close_fullscreen' : 'expand_content'"/>
+                    </div>
+                    <!-- time axis: one cell per slot (grid rows 2…) -->
+                    <div t-foreach="vslots" t-as="slot" t-key="slot_index"
+                         class="o_glass_gantt_v_time" t-att-class="{ o_today: slot.isToday, o_period: slot.isPeriodStart }"
+                         t-att-data-slot="slot_index" t-att-style="'grid-row: ' + (slot_index + 2)">
+                        <span class="o_glass_gantt_v_time_lbl" t-out="slot.label"/>
+                        <small t-if="slot.sub" class="o_glass_gantt_v_time_sub" t-out="slot.sub"/>
+                    </div>
+                    <!-- one column per row: slot lines behind, pills on top (o_gantt_cells keeps
+                         Odoo's pill colour classes working) -->
+                    <div t-foreach="vcols" t-as="column" t-key="column.id"
+                         class="o_glass_gantt_v_col o_gantt_cells" t-att-style="'grid-row: 2 / span ' + vslots.length + '; grid-column: ' + (column_index + 2)">
+                        <div t-foreach="vslots" t-as="slot" t-key="slot_index"
+                             class="o_glass_gantt_v_cell" t-att-class="{ o_today: slot.isToday, o_period: slot.isPeriodStart }"
+                             t-on-click="() => this.onSlotClick(column, slot)"/>
+                        <div t-foreach="this.pillsOf(column, vslots)" t-as="pill" t-key="pill.id"
+                             class="o_gantt_pill o_glass_gantt_v_pill" t-att-class="this.pillClass(pill)" t-att-style="pill.style"
+                             t-att-title="pill.name + ' — ' + pill.time"
+                             t-on-click.stop="() => this.onPillClick(pill)">
+                            <span class="o_gantt_pill_title" t-out="pill.name"/>
+                            <small class="o_glass_gantt_v_pill_time" t-out="pill.time"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+
+</templates>

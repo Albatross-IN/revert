@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- The ☰ left-pane toggle at the start of the top bar, both editions from one extension:
+         it is inserted before the apps-menu t-call of web.NavBar. Community keeps that t-call
+         (the apps dropdown), Enterprise's primary copy replaces it in place with its home-menu
+         toggle — so the button ends up before the apps control in both. PREPENDED in the bundle,
+         so the extension is applied before web_enterprise makes its primary copy (an extension
+         of web_enterprise.EnterpriseNavBar, as before, does not exist in Community and errored
+         on every page there). Nothing else in the top bar changes. -->
+    <t t-name="web_glass_workspace.NavBarToggle" t-inherit="web.NavBar" t-inherit-mode="extension">
+        <xpath expr="//t[@t-call='web.NavBar.AppsMenu']" position="before">
+            <button t-if="this.glassPaneAvailable" type="button"
+                    class="o_glass_pane_toggle btn"
+                    t-att-class="{ o_active: this.glassPrefs.state.paneOpen }"
+                    title="Show/hide the left pane" t-on-click="this.toggleGlassPane">
+                <i class="oi" data-icon="menu"/>
+            </button>
+        </xpath>
+    </t>
+</templates>

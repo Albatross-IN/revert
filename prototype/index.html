@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revert Release 1 Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..110,400..700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Gujarati:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a drawing-office sheet. Paper ground, ink text, mono labels like a title block,
+   one gold accent from the Revert website; state colours are separate from the accent. */
+:root{
+  color-scheme:light;
+  --paper:#efeae0; --sheet:#fbf9f4; --ink:#141312; --graphite:#35332f; --muted:#7a7468;
+  --rule:rgba(53,51,47,.16); --rule-soft:rgba(53,51,47,.08);
+  --accent:#a37635; --accent-soft:#f0e4cc; --accent-ink:#1d1606;
+  --crit:#b93a26; --crit-soft:#f7ddd6; --warn:#a96a0c; --warn-soft:#f6e6c4;
+  --ok:#3c7a4b; --ok-soft:#dcebdc; --info:#2f5f8a; --info-soft:#dbe7f1; --wa:#1f8f4e;
+  --f-body:"Archivo","Noto Sans Gujarati","Noto Sans Devanagari","Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:6px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{margin:0;text-wrap:balance;font-stretch:90%}
+.mono{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.02em}
+.lbl{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+
+/* prototype bar */
+.pbar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding:10px 16px;background:var(--ink);color:#ece6da}
+.pbar b{font-weight:600;letter-spacing:.01em}
+.pbar .note{color:#a29c90;font-size:12.5px;flex:1 1 260px}
+.seg{display:inline-flex;border:1px solid rgba(236,230,218,.25);border-radius:var(--r);overflow:hidden}
+.seg button{background:transparent;border:0;color:#ece6da;padding:6px 12px;font-size:13px}
+.seg button[aria-pressed="true"]{background:#ece6da;color:var(--ink);font-weight:600}
+.pbar label{font-size:12.5px;color:#a29c90;display:flex;gap:6px;align-items:center}
+.pbar select{background:#25231f;color:#ece6da;border:1px solid rgba(236,230,218,.25);border-radius:var(--r);padding:5px 8px;font:inherit;font-size:13px}
+
+/* desk */
+.desk{display:grid;grid-template-columns:190px minmax(0,1fr);min-height:calc(100vh - 52px)}
+.side{border-right:1px solid var(--rule);padding:16px 10px;display:flex;flex-direction:column;gap:2px;background:var(--sheet)}
+.side .brand{font-weight:700;font-size:17px;padding:2px 10px 12px;letter-spacing:.02em}
+.side button{background:none;border:0;text-align:left;padding:8px 10px;border-radius:var(--r);display:flex;justify-content:space-between;gap:8px}
+.side button:hover{background:var(--rule-soft)}
+.side button[aria-current="page"]{background:var(--ink);color:#fbf9f4}
+.side .count{font-family:var(--f-mono);font-size:11px;opacity:.75}
+.main{padding:18px clamp(16px,2.4vw,32px) 40px;min-width:0}
+.head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+.head h1{font-size:24px;font-weight:650}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px}
+.card>h2{font-size:11px;font-family:var(--f-mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:10px;display:flex;justify-content:space-between;gap:8px}
+.stack{display:flex;flex-direction:column;gap:14px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.crit{background:var(--crit-soft);color:var(--crit)} .pill.info{background:var(--info-soft);color:var(--info)}
+.pill.plain{background:var(--rule-soft);color:var(--graphite)}
+.prog{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.prog .big{font-size:22px;font-weight:650;font-stretch:88%}
+.prog .big small{font-size:13px;font-weight:400;color:var(--muted)}
+.bar{height:5px;background:var(--rule-soft);border-radius:3px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ink)}
+.rows{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center;padding:9px 0;border-top:1px solid var(--rule-soft)}
+.row:first-child{border-top:0}
+.row .t{font-weight:550}
+.row .s{font-size:12.5px;color:var(--muted)}
+.row .side-r{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.stripe{border-left:3px solid var(--warn);padding-left:10px}
+.stripe.crit{border-color:var(--crit)}
+.btn{border:1px solid var(--ink);background:var(--sheet);border-radius:var(--r);padding:5px 11px;font-size:13px;font-weight:550;white-space:nowrap}
+.btn:hover{background:var(--ink);color:var(--sheet)}
+.btn.pri{background:var(--ink);color:var(--sheet)} .btn.pri:hover{background:var(--graphite)}
+.btn.gold{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.wa{border-color:var(--wa);color:var(--wa)} .btn.wa:hover{background:var(--wa);color:#fff}
+.btn.sm{padding:3px 8px;font-size:12px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{border:1px solid var(--rule);background:none;border-radius:99px;padding:3px 11px;font-size:12.5px}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--sheet);border-color:var(--ink)}
+
+/* grid of entities x trades */
+.gridwrap{overflow-x:auto}
+table.grid{border-collapse:collapse;width:100%;min-width:560px}
+.grid th{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:6px 4px;text-align:center}
+.grid th:first-child,.grid td:first-child{text-align:left;padding-left:0;white-space:nowrap}
+.grid td{padding:3px;border-top:1px solid var(--rule-soft);text-align:center}
+.cell{width:100%;min-width:54px;height:30px;border-radius:4px;border:1px solid transparent;font-size:12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:4px;position:relative}
+.cell.ns{background:transparent;border-color:var(--rule);color:var(--muted)}
+.cell.working{background:var(--info-soft);color:var(--info)}
+.cell.waiting{background:var(--warn-soft);color:var(--warn)}
+.cell.done{background:var(--ok-soft);color:var(--ok)}
+.cell.und{background:var(--crit-soft);color:var(--crit)}
+.cell.sel{outline:2px solid var(--ink);outline-offset:1px}
+.cell .dot{position:absolute;top:-5px;right:-5px;background:var(--ink);color:#fff;border-radius:99px;font-size:10px;min-width:16px;height:16px;line-height:16px;font-family:var(--f-mono)}
+.na{color:var(--rule)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin-top:10px}
+.legend span{display:inline-flex;gap:5px;align-items:center}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block}
+.editor{margin-top:12px;border:1px dashed var(--graphite);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px;background:#fff}
+.editor .opts{display:flex;flex-wrap:wrap;gap:6px}
+select,input[type=text],input[type=number]{font:inherit;border:1px solid var(--rule);border-radius:var(--r);padding:6px 8px;background:#fff;color:var(--ink);max-width:100%}
+.field{display:flex;flex-direction:column;gap:4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--rule);background:#fff;border-radius:99px;padding:4px 11px;font-size:12.5px}
+.chip[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.steps{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px}
+.steps span{font-family:var(--f-mono);font-size:11px;padding:4px 9px;border-radius:99px;border:1px solid var(--rule);color:var(--muted)}
+.steps span.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.steps span.past{color:var(--ink);border-color:var(--ink)}
+table.list{width:100%;border-collapse:collapse}
+.list th{text-align:left;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;padding:6px 8px 6px 0}
+.list td{padding:8px 8px 8px 0;border-top:1px solid var(--rule-soft);vertical-align:middle}
+.tblwrap{overflow-x:auto}
+
+/* phones */
+.phones{display:flex;flex-wrap:wrap;gap:22px;justify-content:center;padding:22px 16px 40px;align-items:flex-start}
+.pcol{display:flex;flex-direction:column;gap:10px;width:340px;max-width:100%}
+.pcol>.cap{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.phone{background:var(--sheet);border:2px solid var(--ink);border-radius:26px;overflow:hidden;display:flex;flex-direction:column;min-height:640px}
+.ph-top{padding:14px 16px 10px;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.ph-top h3{font-size:16px}
+.ph-body{padding:12px 16px;display:flex;flex-direction:column;gap:14px;flex:1}
+.ph-sec>.lbl{display:flex;justify-content:space-between;margin-bottom:6px}
+.ph-nav{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border-top:1px solid var(--rule)}
+.ph-nav button{background:none;border:0;padding:10px 4px;font-size:12.5px}
+.ph-nav button[aria-pressed="true"]{font-weight:700;box-shadow:inset 0 2px 0 var(--ink)}
+.pt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;padding:8px 0;border-top:1px solid var(--rule-soft);align-items:start}
+.pt:first-child{border-top:0}
+.pt .n{font-family:var(--f-mono);font-size:11px;color:var(--muted);padding-top:2px;min-width:18px}
+.pt .who{font-size:11.5px;color:var(--muted)}
+.photo{display:inline-block;width:26px;height:20px;border-radius:3px;border:1px solid var(--rule);background:repeating-linear-gradient(45deg,#ddd5c5 0 4px,#cfc6b3 4px 8px);vertical-align:middle}
+.composer{border:1px solid var(--ink);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;background:#fff}
+.composer input[type=text]{width:100%}
+.sendbar{display:flex;flex-wrap:wrap;gap:6px}
+.walog{border:1px solid var(--rule);border-radius:var(--r);background:#e9f3ea;padding:10px 12px;font-size:12.5px;display:flex;flex-direction:column;gap:6px}
+.walog .m{background:#fff;border-radius:6px;padding:6px 9px;border:1px solid rgba(31,143,78,.25)}
+.gu{font-family:"Noto Sans Gujarati","Noto Sans Devanagari",var(--f-body)}
+.gu .lbl{font-family:inherit;font-size:12.5px;letter-spacing:0;text-transform:none;font-weight:600}
+
+/* overlay */
+.ovl{position:fixed;inset:0;background:rgba(20,19,18,.45);display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px;overflow:auto;z-index:20}
+.dlg{background:var(--sheet);border-radius:var(--r);border:1px solid var(--ink);padding:18px;width:min(560px,100%);display:flex;flex-direction:column;gap:12px}
+.pdf{background:#fff;border:1px solid var(--rule);padding:18px;font-size:13px}
+.pdf .tb{display:grid;grid-template-columns:1fr auto;border:1px solid var(--ink);margin-bottom:12px}
+.pdf .tb div{padding:6px 9px;border-top:1px solid var(--ink)} .pdf .tb div:nth-child(-n+2){border-top:0}
+.pdf .tb div:nth-child(even){border-left:1px solid var(--ink);font-family:var(--f-mono);font-size:11.5px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:#fbf9f4;padding:10px 16px;border-radius:var(--r);z-index:30;max-width:calc(100% - 32px);font-size:13.5px}
+@media (max-width:760px){
+  .desk{grid-template-columns:1fr}
+  .side{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--rule);padding:8px}
+  .side .brand{width:100%;padding-bottom:4px}
+  .row{grid-template-columns:1fr}.row .side-r{justify-content:flex-start}
+}
+@media (prefers-reduced-motion:no-preference){.toast{animation:up .18s ease-out}@keyframes up{from{opacity:.4;transform:translate(-50%,6px)}}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast" aria-live="polite"></div>
+<script>
+"use strict";
+/* ---------- demo data (invented names; a model of what Release 1 stores) ---------- */
+const TRADES=[["civ","Civil","Civ"],["elec","Electrical","Elec"],["plmb","Plumbing","Plmb"],["pop","POP / ceiling","POP"],["carp","Carpenter","Carp"],["col","Colour","Col"]];
+const TN=Object.fromEntries(TRADES.map(t=>[t[0],t[1]]));
+const TYPE_TRADES={Living:["civ","elec","pop","carp","col"],Dining:["elec","pop","carp","col"],Kitchen:["civ","elec","plmb","pop","carp","col"],
+  Bedroom:["elec","pop","carp","col"],Master:["elec","pop","carp","col"],Toilet:["civ","elec","plmb","pop"],Pooja:["elec","pop","carp","col"],
+  Balcony:["civ","elec","plmb","col"],Garden:["civ","elec","plmb"],Cabin:["elec","pop","carp","col"],Conference:["elec","pop","carp","col"],
+  Workstation:["elec","pop","carp","col"],Reception:["elec","pop","carp","col"],Pantry:["civ","elec","plmb","pop","carp","col"],
+  Consulting:["elec","plmb","pop","carp","col"],Procedure:["civ","elec","plmb","pop","carp","col"],Lab:["civ","elec","plmb","pop","carp","col"],Whole:["civ","elec","plmb","col"]};
+const PRESETS={"2 BHK":["Living room","Kitchen","Master bedroom","Bedroom 2","Toilet 1","Toilet 2","Balcony","Whole site"],
+  "3 BHK":["Living room","Dining","Kitchen","Master bedroom","Bedroom 2","Bedroom 3","Toilet 1","Toilet 2","Toilet 3","Pooja room","Balcony","Whole site"],
+  "Office, corporate":["Cabin 1","Cabin 2","Cabin 3","Conference room","Workstation area","Reception","Pantry","Toilet 1","Whole site"],
+  "Clinic":["Consulting room 1","Consulting room 2","Procedure room 1","Procedure room 2","Lab","Reception","Pantry","Toilet 1","Whole site"]};
+const EXTRAS=["Garden","Terrace","Study","Guest room","Store"];
+const STD_DRAW={gen:[["FL","Furniture layout",1,1],["WE","Wall elevations",1,1]],civ:[["DM","Demolition and new wall layout",1,0]],
+  elec:[["EL","Electrical layout",1,0],["SB","Switchboard details",0,0],["LT","Lighting layout",1,0]],plmb:[["PL","Plumbing layout",0,0],["TE","Toilet elevations",1,1]],
+  pop:[["FC","False ceiling layout",1,1]],carp:[["CD","Furniture details",1,1],["KD","Kitchen details",1,1]],col:[["CS","Colour and finish schedule",1,1]]};
+const AGENCY_POOL={civ:["Ramesh Construction","Shiv Civil Works"],elec:["Jay Electric","Bright Electricals"],plmb:["Aqua Plumbing","Jal Plumbing Services"],
+  pop:["Shree POP","Om Ceiling Works"],carp:["Mahadev Furniture","Vishwakarma Wood Works"],col:["Rang Decor","Kalakar Paints"]};
+const STAFF={owner:{name:"Pranav",role:"Owner and principal"},designer:{name:"Riya",role:"Designer"},coordinator:{name:"Meera",role:"Coordinator"}};
+const T0=new Date(2026,10,18);
+const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const day=o=>{const d=new Date(T0);d.setDate(d.getDate()+o);return d.getDate()+" "+MON[d.getMonth()]};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const typeOf=n=>Object.keys(TYPE_TRADES).find(k=>n.toLowerCase().startsWith(k.toLowerCase()))||"Whole";
+const inr=n=>"₹"+Number(n).toLocaleString("en-IN");
+
+function shah(){
+  const L=(m)=>{const o={};for(const [t,v] of Object.entries(m))o[t]=typeof v==="string"?{state:v}:v;return o};
+  const wEL={state:"waiting",cause:"drawing",ref:"EL-01",since:3};
+  return {id:1,name:"Shah Residence",label:"3 BHK + garden · Bopal",client:"Mr. Shah",billedTo:"client",
+    team:{principal:"Pranav",designers:["Riya","Amit"],coordinators:["Meera"]},
+    plan:{civ:{agency:"Ramesh Construction"},elec:{agency:"Jay Electric"},plmb:{agency:null,decideBy:-6},pop:{agency:"Shree POP"},carp:{agency:"Mahadev Furniture"},col:{agency:"Rang Decor"}},
+    entities:["Living room","Kitchen","Master bedroom","Bedroom 2","Toilet 1","Garden","Whole site"],
+    lines:{"Living room":L({civ:"done",elec:"working",pop:"working",carp:"ns",col:"ns"}),
+      "Kitchen":L({civ:"done",elec:"working",plmb:"ns",pop:"done",carp:"ns",col:"ns"}),
+      "Master bedroom":L({elec:{...wEL},pop:"working",carp:{state:"waiting",cause:"client",ref:"Approve furniture layout",since:2},col:"ns"}),
+      "Bedroom 2":L({elec:{...wEL},pop:"ns",carp:"ns",col:"ns"}),
+      "Toilet 1":L({civ:"working",elec:"ns",plmb:"ns",pop:"ns"}),
+      "Garden":L({civ:"ns",elec:"ns",plmb:"ns"}),
+      "Whole site":L({civ:"working",elec:{...wEL},plmb:"ns",col:"ns"})},
+    drawings:[
+      {id:"FL-01",title:"Furniture layout",trade:"carp",designer:"Riya",due:-8,state:"released",rev:2,relAgo:2,to:["carp","client"],opened:{carp:true},needs:true,client:"pending"},
+      {id:"WE-01",title:"Wall elevations",trade:"carp",designer:"Riya",due:-5,state:"released",rev:1,relAgo:6,to:["carp","client"],opened:{carp:true},needs:true,client:"approved"},
+      {id:"EL-01",title:"Electrical layout",trade:"elec",designer:"Amit",due:-3,state:"in_progress",rev:1,to:[],opened:{},forClient:true},
+      {id:"SB-01",title:"Switchboard details",trade:"elec",designer:"Amit",due:-4,state:"released",rev:1,relAgo:3,to:["elec"],opened:{}},
+      {id:"FC-01",title:"False ceiling layout",trade:"pop",designer:"Riya",due:-10,state:"released",rev:1,relAgo:9,to:["pop","client"],opened:{pop:true},needs:true,client:"approved"},
+      {id:"CD-01",title:"Wardrobe details",trade:"carp",designer:"Riya",due:1,state:"awaiting",rev:1,to:[],opened:{},forClient:true,needsNext:true},
+      {id:"PL-01",title:"Plumbing layout",trade:"plmb",designer:"Amit",due:5,state:"to_draw",rev:1,to:[],opened:{}},
+      {id:"KD-01",title:"Kitchen details",trade:"carp",designer:"Riya",due:6,state:"to_draw",rev:1,to:[],opened:{},forClient:true,needsNext:true},
+      {id:"CS-01",title:"Colour and finish schedule",trade:"col",designer:"Riya",due:10,state:"to_draw",rev:1,to:[],opened:{},forClient:true,needsNext:true}],
+    visitNo:7,
+    points:[
+      {n:8,visit:0,for:"client",text:"Choose the kitchen platform stone",entity:"Kitchen",due:2,state:"open",sent:true,confirmed:true},
+      {n:9,visit:6,for:"carp",text:"Wardrobe loft depth 24 in. Check with site beam",entity:"Master bedroom",due:-1,state:"open",sent:true,photo:true},
+      {n:10,visit:6,for:"elec",text:"Add 2 points near the study table",entity:"Bedroom 2",due:1,state:"open",sent:true,photo:true},
+      {n:11,visit:6,for:"pop",text:"Cove light channel 3 in. on living ceiling",entity:"Living room",due:-2,state:"closed",sent:true},
+      {n:12,visit:6,for:"civ",text:"Close chasing near kitchen window",entity:"Kitchen",due:-4,state:"closed",sent:true}],
+    bills:[{id:1,trade:"civ",what:"Civil work, stage 1",state:"submitted",amount:185000,ago:4,billedTo:"client",paid:0},
+      {id:2,trade:"pop",what:"False ceiling, living and kitchen",state:"paid",amount:62000,ago:12,billedTo:"client",paid:62000,paidBy:"client"}]};
+}
+function mehta(){
+  const ents=["Cabin 1","Cabin 2","Conference room","Workstation area","Pantry","Whole site"],lines={};
+  ents.forEach(e=>{lines[e]={};TYPE_TRADES[typeOf(e)].forEach(t=>lines[e][t]={state:e==="Whole site"||t==="civ"?"done":(t==="elec"||t==="pop"?"working":"ns")})});
+  return {id:2,name:"Mehta Office",label:"Corporate office · SG Highway",client:"Mehta & Co.",billedTo:"revert",team:{principal:"Pranav",designers:["Riya"],coordinators:["Meera"]},
+    plan:{civ:{agency:"Shiv Civil Works"},elec:{agency:"Bright Electricals"},plmb:{agency:"Aqua Plumbing"},pop:{agency:"Shree POP"},carp:{agency:"Mahadev Furniture"},col:{agency:"Rang Decor"}},
+    entities:ents,lines,visitNo:4,
+    drawings:[{id:"FL-01",title:"Furniture layout",trade:"carp",designer:"Riya",due:-20,state:"released",rev:1,relAgo:18,to:["carp","client"],opened:{carp:true},needs:true,client:"approved"},
+      {id:"EL-01",title:"Electrical layout",trade:"elec",designer:"Riya",due:-15,state:"released",rev:1,relAgo:14,to:["elec"],opened:{elec:true}},
+      {id:"CD-01",title:"Cabin furniture details",trade:"carp",designer:"Riya",due:4,state:"in_progress",rev:1,to:[],opened:{}}],
+    points:[{n:5,visit:3,for:"carp",text:"Confirm laminate shade for cabin storage",entity:"Cabin 1",due:3,state:"open",sent:true}],
+    bills:[]};
+}
+const S={view:"desk",desk:"project",role:"coordinator",pid:1,projects:[shah(),mehta()],nextTab:"revert",sel:null,edit:null,modal:null,toast:null,
+  wa:[],lang:"gu",staffTab:"mom",mom:{for:"carp",entity:"Master bedroom",due:2,photo:false},ob:null,owner:false};
+const P=()=>S.projects.find(p=>p.id===S.pid);
+const me=()=>STAFF[S.role];
+
+/* ---------- the project picture: computed on reading, nothing stored ---------- */
+function allLines(p){const a=[];p.entities.forEach(e=>Object.entries(p.lines[e]||{}).forEach(([t,l])=>a.push({e,t,l})));return a}
+function picture(p){
+  const lines=allLines(p),needed=[...new Set(lines.map(x=>x.t))];
+  const decided=needed.filter(t=>p.plan[t]&&p.plan[t].agency);
+  const rel=p.drawings.filter(d=>d.state==="released");
+  const B=[];
+  needed.filter(t=>!p.plan[t]||!p.plan[t].agency).forEach(t=>{const late=-(p.plan[t]&&p.plan[t].decideBy||0);
+    B.push({k:"B1",crit:true,text:TN[t]+" agency undecided"+(late>0?" · "+late+" days past its date":""),holds:lines.filter(x=>x.t===t).length+" work lines",actor:p.team.coordinators.join(", "),age:late,act:["assign",t,"Decide"]})});
+  p.drawings.filter(d=>d.state!=="released").forEach(d=>{const w=lines.filter(x=>x.l.state==="waiting"&&x.l.cause==="drawing"&&x.l.ref===d.id);
+    if(!w.length&&d.due>=0)return;const age=Math.max(-d.due,...w.map(x=>x.l.since||0),0);
+    B.push({k:w.length?"B2":"B3",text:d.id+" "+d.title+" not released"+(d.due<0?" · due "+day(d.due):""),holds:w.length?w.length+" work lines waiting":"lines of "+TN[d.trade],
+      actor:d.state==="awaiting"?p.team.principal+" (approve)":d.designer,age})});
+  rel.filter(d=>d.client==="pending"&&d.relAgo>=1).forEach(d=>B.push({k:"B4",text:"Client: approve "+d.title+" rev "+d.rev,holds:lines.filter(x=>x.l.cause==="client").map(x=>x.e+" "+TN[x.t]).join(", ")||"next drawings",actor:p.client,age:d.relAgo}));
+  p.points.filter(x=>x.for==="client"&&x.state==="open"&&x.due<0).forEach(x=>B.push({k:"B4",text:"Client: "+x.text,holds:x.entity,actor:p.client,age:-x.due}));
+  lines.filter(x=>x.l.state==="waiting"&&(x.l.cause==="trade"||x.l.cause==="material"||x.l.cause==="other")).forEach(x=>B.push({k:x.l.cause==="trade"?"B5":"B6",text:x.e+" · "+TN[x.t]+" waiting for "+(x.l.cause==="trade"?TN[x.l.ref]||x.l.ref:x.l.ref||x.l.cause),holds:"this line",actor:x.l.cause==="trade"?(p.plan[x.l.ref]&&p.plan[x.l.ref].agency)||TN[x.l.ref]:p.team.coordinators[0],age:x.l.since||0}));
+  p.points.filter(x=>x.for!=="client"&&x.state==="open"&&x.due<0).forEach(x=>B.push({k:"B7",text:who(p,x.for)+": point "+x.n+" past its date · "+x.text,holds:x.entity,actor:who(p,x.for),age:-x.due}));
+  rel.forEach(d=>d.to.filter(t=>t!=="client"&&!d.opened[t]&&d.relAgo>=2).forEach(t=>B.push({k:"B8",text:who(p,t)+" has not opened "+d.id+" "+d.title,holds:"its "+TN[t]+" lines",actor:p.team.coordinators[0]+" (chase)",age:d.relAgo,act:["remind",t+"|Please open "+d.id+" "+d.title,"Remind"]})));
+  p.bills.filter(b=>b.state==="submitted"&&b.ago>=3).forEach(b=>B.push({k:"B10",text:"Bill from "+who(p,b.trade)+" not reviewed",holds:b.what,actor:"Office",age:b.ago,act:["nav","bills","Open"]}));
+  B.sort((a,b)=>(b.crit?99:b.age)-(a.crit?99:a.age));
+  const N={revert:[],agencies:[],client:[]};
+  p.drawings.forEach(d=>{const wait=lines.filter(x=>x.l.cause==="drawing"&&x.l.ref===d.id&&x.l.state==="waiting").length,w=wait?" · "+wait+" lines waiting":"";
+    if(d.state==="to_draw"||d.state==="in_progress")N.revert.push({who:d.designer,text:"Draw and send "+d.id+" "+d.title+" · due "+day(d.due)+w,late:d.due<0,act:["sendapp",d.id,"Send for approval"]});
+    if(d.state==="awaiting")N.revert.push({who:p.team.principal,text:"Approve "+d.id+" "+d.title+" rev "+d.rev+w,act:["approve",d.id,"Approve"]});
+    if(d.state==="approved")N.revert.push({who:d.designer,text:"Release "+d.id+" "+d.title+w,act:["release",d.id,"Release"]})});
+  needed.filter(t=>!p.plan[t]||!p.plan[t].agency).forEach(t=>N.revert.push({who:p.team.coordinators[0],text:"Decide the "+TN[t].toLowerCase()+" agency",late:true,act:["assign",t,"Decide"]}));
+  p.bills.filter(b=>b.state==="submitted").forEach(b=>N.revert.push({who:"Office",text:"Review the bill from "+who(p,b.trade)+" · "+b.what,act:["nav","bills","Open"]}));
+  p.points.filter(x=>x.for==="client"&&x.state==="open"&&!x.confirmed).forEach(x=>N.revert.push({who:"Office",text:"Confirm client point "+x.n+" before the client sees it · "+x.text,act:["confirmpt",x.n,"Confirm"]}));
+  decided.forEach(t=>{const ls=lines.filter(x=>x.t===t),pts=p.points.filter(x=>x.for===t&&x.state==="open"),c=s=>ls.filter(x=>x.l.state===s).length;
+    const un=rel.filter(d=>d.to.includes(t)&&!d.opened[t]);
+    N.agencies.push({t,name:p.plan[t].agency,line:pts.length+" open point"+(pts.length===1?"":"s")+(pts.some(x=>x.due<0)?" (1 past its date)":"")+" · "+ls.length+" lines: "+c("done")+" done, "+c("working")+" working, "+c("waiting")+" waiting",
+      sub:un.length?"has not opened "+un.map(d=>d.id).join(", "):(pts[0]?"next: "+pts[0].text+", by "+day(pts[0].due):"")})});
+  rel.filter(d=>d.client==="pending").forEach(d=>N.client.push({text:"Approve "+d.title+" rev "+d.rev,sub:"sent "+d.relAgo+" days ago",rem:"Please approve "+d.title}));
+  p.points.filter(x=>x.for==="client"&&x.state==="open"&&x.confirmed).forEach(x=>N.client.push({text:x.text,sub:"by "+day(x.due),rem:x.text,pt:x.n}));
+  const done=lines.filter(x=>x.l.state==="done").length,closed=p.points.filter(x=>x.state==="closed").length;
+  const status=B.some(b=>b.crit||b.age>=7)?"stuck":B.length?"attention":"ok";
+  return {progress:{ag:[decided.length,needed.length],dr:[rel.length,p.drawings.length],wk:[done,lines.length,lines.filter(x=>x.l.state==="working").length],pt:[closed,p.points.length]},blockers:B,next:N,status};
+}
+function who(p,k){return k==="client"?p.client:k==="office"?"Office":(p.plan[k]&&p.plan[k].agency)||TN[k]||k}
+const STATUS={ok:["ok","On track"],attention:["warn","Needs attention"],stuck:["crit","Stuck"]};
+const DSTATE={to_draw:["plain","To draw"],in_progress:["info","In progress"],awaiting:["warn","Awaiting approval"],approved:["info","Approved, to release"],released:["ok","Released"]};
+const LSTATE={ns:"Not started",working:"Working",waiting:"Waiting",done:"Done"};
+const LICON={ns:"○",working:"▶",waiting:"Ⅱ",done:"✓"};
+
+/* ---------- small helpers ---------- */
+const act=(name,a,label,cls)=>`<button class="btn ${cls||"sm"}" data-act="${name}" data-a="${esc(a==null?"":a)}">${esc(label)}</button>`;
+function toast(t){const el=document.getElementById("toast");el.innerHTML=`<div class="toast" role="status">${esc(t)}</div>`;clearTimeout(toast.h);toast.h=setTimeout(()=>{el.innerHTML=""},3200)}
+function wa(to,text){S.wa.unshift({to,text});if(S.wa.length>8)S.wa.pop()}
+
+/* ---------- desk views ---------- */
+function viewDesk(){
+  const pic=picture(P()),counts={today:todayItems().length,drawings:S.projects.reduce((n,p)=>n+p.drawings.filter(d=>d.state!=="released").length,0),
+    mom:S.projects.reduce((n,p)=>n+p.points.filter(x=>x.state==="open").length,0),bills:S.projects.reduce((n,p)=>n+p.bills.filter(b=>b.state!=="paid").length,0)};
+  const item=(k,l,c)=>`<button data-act="nav" data-a="${k}" ${S.desk===k?'aria-current="page"':""}>${l}${c!=null?`<span class="count">${c}</span>`:""}</button>`;
+  const body={today:deskToday,project:deskProject,onboarding:deskOnboarding,drawings:deskDrawings,mom:deskMom,bills:deskBills,review:deskReview,setup:deskSetup}[S.desk]();
+  return `<div class="desk"><nav class="side" aria-label="Revert Desk"><div class="brand">Revert</div>
+    ${item("today","Today",counts.today)}${item("project","Projects",S.projects.length)}${item("drawings","Drawings",counts.drawings)}${item("mom","MOM",counts.mom)}${item("bills","Bills",counts.bills)}${item("review","Review")}${item("setup","Setup")}
+    </nav><main class="main">${body}</main></div>`;
+}
+function todayItems(){const out=[],name=me().name;
+  S.projects.forEach(p=>{const pic=picture(p);pic.next.revert.forEach(n=>{if(n.who===name||(S.role==="coordinator"&&n.who==="Office")||(S.role==="owner"&&n.who==="Office"))out.push({...n,p})});
+    if(S.role==="coordinator")pic.next.client.forEach(n=>out.push({who:name,text:"Chase "+p.client+": "+n.text,p,act:["remind","client|"+n.rem,"Remind"]}))});
+  return out}
+function deskToday(){const it=todayItems();
+  return `<div class="head"><h1>Today · ${me().name}</h1><span class="lbl">Wed ${day(0)} · ${me().role}</span></div>
+  <div class="stack"><div class="card"><h2><span>What I do now</span><span>${it.length}</span></h2><div class="rows">
+  ${it.length?it.map(n=>`<div class="row"><div><div class="t">${esc(n.text)}</div><div class="s">${esc(n.p.name)}</div></div><div class="side-r">${n.late?'<span class="pill crit">late</span>':""}${n.act?actP(n,n.p):""}</div></div>`).join(""):'<div class="muted">All clear. Nothing waits for you.</div>'}
+  </div></div><p class="muted" style="max-width:65ch;margin:0">This list is the same set of items the project picture shows, filtered to the signed-in person. Change the person in the dark bar to see another list.</p></div>`}
+function actP(n,p){return `<button class="btn sm" data-act="${n.act[0]}" data-a="${esc(n.act[1])}" data-p="${p.id}">${esc(n.act[2])}</button>`}
+function deskProject(){const p=P(),pic=picture(p),pr=pic.progress,st=STATUS[pic.status];
+  const pg=(l,a,b,extra)=>`<div><div class="lbl">${l}</div><div class="big num">${a} <small>of ${b}${extra||""}</small></div><div class="bar"><i style="width:${b?Math.round(a/b*100):0}%"></i></div></div>`;
+  const tabs=["revert","agencies","client"].map(k=>`<button data-act="ntab" data-a="${k}" aria-pressed="${S.nextTab===k}">${{revert:"Revert",agencies:"Agencies",client:"Client"}[k]} · ${pic.next[k].length}</button>`).join("");
+  let next="";
+  if(S.nextTab==="revert")next=pic.next.revert.map(n=>`<div class="row"><div><div class="t">${esc(n.who)}</div><div class="s">${esc(n.text)}</div></div><div class="side-r">${n.late?'<span class="pill crit">late</span>':""}${actP(n,p)}</div></div>`).join("");
+  if(S.nextTab==="agencies")next=pic.next.agencies.map(n=>`<div class="row"><div><div class="t">${esc(n.name)} <span class="muted" style="font-weight:400">· ${TN[n.t]}</span></div><div class="s">${esc(n.line)}${n.sub?"<br>"+esc(n.sub):""}</div></div><div class="side-r">${act("remind",n.t+"|"+(n.sub||"Please update us on "+p.name),"Remind on WhatsApp","sm wa")}</div></div>`).join("");
+  if(S.nextTab==="client")next=pic.next.client.map(n=>`<div class="row"><div><div class="t">${esc(n.text)}</div><div class="s">${esc(n.sub)}</div></div><div class="side-r">${act("remind","client|"+n.rem,"Remind on WhatsApp","sm wa")}${n.pt?act("closept",n.pt,"Mark received"):""}</div></div>`).join("");
+  const sw=S.projects.map(x=>`<option value="${x.id}" ${x.id===p.id?"selected":""}>${esc(x.name)}</option>`).join("");
+  return `<div class="head"><div><h1>${esc(p.name)}</h1><div class="muted">${esc(p.label)} · client ${esc(p.client)} · coordinators ${p.team.coordinators.join(", ")}</div></div>
+    <div class="side-r" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="pill ${st[0]}">${st[1]}</span><select id="psel" data-change="psel" aria-label="Project">${sw}</select>${act("startob","","New project","pri")}</div></div>
+  <div class="stack">
+   <div class="card"><h2><span>Progress</span><span>counted from records</span></h2><div class="prog">${pg("Agencies decided",pr.ag[0],pr.ag[1])}${pg("Drawings released",pr.dr[0],pr.dr[1])}${pg("Work lines done",pr.wk[0],pr.wk[1]," · "+pr.wk[2]+" working")}${pg("Points closed",pr.pt[0],pr.pt[1])}</div></div>
+   <div class="cols">
+    <div class="card"><h2><span>Blockers</span><span>${pic.blockers.length}</span></h2><div class="rows">${pic.blockers.length?pic.blockers.map(b=>`<div class="row"><div class="stripe ${b.crit||b.age>=7?"crit":""}"><div class="t">${esc(b.text)}</div><div class="s">holds ${esc(b.holds)} · to act: ${esc(b.actor)}</div></div><div class="side-r"><span class="mono muted">${b.age} d</span>${b.act?act(b.act[0],b.act[1],b.act[2]):""}</div></div>`).join(""):'<div class="muted">Nothing is blocked.</div>'}</div></div>
+    <div class="card"><h2><span>Next actions</span><span class="tabs">${tabs}</span></h2><div class="rows">${next||'<div class="muted">Nothing here right now.</div>'}</div></div>
+   </div>
+   <div class="card"><h2><span>Work · rooms by trade</span><span>tap a cell to change it</span></h2>${grid(p)}</div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap">${act("gomom","","Start MOM on the phone","pri")}${act("nav","drawings","Drawings","")}${act("nav","bills","Ask for a bill","")}</div>
+  </div>`}
+function grid(p){const ts=TRADES.filter(t=>p.entities.some(e=>p.lines[e]&&p.lines[e][t[0]]));
+  const rows=p.entities.map(e=>`<tr><td>${esc(e)}</td>${ts.map(([t])=>{const l=p.lines[e][t];if(!l)return '<td class="na">·</td>';
+    const und=!p.plan[t]||!p.plan[t].agency,pts=p.points.filter(x=>x.entity===e&&x.for===t&&x.state==="open").length,sel=S.sel&&S.sel.e===e&&S.sel.t===t;
+    return `<td><button class="cell ${und?"und":l.state} ${sel?"sel":""}" data-act="cell" data-a="${esc(e)}" data-b="${t}" aria-label="${esc(e)}, ${TN[t]}: ${und?"agency undecided":LSTATE[l.state]}">${und?"⚠":LICON[l.state]}${l.state==="waiting"&&l.ref&&l.cause==="drawing"?" "+esc(l.ref.split("-")[0]):""}${pts?`<span class="dot">${pts}</span>`:""}</button></td>`}).join("")}</tr>`).join("");
+  let ed="";
+  if(S.sel){const {e,t}=S.sel,l=p.lines[e][t],d=S.edit||{state:l.state,cause:l.cause||"drawing",ref:l.ref||""};
+    const refOpts=d.cause==="drawing"?p.drawings.filter(x=>x.state!=="released").map(x=>[x.id,x.id+" "+x.title]):d.cause==="trade"?TRADES.filter(x=>x[0]!==t).map(x=>[x[0],x[1]]):d.cause==="client"?p.drawings.filter(x=>x.client==="pending").map(x=>["Approve "+x.title,"Approve "+x.title]).concat(p.points.filter(x=>x.for==="client"&&x.state==="open").map(x=>[x.text,x.text])):[["Material not on site","Material not on site"],["Site not ready","Site not ready"]];
+    ed=`<div class="editor"><div><b>${esc(e)} · ${TN[t]}</b> <span class="muted">· ${esc(who(p,t))}</span></div>
+     <div class="opts">${Object.keys(LSTATE).map(s=>`<button class="chip" data-act="edstate" data-a="${s}" aria-pressed="${d.state===s}">${LICON[s]} ${LSTATE[s]}</button>`).join("")}</div>
+     ${d.state==="waiting"?`<div class="field"><span class="lbl">Waiting for what? (required)</span><div class="opts">${[["drawing","A drawing"],["client","The client"],["trade","Another trade"],["material","Material or other"]].map(c=>`<button class="chip" data-act="edcause" data-a="${c[0]}" aria-pressed="${d.cause===c[0]}">${c[1]}</button>`).join("")}</div>
+       <select id="edref" aria-label="Which one">${refOpts.map(o=>`<option value="${esc(o[0])}" ${o[0]===d.ref?"selected":""}>${esc(o[1])}</option>`).join("")||'<option value="">Nothing open to pick</option>'}</select></div>`:""}
+     <div style="display:flex;gap:8px">${act("edsave","","Save","pri")}${act("edcancel","","Cancel","")}</div></div>`}
+  return `<div class="gridwrap"><table class="grid"><thead><tr><th scope="col">Room</th>${ts.map(t=>`<th scope="col" title="${t[1]}">${t[2]}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+   <div class="legend"><span><i class="sw" style="background:var(--ok-soft)"></i>✓ done</span><span><i class="sw" style="background:var(--info-soft)"></i>▶ working</span><span><i class="sw" style="background:var(--warn-soft)"></i>Ⅱ waiting</span><span><i class="sw" style="border:1px solid var(--rule)"></i>○ not started</span><span><i class="sw" style="background:var(--crit-soft)"></i>⚠ agency undecided</span><span>black dot = open MOM points</span></div>${ed}`}
+function deskDrawings(){const p=P(),canApprove=S.role==="owner";
+  const rows=p.drawings.map(d=>{const ds=DSTATE[d.state];let a="";
+    if(d.state==="to_draw"||d.state==="in_progress")a=act("sendapp",d.id,"Send for approval");
+    if(d.state==="awaiting")a=canApprove?act("approve",d.id,"Approve"):'<span class="muted" style="font-size:12px">waits for the principal</span>';
+    if(d.state==="approved")a=act("release",d.id,"Release","sm pri");
+    const opened=d.state==="released"?d.to.map(t=>`<span class="pill ${t==="client"?(d.client==="approved"?"ok":d.client==="change"?"crit":"warn"):d.opened[t]?"ok":"warn"}">${esc(t==="client"?"Client: "+(d.client||"sent"):who(p,t).split(" ")[0]+(d.opened[t]?" opened":" not opened"))}</span>`).join(" "):"";
+    return `<tr><td class="mono">${d.id}</td><td><b>${esc(d.title)}</b> <span class="muted">rev ${d.rev}</span></td><td>${TN[d.trade]}</td><td>${d.designer}</td><td class="num ${d.due<0&&d.state!=="released"?"":"muted"}" style="${d.due<0&&d.state!=="released"?"color:var(--crit);font-weight:600":""}">${day(d.due)}</td><td><span class="pill ${ds[0]}">${ds[1]}</span></td><td>${opened}</td><td style="text-align:right">${a}</td></tr>`}).join("");
+  return `<div class="head"><div><h1>Drawings</h1><div class="muted">${esc(p.name)} · the list was created at onboarding from the standard sets</div></div></div>
+   <div class="card"><div class="tblwrap"><table class="list"><thead><tr><th>Sheet</th><th>Drawing</th><th>Trade</th><th>By</th><th>Due</th><th>State</th><th>Received</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></div>
+   <p class="muted" style="max-width:65ch">Release needs the principal's approval (a setting, on by default). Sign in as the owner and principal in the dark bar to approve. A released drawing goes to its trade's agency, and to the client only if marked for the client.</p>`}
+function deskMom(){const p=P(),open=p.points.filter(x=>x.state==="open"),by={};p.points.forEach(x=>{(by[x.for]=by[x.for]||[]).push(x)});
+  return `<div class="head"><div><h1>MOM</h1><div class="muted">${esc(p.name)} · visit ${p.visitNo} today · captured on the phone, shown here</div></div><div>${act("gomom","","Open the capture screen","pri")}</div></div>
+  <div class="cols"><div class="card"><h2><span>Open points by party</span><span>${open.length}</span></h2><div class="rows">${Object.entries(by).map(([k,v])=>{const o=v.filter(x=>x.state==="open");return `<div class="row"><div><div class="t">${esc(who(p,k))}</div><div class="s">${o.length} open · ${v.length-o.length} closed${o.some(x=>!x.sent)?" · "+o.filter(x=>!x.sent).length+" not sent yet":""}</div></div><div class="side-r">${act("pdf",k,"PDF")}</div></div>`}).join("")}</div></div>
+  <div class="card"><h2><span>All points</span><span>${p.points.length}</span></h2>${p.points.slice().sort((a,b)=>b.n-a.n).map(x=>ptRow(p,x,true)).join("")}</div></div>`}
+function ptRow(p,x,withWho){return `<div class="pt"><span class="n">${x.n}</span><div><div style="${x.state==="closed"?"text-decoration:line-through;color:var(--muted)":""}">${esc(x.text)} ${x.photo?'<i class="photo" title="photo"></i>':""}</div><div class="who">${withWho?esc(who(p,x.for))+" · ":""}${esc(x.entity||"")} · by ${day(x.due)}${x.visit?" · visit "+x.visit:" · raised by office"}${x.for==="client"&&!x.confirmed?" · waits for office confirmation":""}</div></div>
+  <div>${x.state!=="open"?'<span class="pill plain">closed</span>':x.for==="client"&&!x.confirmed?'<span class="pill warn">held for office</span>':x.sent?'<span class="pill ok">sent ✓</span>':'<span class="pill warn">not sent</span>'}</div></div>`}
+function deskBills(){const p=P(),isOwner=S.role==="owner";
+  const stPill={asked:["info","Asked"],submitted:["warn","Submitted"],accepted:["info","Accepted"],part_paid:["warn","Part paid"],paid:["ok","Paid"],returned:["crit","Returned"]};
+  const rows=p.bills.map(b=>{let a="";if(b.state==="submitted")a=act("billaccept",b.id,"Accept")+" "+act("billreturn",b.id,"Return");
+    if((b.state==="accepted"||b.state==="part_paid")&&isOwner)a=act("billpay",b.id,"Record payment");
+    if(b.state==="asked")a='<span class="muted" style="font-size:12px">waiting for the agency</span>';
+    return `<tr><td><b>${esc(who(p,b.trade))}</b><div class="muted" style="font-size:12.5px">${esc(b.what)}</div></td><td>${b.billedTo==="client"?"Client":"Revert"}</td><td class="num">${isOwner&&b.amount?inr(b.amount):"—"}</td><td class="num">${isOwner?inr(b.paid||0)+(b.paidBy?" · by "+b.paidBy:""):"—"}</td><td><span class="pill ${stPill[b.state][0]}">${stPill[b.state][1]}</span></td><td style="text-align:right">${a}</td></tr>`}).join("");
+  const tot=p.bills.reduce((a,b)=>({billed:a.billed+(b.amount||0),paid:a.paid+(b.paid||0)}),{billed:0,paid:0});
+  const ask=TRADES.filter(t=>p.plan[t[0]]&&p.plan[t[0]].agency).map(t=>`<option value="${t[0]}" ${t[0]==="carp"?"selected":""}>${esc(p.plan[t[0]].agency)} · ${t[1]}</option>`).join("");
+  return `<div class="head"><div><h1>Bills</h1><div class="muted">${esc(p.name)} · billed to ${p.billedTo==="client"?"the client":"Revert"} by default, changeable per bill</div></div></div>
+  <div class="stack"><div class="card"><h2><span>Ask an agency for its bill</span></h2><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+    <div class="field"><label class="lbl" for="askt">Agency</label><select id="askt">${ask}</select></div><div class="field" style="flex:1 1 220px"><label class="lbl" for="askw">What the bill is for</label><input type="text" id="askw" value="Carpentry, stage 1"></div>${act("billask","","Ask on WhatsApp","wa")}</div></div>
+  <div class="card"><div class="tblwrap"><table class="list"><thead><tr><th>Agency</th><th>Billed to</th><th>Amount</th><th>Paid</th><th>State</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="6" class="muted">No bills yet.</td></tr>'}</tbody></table></div>
+  ${isOwner?`<div class="legend" style="font-size:13px;color:var(--ink)"><span>Billed <b class="num">${inr(tot.billed)}</b></span><span>Paid <b class="num">${inr(tot.paid)}</b></span><span>Unpaid <b class="num">${inr(tot.billed-tot.paid)}</b></span></div>`:'<p class="muted" style="margin:10px 0 0">Amounts and totals are shown to the owner only. Sign in as the owner in the dark bar to see them and record payments.</p>'}</div>
+  <p class="muted" style="max-width:65ch;margin:0">An agency cannot start a bill. It uploads only after Revert asks, and sees one status per bill, never totals. No advances: a payment is always recorded against a bill.</p></div>`}
+function deskReview(){return `<div class="head"><h1>Review</h1><span class="lbl">weekly board · all projects</span></div><div class="card"><div class="tblwrap"><table class="list"><thead><tr><th>Project</th><th>Status</th><th>Agencies</th><th>Drawings</th><th>Work</th><th>Points</th><th>Blockers</th><th></th></tr></thead><tbody>
+  ${S.projects.map(p=>{const c=picture(p),g=c.progress,st=STATUS[c.status];return `<tr><td><b>${esc(p.name)}</b><div class="muted" style="font-size:12.5px">${esc(p.label)}</div></td><td><span class="pill ${st[0]}">${st[1]}</span></td><td class="num">${g.ag[0]}/${g.ag[1]}</td><td class="num">${g.dr[0]}/${g.dr[1]}</td><td class="num">${g.wk[0]}/${g.wk[1]}</td><td class="num">${g.pt[0]}/${g.pt[1]}</td><td class="num">${c.blockers.length}</td><td style="text-align:right"><button class="btn sm" data-act="openp" data-a="${p.id}">Open</button></td></tr>`}).join("")}
+  </tbody></table></div></div><p class="muted" style="max-width:65ch">One row per project, from the same computation as the project picture. This is the screen for the owner's weekly meeting.</p>`}
+function deskSetup(){return `<div class="head"><h1>Setup</h1></div><div class="cols">
+  <div class="card"><h2><span>Trades</span><span>${TRADES.length} shown of 15</span></h2><div class="chips">${TRADES.map(t=>`<span class="chip">${t[1]}</span>`).join("")}</div></div>
+  <div class="card"><h2><span>Site presets</span></h2><div class="rows">${Object.entries(PRESETS).map(([k,v])=>`<div class="row"><div><div class="t">${k}</div><div class="s">${v.join(", ")}</div></div></div>`).join("")}</div></div>
+  <div class="card"><h2><span>Standard drawings per trade</span></h2><div class="rows">${Object.entries(STD_DRAW).map(([k,v])=>`<div class="row"><div><div class="t">${k==="gen"?"General set":TN[k]}</div><div class="s">${v.map(d=>d[0]+" "+d[1]).join(" · ")}</div></div></div>`).join("")}</div></div>
+  <div class="card"><h2><span>Settings</span></h2><div class="rows"><div class="row"><div class="t">Release needs the principal's approval</div><span class="pill ok">On</span></div><div class="row"><div class="t">Client points need office confirmation</div><span class="pill ok">On</span></div><div class="row"><div class="t">Drawing not opened counts as a blocker after</div><span class="mono">2 days</span></div><div class="row"><div class="t">A project is "Stuck" when a blocker is older than</div><span class="mono">7 days</span></div></div></div></div>`}
+
+/* ---------- onboarding ---------- */
+function newOb(){const o={step:1,name:"",client:"",billedTo:"client",preset:"3 BHK",ents:[...PRESETS["3 BHK"]],designers:["Riya"],coordinators:["Meera"],trades:{},ticks:{},draw:{}};
+  TRADES.forEach(t=>o.trades[t[0]]={on:true,agency:t[0]==="plmb"?"":AGENCY_POOL[t[0]][0]});return o}
+function obTicks(o){o.ents.forEach(e=>{if(!o.ticks[e]){o.ticks[e]={};TYPE_TRADES[typeOf(e)].forEach(t=>o.ticks[e][t]=true)}});Object.keys(o.ticks).forEach(e=>{if(!o.ents.includes(e))delete o.ticks[e]})}
+function obDraw(o){const list=[];STD_DRAW.gen.forEach(d=>list.push({k:"gen",d}));TRADES.forEach(([t])=>{if(o.trades[t].on)STD_DRAW[t].forEach(d=>list.push({k:t,d}))});
+  list.forEach(x=>{const key=x.d[0];if(!(key in o.draw))o.draw[key]=true});return list}
+function deskOnboarding(){const o=S.ob,names=["Project","Team","Site","Trades and agencies","Drawings","Review"];
+  let b="";
+  if(o.step===1)b=`<div class="cols"><div class="field"><label class="lbl" for="obname">Project name</label><input type="text" id="obname" value="${esc(o.name)}" placeholder="Patel Residence"></div><div class="field"><label class="lbl" for="obclient">Client</label><input type="text" id="obclient" value="${esc(o.client)}" placeholder="Mr. Patel"></div>
+    <div class="field"><span class="lbl">Agency bills are normally addressed to</span><div class="chips">${[["client","The client"],["revert","Revert"]].map(x=>`<button class="chip" data-act="obset" data-a="billedTo" data-b="${x[0]}" aria-pressed="${o.billedTo===x[0]}">${x[1]}</button>`).join("")}</div></div></div>`;
+  if(o.step===2)b=`<div class="stack"><div class="field"><span class="lbl">Principal (approves releases)</span><div class="chips"><span class="chip" aria-pressed="true">Pranav</span></div></div>
+    <div class="field"><span class="lbl">Designers</span><div class="chips">${["Riya","Amit","Kavya"].map(n=>`<button class="chip" data-act="obtog" data-a="designers" data-b="${n}" aria-pressed="${o.designers.includes(n)}">${n}</button>`).join("")}</div></div>
+    <div class="field"><span class="lbl">Coordinators (one or more)</span><div class="chips">${["Meera","Jatin"].map(n=>`<button class="chip" data-act="obtog" data-a="coordinators" data-b="${n}" aria-pressed="${o.coordinators.includes(n)}">${n}</button>`).join("")}</div></div><p class="muted" style="margin:0">Only these people, the owners and the principal will see this project.</p></div>`;
+  if(o.step===3)b=`<div class="stack"><div class="field"><span class="lbl">Start from a preset</span><div class="chips">${Object.keys(PRESETS).map(k=>`<button class="chip" data-act="obpreset" data-a="${k}" aria-pressed="${o.preset===k}">${k}</button>`).join("")}</div></div>
+    <div class="field"><span class="lbl">Rooms and zones · one task each · ${o.ents.length}</span><div class="chips">${o.ents.map(e=>`<span class="chip" aria-pressed="true">${esc(e)}${e==="Whole site"?"":` <button data-act="obrm" data-a="${esc(e)}" aria-label="Remove ${esc(e)}" style="background:none;border:0;color:#fff;padding:0 0 0 4px">×</button>`}</span>`).join("")}</div></div>
+    <div class="field"><span class="lbl">Add</span><div class="chips">${EXTRAS.filter(e=>!o.ents.includes(e)).map(e=>`<button class="chip" data-act="obadd" data-a="${e}">+ ${e}</button>`).join("")}</div></div></div>`;
+  if(o.step===4){obTicks(o);const ts=TRADES.filter(t=>o.trades[t[0]].on);
+    b=`<div class="stack"><div class="rows">${TRADES.map(([t,n])=>`<div class="row"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="chip" data-act="obtrade" data-a="${t}" aria-pressed="${o.trades[t].on}">${n}</button>
+      ${o.trades[t].on?`<select data-change="obagency" data-a="${t}" aria-label="Agency for ${n}"><option value="">Undecided (decide by ${day(10)})</option>${AGENCY_POOL[t].map(a=>`<option ${o.trades[t].agency===a?"selected":""}>${a}</option>`).join("")}</select>`:'<span class="muted">not needed</span>'}</div></div>`).join("")}</div>
+     <div><div class="lbl" style="margin-bottom:6px">Which trade works in which room · pre-ticked from the room type · tap to change</div><div class="gridwrap"><table class="grid"><thead><tr><th>Room</th>${ts.map(t=>`<th>${t[2]}</th>`).join("")}</tr></thead><tbody>
+      ${o.ents.map(e=>`<tr><td>${esc(e)}</td>${ts.map(([t])=>`<td><button class="cell ${o.ticks[e][t]?"done":"ns"}" data-act="obtick" data-a="${esc(e)}" data-b="${t}" aria-pressed="${!!o.ticks[e][t]}" aria-label="${esc(e)} ${TN[t]}">${o.ticks[e][t]?"✓":""}</button></td>`).join("")}</tr>`).join("")}</tbody></table></div></div></div>`}
+  if(o.step===5){const list=obDraw(o);let last="";
+    b=`<div class="rows">${list.map(x=>{const h=x.k!==last?`<div class="lbl" style="padding:10px 0 2px">${x.k==="gen"?"General":TN[x.k]+" · "+(o.trades[x.k].agency||"undecided")}</div>`:"";last=x.k;const d=x.d;
+      return h+`<div class="row"><label style="display:flex;gap:10px;align-items:center"><input type="checkbox" data-change="obdraw" data-a="${d[0]}" ${o.draw[d[0]]?"checked":""}> <span><b>${d[1]}</b> <span class="mono muted">${d[0]}-01</span></span></label><div class="side-r"><span class="muted" style="font-size:12.5px">${x.k==="elec"||x.k==="plmb"?"Amit":o.designers[0]||"Riya"} · due ${day(5+list.indexOf(x)*2)}</span>${d[2]?'<span class="pill info">for client</span>':""}${d[3]?'<span class="pill warn">client approves</span>':""}</div></div>`}).join("")}</div>`}
+  if(o.step===6){obTicks(o);const list=obDraw(o).filter(x=>o.draw[x.d[0]]),ts=TRADES.filter(t=>o.trades[t[0]].on),ln=o.ents.reduce((n,e)=>n+ts.filter(([t])=>o.ticks[e][t]).length,0);
+    b=`<div class="prog"><div><div class="lbl">Room tasks</div><div class="big">${o.ents.length}</div></div><div><div class="lbl">Work lines</div><div class="big">${ln}</div></div><div><div class="lbl">Trades</div><div class="big">${ts.length} <small>${ts.filter(t=>!o.trades[t[0]].agency).length} undecided</small></div></div><div><div class="lbl">Drawings to make</div><div class="big">${list.length}</div></div></div>
+     <p class="muted" style="max-width:65ch">Creating the project makes one task per room, one work line per ticked trade, the drawing list on each designer's Today, and gives each person access by their role. Invitations go to agencies and the client on WhatsApp.</p>`}
+  return `<div class="head"><div><h1>New project</h1><div class="muted">Project onboarding · everything later is driven by what is entered here</div></div><div>${act("nav","project","Cancel","")}</div></div>
+   <div class="steps">${names.map((n,i)=>`<span class="${i+1===o.step?"on":i+1<o.step?"past":""}">${i+1} ${n}</span>`).join("")}</div>
+   <div class="card"><h2><span>${o.step} of 6 · ${names[o.step-1]}</span></h2>${b}
+   <div style="display:flex;gap:8px;margin-top:16px">${o.step>1?act("obstep","-1","Back",""):""}${o.step<6?act("obstep","1","Next","pri"):act("obcreate","","Create project","gold")}</div></div>`}
+
+/* ---------- phones ---------- */
+const TXT={en:{hello:"Hello",pts:"Your points",newd:"New drawings",asks:"Revert asks",upload:"Upload your bill",bills:"Your bills",none:"Nothing new",open:"Open",done:"Done",by:"by",rev:"rev",asked:"Asked",submitted:"Submitted",accepted:"Accepted",paid:"Paid",part_paid:"Part paid",returned:"Returned",sites:"My sites"},
+  gu:{hello:"નમસ્તે",pts:"તમારા મુદ્દા",newd:"નવા ડ્રોઇંગ",asks:"રિવર્ટની વિનંતી",upload:"તમારું બિલ અપલોડ કરો",bills:"તમારા બિલ",none:"કંઈ નવું નથી",open:"ખોલો",done:"થઈ ગયું",by:"સુધીમાં",rev:"રિવિઝન",asked:"માંગેલું",submitted:"મોકલેલું",accepted:"સ્વીકારેલું",paid:"ચૂકવેલું",part_paid:"અંશતઃ ચૂકવેલું",returned:"પરત",sites:"મારી સાઇટ"},
+  hi:{hello:"नमस्ते",pts:"आपके मुद्दे",newd:"नए ड्रॉइंग",asks:"रिवर्ट का अनुरोध",upload:"अपना बिल अपलोड करें",bills:"आपके बिल",none:"कुछ नया नहीं",open:"खोलें",done:"हो गया",by:"तक",rev:"रिवीज़न",asked:"माँगा गया",submitted:"भेजा गया",accepted:"स्वीकृत",paid:"भुगतान हुआ",part_paid:"आंशिक भुगतान",returned:"वापस",sites:"मेरी साइट"}};
+function phoneStaff(){const p=S.projects[0],pic=picture(p),m=S.mom,tab=S.staffTab;let body="";
+  if(tab==="mom"){const mine=p.points.filter(x=>x.visit===p.visitNo),earlier=p.points.filter(x=>x.visit!==p.visitNo&&x.state==="open"&&x.for!=="client");
+    const parties=[...new Set(mine.filter(x=>!x.sent).map(x=>x.for))];
+    const forOpts=[...TRADES.filter(t=>p.plan[t[0]]&&p.plan[t[0]].agency).map(t=>[t[0],p.plan[t[0]].agency.split(" ")[0]]),["client","Client"],["office","Office"]];
+    body=`<div class="ph-sec"><div class="lbl"><span>Open from earlier visits</span><span>${earlier.length}</span></div>${earlier.map(x=>`<div class="pt"><span class="n">${x.n}</span><div><div>${esc(x.text)}</div><div class="who">${esc(who(p,x.for))} · ${esc(x.entity)}${x.due<0?' · <b style="color:var(--crit)">past its date</b>':""}</div></div>${act("closept",x.n,"Close")}</div>`).join("")||'<div class="muted">None.</div>'}</div>
+     <div class="ph-sec"><div class="lbl"><span>This visit</span><span>${mine.length}</span></div>${mine.map(x=>ptRow(p,x,true)).join("")||'<div class="muted">No points yet. Add the first one below.</div>'}</div>
+     <div class="composer"><div class="lbl">For · stays selected</div><div class="chips">${forOpts.map(o=>`<button class="chip" data-act="momfor" data-a="${o[0]}" aria-pressed="${m.for===o[0]}">${esc(o[1])}</button>`).join("")}</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="lbl">Area</span><select data-change="moment" aria-label="Area">${p.entities.map(e=>`<option ${e===m.entity?"selected":""}>${esc(e)}</option>`).join("")}</select></div>
+      <input type="text" id="momtext" placeholder="Type or speak the point…" aria-label="Point">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="chip" data-act="momphoto" aria-pressed="${m.photo}">📷 Photo</button>${[[0,"Today"],[1,"Tomorrow"],[2,day(2)],[5,day(5)]].map(d=>`<button class="chip" data-act="momdue" data-a="${d[0]}" aria-pressed="${m.due===d[0]}">${d[1]}</button>`).join("")}<span style="flex:1"></span>${act("momadd","","Add","pri")}</div></div>
+     <div class="ph-sec"><div class="lbl"><span>Send as PDF on WhatsApp</span></div><div class="sendbar">${parties.length?parties.map(k=>`<button class="btn sm wa" data-act="momsend" data-a="${k}">${esc(who(p,k).split(" ")[0])} (${mine.filter(x=>x.for===k&&!x.sent).length}) ➤</button>`).join("")+(parties.length>1?act("momsend","all","All ➤","sm wa"):""):'<span class="muted">Everything of this visit is sent.</span>'}</div></div>`}
+  if(tab==="site"){const st=STATUS[pic.status],g=pic.progress;
+    body=`<div><span class="pill ${st[0]}">${st[1]}</span></div><div class="prog" style="grid-template-columns:1fr 1fr"><div><div class="lbl">Drawings</div><div class="big num">${g.dr[0]}<small> of ${g.dr[1]}</small></div></div><div><div class="lbl">Work</div><div class="big num">${g.wk[0]}<small> of ${g.wk[1]}</small></div></div></div>
+     <div class="ph-sec"><div class="lbl"><span>Blockers</span><span>${pic.blockers.length}</span></div>${pic.blockers.map(b=>`<div class="pt"><span class="n">${b.age}d</span><div><div>${esc(b.text)}</div><div class="who">to act: ${esc(b.actor)}</div></div><span></span></div>`).join("")||'<div class="muted">Nothing is blocked.</div>'}</div>
+     <div class="ph-sec"><div class="lbl"><span>Agencies</span></div>${pic.next.agencies.map(n=>`<div class="pt"><span class="n"></span><div><div><b>${esc(n.name)}</b></div><div class="who">${esc(n.line)}</div></div>${act("remind",n.t+"|Please update us on "+p.name,"Remind","sm wa")}</div>`).join("")}</div>`}
+  if(tab==="today"){const role=S.role,it=todayItems().filter(n=>n.p.id===1);
+    body=`<div class="ph-sec"><div class="lbl"><span>${me().name} · what I do now</span><span>${it.length}</span></div>${it.map(n=>`<div class="pt"><span class="n"></span><div><div>${esc(n.text)}</div><div class="who">${esc(n.p.name)}</div></div>${n.act?actP(n,n.p):""}</div>`).join("")||'<div class="muted">All clear.</div>'}</div>`}
+  return `<div class="pcol"><div class="cap"><span class="lbl">Staff app · ${me().name}</span></div><div class="phone"><div class="ph-top"><div><h3>${tab==="mom"?"MOM · "+esc(p.name):tab==="site"?esc(p.name):"Today"}</h3><div class="mono muted">${tab==="mom"?"Visit "+p.visitNo+" · "+day(0)+" · saved on phone":esc(p.label)}</div></div></div>
+   <div class="ph-body">${body}</div><div class="ph-nav">${[["today","Today"],["site","Site"],["mom","MOM"]].map(t=>`<button data-act="stab" data-a="${t[0]}" aria-pressed="${tab===t[0]}">${t[1]}</button>`).join("")}</div></div></div>`}
+function phoneAgency(){const p=S.projects[0],t="carp",L=TXT[S.lang],pts=p.points.filter(x=>x.for===t&&x.state==="open"&&x.sent);
+  const nd=p.drawings.filter(d=>d.state==="released"&&d.to.includes(t)&&!d.opened[t]),asks=p.bills.filter(b=>b.trade===t&&b.state==="asked"),bills=p.bills.filter(b=>b.trade===t&&b.state!=="asked");
+  const mine=S.wa.filter(m=>m.to===p.plan[t].agency);
+  return `<div class="pcol"><div class="cap"><span class="lbl">Agency app · carpenter</span><span class="tabs">${["gu","hi","en"].map(l=>`<button data-act="lang" data-a="${l}" aria-pressed="${S.lang===l}">${{gu:"ગુજરાતી",hi:"हिन्दी",en:"English"}[l]}</button>`).join("")}</span></div>
+  <div class="phone gu"><div class="ph-top"><div><h3>${L.hello}, Mahadev Furniture</h3><div class="mono muted">${esc(p.name)} · ${L.sites} 2</div></div></div><div class="ph-body">
+   <div class="ph-sec"><div class="lbl"><span>${L.pts}</span><span>${pts.length}</span></div>${pts.map(x=>`<div class="pt"><span class="n">${x.n}</span><div><div>${esc(x.text)} ${x.photo?'<i class="photo"></i>':""}</div><div class="who">${esc(x.entity)} · ${day(x.due)} ${L.by}</div></div><span></span></div>`).join("")||`<div class="muted">${L.none}</div>`}</div>
+   <div class="ph-sec"><div class="lbl"><span>${L.newd}</span><span>${nd.length}</span></div>${nd.map(d=>`<div class="pt"><span class="n mono">${d.id}</span><div><div><b>${esc(d.title)}</b></div><div class="who">${L.rev} ${d.rev}</div></div>${act("agopen",d.id,L.open,"sm pri")}</div>`).join("")||`<div class="muted">${L.none}</div>`}</div>
+   <div class="ph-sec"><div class="lbl"><span>${L.asks}</span><span>${asks.length}</span></div>${asks.map(b=>`<div class="pt"><span class="n"></span><div><div><b>${L.upload}</b></div><div class="who">${esc(b.what)}</div></div>${act("agbill",b.id,"📷 "+L.upload.split(" ").slice(-2).join(" "),"sm pri")}</div>`).join("")||`<div class="muted">${L.none}</div>`}</div>
+   <div class="ph-sec"><div class="lbl"><span>${L.bills}</span></div>${bills.map(b=>`<div class="pt"><span class="n"></span><div>${esc(b.what)}</div><span class="pill ${b.state==="paid"?"ok":"warn"}">${L[b.state]}</span></div>`).join("")||`<div class="muted">${L.none}</div>`}</div>
+  </div></div>
+  <div class="walog"><span class="lbl">WhatsApp on Mahadev's phone · arrives even if the app is never opened</span>${mine.map(m=>`<div class="m">${esc(m.text)}</div>`).join("")||'<span class="muted">Send a MOM, release a drawing or ask for a bill to see the message here.</span>'}</div></div>`}
+function phoneClient(){const p=S.projects[0],pend=p.drawings.filter(d=>d.state==="released"&&d.client==="pending"),pts=p.points.filter(x=>x.for==="client"&&x.state==="open"&&x.confirmed);
+  const dr=p.drawings.filter(d=>d.state==="released"&&d.to.includes("client")),mine=S.wa.filter(m=>m.to===p.client);
+  return `<div class="pcol"><div class="cap"><span class="lbl">Client app or link · ${esc(p.client)}</span></div><div class="phone"><div class="ph-top"><div><h3>${esc(p.name)}</h3><div class="mono muted">Revert</div></div></div><div class="ph-body">
+   <div class="ph-sec"><div class="lbl"><span>Waiting for you</span><span>${pend.length+pts.length}</span></div>
+    ${pend.map(d=>`<div class="pt"><span class="n"></span><div><div><b>Approve the ${esc(d.title.toLowerCase())}</b></div><div class="who">rev ${d.rev}</div><div style="display:flex;gap:6px;margin-top:6px">${act("clapprove",d.id,"Approve","sm pri")}${act("clchange",d.id,"Ask for a change")}</div></div><span></span></div>`).join("")}
+    ${pts.map(x=>`<div class="pt"><span class="n"></span><div><div><b>${esc(x.text)}</b></div><div class="who">by ${day(x.due)}</div><div style="margin-top:6px">${act("closept",x.n,"Done")}</div></div><span></span></div>`).join("")}
+    ${pend.length+pts.length?"":'<div class="muted">Nothing needed from you right now.</div>'}</div>
+   <div class="ph-sec"><div class="lbl"><span>Your drawings</span><span>${dr.length}</span></div>${dr.map(d=>`<div class="pt"><span class="n mono">${d.id}</span><div><b>${esc(d.title)}</b><div class="who">rev ${d.rev}${d.client==="approved"?" · approved by you":""}</div></div>${d.relAgo<=2?'<span class="pill info">new</span>':"<span></span>"}</div>`).join("")}</div>
+  </div></div><div class="walog"><span class="lbl">WhatsApp on the client's phone</span>${mine.map(m=>`<div class="m">${esc(m.text)}</div>`).join("")||'<span class="muted">Reminders and released drawings appear here.</span>'}</div>
+  <p class="muted" style="margin:0;font-size:12.5px">The client sees these two blocks only: no agencies, no progress, no money.</p></div>`}
+
+/* ---------- overlays ---------- */
+function modal(){const m=S.modal,p=P();if(!m)return "";let b="";
+  if(m.k==="release"){const d=p.drawings.find(x=>x.id===m.id);
+    b=`<h2 style="font-size:18px">Release ${d.id} ${esc(d.title)} · rev ${d.rev}</h2><div class="field"><span class="lbl">Goes to</span>
+     <label><input type="checkbox" id="rl-ag" checked> ${esc(who(p,d.trade))} · ${TN[d.trade]} agency</label><label><input type="checkbox" id="rl-cl" ${d.forClient?"checked":""}> ${esc(p.client)} (client)${d.needsNext?" · asks for approval":""}</label></div>
+     <p class="muted" style="margin:0">Each receiver gets the PDF on WhatsApp with a link. Opening it is recorded.</p><div style="display:flex;gap:8px">${act("dorelease",d.id,"Release","pri")}${act("closem","","Cancel","")}</div>`}
+  if(m.k==="assign")b=`<h2 style="font-size:18px">Decide the ${TN[m.t].toLowerCase()} agency</h2><div class="chips">${AGENCY_POOL[m.t].map(a=>`<button class="chip" data-act="doassign" data-a="${m.t}" data-b="${esc(a)}">${esc(a)}</button>`).join("")}</div><div>${act("closem","","Cancel","")}</div>`;
+  if(m.k==="pdf"){const pts=p.points.filter(x=>x.for===m.party&&(m.visitOnly?x.visit===p.visitNo:x.state==="open"));
+    b=`<div class="pdf"><div class="tb"><div><b>Minutes of meeting</b><br>${esc(p.name)} · ${esc(p.label)}</div><div>VISIT ${p.visitNo}<br>${day(0)} 2026</div><div>For: <b>${esc(who(p,m.party))}</b></div><div>BY ${esc(p.team.coordinators[0]).toUpperCase()}</div></div>
+     ${pts.map(x=>`<div class="pt"><span class="n">${x.n}</span><div><div>${esc(x.text)}</div><div class="who">${esc(x.entity)} · by ${day(x.due)}</div>${x.photo?'<div style="margin-top:6px"><i class="photo" style="width:120px;height:80px"></i></div>':""}</div><span></span></div>`).join("")||'<div class="muted">No points.</div>'}</div>
+     <div>${act("closem","","Close","")}</div>`}
+  return `<div class="ovl" data-act="closem"><div class="dlg" role="dialog" aria-modal="true" data-stop="1">${b}</div></div>`}
+
+/* ---------- shell ---------- */
+function render(){
+  const top=`<header class="pbar"><b>Revert · Release 1 screens</b><div class="seg" role="group" aria-label="View">
+    <button data-act="view" data-a="desk" aria-pressed="${S.view==="desk"}">Desk (browser)</button><button data-act="view" data-a="phones" aria-pressed="${S.view==="phones"}">Phones</button></div>
+    <label>Signed in as <select data-change="role" aria-label="Signed in as">${Object.entries(STAFF).map(([k,v])=>`<option value="${k}" ${S.role===k?"selected":""}>${v.name} · ${v.role}</option>`).join("")}</select></label>
+    <span class="note">Clickable prototype with invented names. Every action changes one shared record set, so what staff do shows up on the agency and client phones.</span></header>`;
+  document.getElementById("app").innerHTML=top+(S.view==="desk"?viewDesk():`<div class="phones">${phoneStaff()}${phoneAgency()}${phoneClient()}</div>`)+modal();
+}
+const A={
+  view(a){S.view=a;location.hash=a==="desk"?"desk-"+S.desk:"phones"},
+  nav(a){S.view="desk";S.desk=a;S.sel=null;S.edit=null;location.hash="desk-"+a},
+  ntab(a){S.nextTab=a},stab(a){S.staffTab=a},lang(a){S.lang=a},
+  openp(a){S.pid=+a;A.nav("project")},
+  gomom(){S.view="phones";S.staffTab="mom";location.hash="phones"},
+  cell(a,b){S.sel={e:a,t:b};S.edit=null},
+  edstate(a){const l=P().lines[S.sel.e][S.sel.t];S.edit={...(S.edit||{cause:l.cause||"drawing",ref:l.ref||""}),state:a}},
+  edcause(a){S.edit={...S.edit,cause:a,ref:""}},
+  edcancel(){S.sel=null;S.edit=null},
+  edsave(){const p=P(),l=p.lines[S.sel.e][S.sel.t],d=S.edit;if(d){if(d.state==="waiting"){const r=document.getElementById("edref");d.ref=r?r.value:"";if(!d.ref){toast("Pick what it is waiting for");return}
+      Object.assign(l,{state:"waiting",cause:d.cause,ref:d.ref,since:0})}else{l.state=d.state;delete l.cause;delete l.ref;delete l.since}}S.sel=null;S.edit=null;toast("Saved. The picture above is recomputed.")},
+  sendapp(a,b,el){const p=proj(el),d=p.drawings.find(x=>x.id===a);d.state="awaiting";toast(d.id+" sent to the principal for approval")},
+  approve(a,b,el){if(S.role!=="owner"){toast("Only the principal approves. Sign in as Pranav in the dark bar.");return}const p=proj(el),d=p.drawings.find(x=>x.id===a);d.state="approved";S.pid=p.id;S.modal={k:"release",id:a}},
+  release(a,b,el){S.pid=proj(el).id;S.modal={k:"release",id:a}},
+  dorelease(a){const p=P(),d=p.drawings.find(x=>x.id===a),ag=document.getElementById("rl-ag").checked,cl=document.getElementById("rl-cl").checked;
+    d.state="released";d.relAgo=0;d.due=Math.min(d.due,0);d.to=[];d.opened={};if(ag){d.to.push(d.trade);wa(who(p,d.trade),"Revert · "+p.name+": new drawing "+d.id+" "+d.title+" rev "+d.rev+" 📎 PDF · open link")}
+    if(cl){d.to.push("client");if(d.needsNext){d.needs=true;d.client="pending"}wa(p.client,"Revert · "+p.name+": "+d.title+" is ready for you"+(d.needsNext?" to approve":"")+" 📎")}
+    allLines(p).forEach(x=>{if(x.l.cause==="drawing"&&x.l.ref===d.id&&x.l.state==="waiting"){x.l.state="ns";delete x.l.cause;delete x.l.ref}});S.modal=null;toast(d.id+" released. Lines that waited for it are free.")},
+  assign(a,b,el){S.pid=proj(el).id;S.modal={k:"assign",t:a}},
+  doassign(a,b){P().plan[a]={agency:b};S.modal=null;toast(b+" is now the "+TN[a].toLowerCase()+" agency on every room")},
+  remind(a){const [k,text]=a.split("|"),p=S.projects[0];wa(who(p,k),"Revert · "+p.name+": "+text);toast("Reminder sent on WhatsApp to "+who(p,k))},
+  confirmpt(a,b,el){const x=proj(el).points.find(x=>x.n===+a);x.confirmed=true;x.sent=true;toast("Confirmed. The client now sees it.")},
+  closept(a){const p=S.projects[0],x=p.points.find(x=>x.n===+a)||P().points.find(x=>x.n===+a);x.state="closed";toast("Point "+a+" closed")},
+  pdf(a){S.modal={k:"pdf",party:a}},closem(){S.modal=null},
+  momfor(a){S.mom.for=a},momdue(a){S.mom.due=+a},momphoto(){S.mom.photo=!S.mom.photo},
+  momadd(){const p=S.projects[0],v=document.getElementById("momtext").value.trim();if(!v){toast("Type or speak the point first");return}
+    p.points.push({n:Math.max(...p.points.map(x=>x.n))+1,visit:p.visitNo,for:S.mom.for,text:v,entity:S.mom.entity,due:S.mom.due,state:"open",sent:false,photo:S.mom.photo,confirmed:false});S.mom.photo=false},
+  momsend(a){const p=S.projects[0],ks=a==="all"?[...new Set(p.points.filter(x=>x.visit===p.visitNo&&!x.sent).map(x=>x.for))]:[a];let held=0;
+    ks.forEach(k=>{const pts=p.points.filter(x=>x.visit===p.visitNo&&x.for===k&&!x.sent);if(k==="client"){held+=pts.length;pts.forEach(x=>x.sent=true);return}
+      pts.forEach(x=>{x.sent=true;x.confirmed=true});if(k!=="office")wa(who(p,k),"Revert · "+p.name+" · MOM visit "+p.visitNo+": "+pts.length+" point"+(pts.length>1?"s":"")+" for you 📎 PDF")});
+    toast(held?"Sent. "+held+" client point"+(held>1?"s wait":" waits")+" for office confirmation first.":"PDF sent on WhatsApp");if(ks.length===1&&ks[0]!=="client"&&ks[0]!=="office")S.modal={k:"pdf",party:ks[0],visitOnly:true};S.pid=1},
+  agopen(a){const d=S.projects[0].drawings.find(x=>x.id===a);d.opened.carp=true;toast("Opened. The office now sees \"opened\".")},
+  agbill(a){const b=S.projects[0].bills.find(x=>x.id===+a);b.state="submitted";b.amount=96000;b.ago=0;toast("Bill photo uploaded. Status: submitted.")},
+  clapprove(a){const d=S.projects[0].drawings.find(x=>x.id===a);d.client="approved";allLines(S.projects[0]).forEach(x=>{if(x.l.cause==="client"&&x.l.ref==="Approve "+d.title){x.l.state="ns";delete x.l.cause;delete x.l.ref}});toast("Approved · recorded with name, date and time")},
+  clchange(a){const d=S.projects[0].drawings.find(x=>x.id===a);d.client="change";d.state="in_progress";d.rev+=1;d.to=[];d.due=3;toast("Change asked. It is back on the designer's list as rev "+d.rev+".")},
+  billask(){const p=P(),t=document.getElementById("askt").value,w=document.getElementById("askw").value.trim()||"Work done";p.bills.push({id:Date.now(),trade:t,what:w,state:"asked",amount:0,ago:0,billedTo:p.billedTo,paid:0});wa(who(p,t),"Revert · "+p.name+": please upload your bill for "+w);toast("Asked "+who(p,t)+" on WhatsApp")},
+  billaccept(a){P().bills.find(x=>x.id===+a).state="accepted";toast("Bill accepted")},
+  billreturn(a){P().bills.find(x=>x.id===+a).state="returned";toast("Returned to the agency with a reason")},
+  billpay(a){const b=P().bills.find(x=>x.id===+a),half=b.paid?b.amount-b.paid:Math.round(b.amount/2);b.paid+=half;b.paidBy=b.billedTo;b.state=b.paid>=b.amount?"paid":"part_paid";toast("Payment of "+inr(half)+" recorded against the bill")},
+  startob(){S.ob=newOb();A.nav("onboarding")},
+  obset(a,b){S.ob[a]=b},obtog(a,b){const l=S.ob[a],i=l.indexOf(b);i<0?l.push(b):l.splice(i,1)},
+  obpreset(a){S.ob.preset=a;S.ob.ents=[...PRESETS[a]];S.ob.ticks={}},obrm(a){S.ob.ents=S.ob.ents.filter(e=>e!==a)},obadd(a){S.ob.ents.splice(S.ob.ents.length-1,0,a)},
+  obtrade(a){S.ob.trades[a].on=!S.ob.trades[a].on},obtick(a,b){S.ob.ticks[a][b]=!S.ob.ticks[a][b]},
+  obstep(a){const o=S.ob;if(o.step===1){o.name=document.getElementById("obname").value.trim();o.client=document.getElementById("obclient").value.trim();if(+a>0&&!o.name){toast("Give the project a name");return}}o.step+=+a},
+  obcreate(){const o=S.ob;obTicks(o);const lines={},plan={};TRADES.forEach(([t])=>{if(o.trades[t].on)plan[t]={agency:o.trades[t].agency||null,decideBy:10}});
+    o.ents.forEach(e=>{lines[e]={};Object.keys(plan).forEach(t=>{if(o.ticks[e][t])lines[e][t]={state:"ns"}})});
+    const dr=obDraw(o).filter(x=>o.draw[x.d[0]]).map((x,i)=>({id:x.d[0]+"-01",title:x.d[1],trade:x.k==="gen"?"carp":x.k,designer:x.k==="elec"||x.k==="plmb"?"Amit":o.designers[0]||"Riya",due:5+i*2,state:"to_draw",rev:1,to:[],opened:{},forClient:!!x.d[2],needsNext:!!x.d[3]}));
+    const id=Math.max(...S.projects.map(p=>p.id))+1;S.projects.push({id,name:o.name,label:o.preset+" · new",client:o.client||"Client",billedTo:o.billedTo,team:{principal:"Pranav",designers:o.designers.length?o.designers:["Riya"],coordinators:o.coordinators.length?o.coordinators:["Meera"]},plan,entities:o.ents,lines,drawings:dr,points:[],bills:[],visitNo:1});
+    S.pid=id;S.ob=null;A.nav("project");toast("Project created: "+o.ents.length+" room tasks, "+dr.length+" drawings on the designers' lists")}
+};
+const proj=el=>{const id=el&&el.dataset.p;return id?S.projects.find(p=>p.id===+id):P()};
+const CH={role(v){S.role=v},psel(v){S.pid=+v;S.sel=null},moment(v){S.mom.entity=v},obagency(v,el){S.ob.trades[el.dataset.a].agency=v},obdraw(v,el){S.ob.draw[el.dataset.a]=el.checked}};
+document.addEventListener("click",e=>{const el=e.target.closest("[data-act]");if(!el)return;if(el.dataset.act==="closem"&&el.classList.contains("ovl")&&e.target.closest("[data-stop]"))return;
+  const keep=el.dataset.act==="momadd"?null:(document.getElementById("momtext")||{}).value;A[el.dataset.act](el.dataset.a,el.dataset.b,el);render();
+  if(keep&&document.getElementById("momtext"))document.getElementById("momtext").value=keep;if(el.dataset.act==="momadd"&&document.getElementById("momtext"))document.getElementById("momtext").focus()});
+document.addEventListener("change",e=>{const el=e.target.closest("[data-change]");if(!el)return;CH[el.dataset.change](el.value,el);render()});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="momtext"){A.momadd();render();const t=document.getElementById("momtext");if(t)t.focus()}if(e.key==="Escape"&&S.modal){S.modal=null;render()}});
+function route(){const h=location.hash.slice(1);if(h==="phones")S.view="phones";else if(h.startsWith("desk-")){const d=h.slice(5);if(["today","project","drawings","mom","bills","review","setup"].includes(d)){S.view="desk";S.desk=d}}render()}
+window.addEventListener("hashchange",route);route();
+</script>
+</body>
+</html>

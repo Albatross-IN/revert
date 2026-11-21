@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Phone grouped kanban: first cards of every stage + "Show more" (see kanban_more.js).
+         Prepended in the bundle so every primary copy of web.KanbanRenderer inherits it. -->
+    <t t-name="web_glass_workspace.KanbanRenderer.showMore" t-inherit="web.KanbanRenderer" t-inherit-mode="extension">
+        <xpath expr="//t[@t-foreach='group.list.records']/KanbanRecord" position="attributes">
+            <attribute name="t-if">!this.uiService.isSmall or record_index lt this.glassVisible(group)</attribute>
+        </xpath>
+        <xpath expr="//t[@t-foreach='group.list.records']" position="after">
+            <button t-if="this.uiService.isSmall and this.glassHidden(group) > 0" type="button" class="o_glass_m_more btn w-100"
+                    t-on-click.stop="() => this.glassShowMore(group)">
+                Show more <span class="o_glass_m_more_cnt" t-out="this.glassHidden(group)"/>
+            </button>
+        </xpath>
+    </t>
+
+</templates>

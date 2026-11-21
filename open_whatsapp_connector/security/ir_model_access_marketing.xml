@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Toggle-able user CRUD grants for the marketing models (Odoo 20 port).
+
+        In v19 this was an inactive user-CRUD ir.model.access per model, and
+        security/ir_rules.xml carried matching inactive "own + team" ir.rule
+        records; both sets were flipped together by res.config.settings.
+
+        ir.access carries the domain on the grant itself, so each pair is now
+        ONE record: user CRUD limited to "own + team". They ship INACTIVE;
+        res.config.settings.set_values() activates them (and deactivates the
+        shared read/CRUD rows from ir.access.csv) when "Campaign & Contact
+        Visibility" is set to "Restricted to owner + their Sales Team".
+        WhatsApp Administrators keep their always-active CRUD-all CSV rows.
+
+        Shipped under noupdate="1" so a later -u does not reset the runtime
+        active flag toggled by set_values(). (#F085)
+    -->
+    <data noupdate="1">
+
+    <record id="access_owa_campaign_user_manage" model="ir.access">
+        <field name="name">owa.campaign.user.manage</field>
+        <field name="model_id" ref="model_owa_campaign"/>
+        <field name="group_id" ref="base.group_user"/>
+        <field name="operation">crud</field>
+        <field name="domain">['|', ('user_id', '=', user.id), '|', ('team_id.member_ids', 'in', [user.id]), ('team_id.user_id', '=', user.id)]</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="access_owa_contact_list_user_manage" model="ir.access">
+        <field name="name">owa.contact.list.user.manage</field>
+        <field name="model_id" ref="model_owa_contact_list"/>
+        <field name="group_id" ref="base.group_user"/>
+        <field name="operation">crud</field>
+        <field name="domain">['|', ('user_id', '=', user.id), '|', ('team_id.member_ids', 'in', [user.id]), ('team_id.user_id', '=', user.id)]</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="access_owa_contact_list_member_user_manage" model="ir.access">
+        <field name="name">owa.contact.list.member.user.manage</field>
+        <field name="model_id" ref="model_owa_contact_list_member"/>
+        <field name="group_id" ref="base.group_user"/>
+        <field name="operation">crud</field>
+        <field name="domain">['|', ('list_id.user_id', '=', user.id), '|', ('list_id.team_id.member_ids', 'in', [user.id]), ('list_id.team_id.user_id', '=', user.id)]</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="access_owa_broadcast_group_user_manage" model="ir.access">
+        <field name="name">owa.broadcast.group.user.manage</field>
+        <field name="model_id" ref="model_owa_broadcast_group"/>
+        <field name="group_id" ref="base.group_user"/>
+        <field name="operation">crud</field>
+        <field name="domain">['|', ('user_id', '=', user.id), '|', ('team_id.member_ids', 'in', [user.id]), ('team_id.user_id', '=', user.id)]</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="access_owa_standing_order_user_manage" model="ir.access">
+        <field name="name">owa.standing.order.user.manage</field>
+        <field name="model_id" ref="model_owa_standing_order"/>
+        <field name="group_id" ref="base.group_user"/>
+        <field name="operation">crud</field>
+        <field name="domain">['|', ('user_id', '=', user.id), '|', ('team_id.member_ids', 'in', [user.id]), ('team_id.user_id', '=', user.id)]</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    <record id="access_owa_status_broadcast_user_manage" model="ir.access">
+        <field name="name">owa.status.broadcast.user.manage</field>
+        <field name="model_id" ref="model_owa_status_broadcast"/>
+        <field name="group_id" ref="base.group_user"/>
+        <field name="operation">crud</field>
+        <field name="domain">['|', ('user_id', '=', user.id), '|', ('team_id.member_ids', 'in', [user.id]), ('team_id.user_id', '=', user.id)]</field>
+        <field name="active" eval="False"/>
+    </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- docs/masters_draft.md §3. "Whole site" is added to every project by onboarding, so it is not a line here. -->
+    <record id="preset_2bhk" model="rvt.site.preset">
+        <field name="name">2 BHK</field>
+        <field name="site_kind">home</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="preset_2bhk_living" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_2bhk"/>
+        <field name="entity_type_id" ref="entity_type_living"/>
+        <field name="count">1</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="preset_2bhk_kitchen" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_2bhk"/>
+        <field name="entity_type_id" ref="entity_type_kitchen"/>
+        <field name="count">1</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="preset_2bhk_master_bedroom" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_2bhk"/>
+        <field name="entity_type_id" ref="entity_type_master_bedroom"/>
+        <field name="count">1</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="preset_2bhk_bedroom" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_2bhk"/>
+        <field name="entity_type_id" ref="entity_type_bedroom"/>
+        <field name="count">1</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="preset_2bhk_toilet" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_2bhk"/>
+        <field name="entity_type_id" ref="entity_type_toilet"/>
+        <field name="count">2</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="preset_2bhk_balcony" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_2bhk"/>
+        <field name="entity_type_id" ref="entity_type_balcony"/>
+        <field name="count">1</field>
+        <field name="sequence">60</field>
+    </record>
+    <record id="preset_2bhk_passage" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_2bhk"/>
+        <field name="entity_type_id" ref="entity_type_passage"/>
+        <field name="count">1</field>
+        <field name="sequence">70</field>
+    </record>
+    <record id="preset_3bhk" model="rvt.site.preset">
+        <field name="name">3 BHK</field>
+        <field name="site_kind">home</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="preset_3bhk_living" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_3bhk"/>
+        <field name="entity_type_id" ref="entity_type_living"/>
+        <field name="count">1</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="preset_3bhk_dining" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_3bhk"/>
+        <field name="entity_type_id" ref="entity_type_dining"/>
+        <field name="count">1</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="preset_3bhk_kitchen" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_3bhk"/>
+        <field name="entity_type_id" ref="entity_type_kitchen"/>
+        <field name="count">1</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="preset_3bhk_master_bedroom" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_3bhk"/>
+        <field name="entity_type_id" ref="entity_type_master_bedroom"/>
+        <field name="count">1</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="preset_3bhk_bedroom" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_3bhk"/>
+        <field name="entity_type_id" ref="entity_type_bedroom"/>
+        <field name="number_from">2</field>
+        <field name="count">2</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="preset_3bhk_toilet" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_3bhk"/>
+        <field name="entity_type_id" ref="entity_type_toilet"/>
+        <field name="count">3</field>
+        <field name="sequence">60</field>
+    </record>
+    <record id="preset_3bhk_pooja" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_3bhk"/>
+        <field name="entity_type_id" ref="entity_type_pooja"/>
+        <field name="count">1</field>
+        <field name="sequence">70</field>
+    </record>
+    <record id="preset_3bhk_balcony" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_3bhk"/>
+        <field name="entity_type_id" ref="entity_type_balcony"/>
+        <field name="count">1</field>
+        <field name="sequence">80</field>
+    </record>
+    <record id="preset_3bhk_passage" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_3bhk"/>
+        <field name="entity_type_id" ref="entity_type_passage"/>
+        <field name="count">1</field>
+        <field name="sequence">90</field>
+    </record>
+    <record id="preset_4bhk" model="rvt.site.preset">
+        <field name="name">4 BHK / bungalow</field>
+        <field name="site_kind">home</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="preset_4bhk_living" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_4bhk"/>
+        <field name="entity_type_id" ref="entity_type_living"/>
+        <field name="count">1</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="preset_4bhk_dining" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_4bhk"/>
+        <field name="entity_type_id" ref="entity_type_dining"/>
+        <field name="count">1</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="preset_4bhk_kitchen" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_4bhk"/>
+        <field name="entity_type_id" ref="entity_type_kitchen"/>
+        <field name="count">1</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="preset_4bhk_master_bedroom" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_4bhk"/>
+        <field name="entity_type_id" ref="entity_type_master_bedroom"/>
+        <field name="count">1</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="preset_4bhk_bedroom" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_4bhk"/>
+        <field name="entity_type_id" ref="entity_type_bedroom"/>
+        <field name="number_from">2</field>
+        <field name="count">3</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="preset_4bhk_toilet" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_4bhk"/>
+        <field name="entity_type_id" ref="entity_type_toilet"/>
+        <field name="count">4</field>
+        <field name="sequence">60</field>
+    </record>
+    <record id="preset_4bhk_pooja" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_4bhk"/>
+        <field name="entity_type_id" ref="entity_type_pooja"/>
+        <field name="count">1</field>
+        <field name="sequence">70</field>
+    </record>
+    <record id="preset_4bhk_balcony" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_4bhk"/>
+        <field name="entity_type_id" ref="entity_type_balcony"/>
+        <field name="count">1</field>
+        <field name="sequence">80</field>
+    </record>
+    <record id="preset_4bhk_passage" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_4bhk"/>
+        <field name="entity_type_id" ref="entity_type_passage"/>
+        <field name="count">1</field>
+        <field name="sequence">90</field>
+    </record>
+    <record id="preset_4bhk_staircase" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_4bhk"/>
+        <field name="entity_type_id" ref="entity_type_staircase"/>
+        <field name="count">1</field>
+        <field name="sequence">100</field>
+    </record>
+    <record id="preset_4bhk_garden" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_4bhk"/>
+        <field name="entity_type_id" ref="entity_type_garden"/>
+        <field name="count">1</field>
+        <field name="sequence">110</field>
+    </record>
+    <record id="preset_office_small" model="rvt.site.preset">
+        <field name="name">Office, small</field>
+        <field name="site_kind">office</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="preset_office_small_cabin" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_office_small"/>
+        <field name="entity_type_id" ref="entity_type_cabin"/>
+        <field name="count">2</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="preset_office_small_workstation" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_office_small"/>
+        <field name="entity_type_id" ref="entity_type_workstation"/>
+        <field name="count">1</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="preset_office_small_reception" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_office_small"/>
+        <field name="entity_type_id" ref="entity_type_reception"/>
+        <field name="count">1</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="preset_office_small_pantry" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_office_small"/>
+        <field name="entity_type_id" ref="entity_type_pantry"/>
+        <field name="count">1</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="preset_office_small_toilet" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_office_small"/>
+        <field name="entity_type_id" ref="entity_type_toilet"/>
+        <field name="count">1</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="preset_office_corporate" model="rvt.site.preset">
+        <field name="name">Office, corporate</field>
+        <field name="site_kind">office</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="preset_office_corporate_cabin" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_office_corporate"/>
+        <field name="entity_type_id" ref="entity_type_cabin"/>
+        <field name="count">3</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="preset_office_corporate_conference" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_office_corporate"/>
+        <field name="entity_type_id" ref="entity_type_conference"/>
+        <field name="count">1</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="preset_office_corporate_workstation" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_office_corporate"/>
+        <field name="entity_type_id" ref="entity_type_workstation"/>
+        <field name="count">1</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="preset_office_corporate_reception" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_office_corporate"/>
+        <field name="entity_type_id" ref="entity_type_reception"/>
+        <field name="count">1</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="preset_office_corporate_pantry" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_office_corporate"/>
+        <field name="entity_type_id" ref="entity_type_pantry"/>
+        <field name="count">1</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="preset_office_corporate_server" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_office_corporate"/>
+        <field name="entity_type_id" ref="entity_type_server"/>
+        <field name="count">1</field>
+        <field name="sequence">60</field>
+    </record>
+    <record id="preset_office_corporate_toilet" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_office_corporate"/>
+        <field name="entity_type_id" ref="entity_type_toilet"/>
+        <field name="count">2</field>
+        <field name="sequence">70</field>
+    </record>
+    <record id="preset_clinic" model="rvt.site.preset">
+        <field name="name">Clinic</field>
+        <field name="site_kind">clinic</field>
+        <field name="sequence">60</field>
+    </record>
+    <record id="preset_clinic_consulting" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_clinic"/>
+        <field name="entity_type_id" ref="entity_type_consulting"/>
+        <field name="count">2</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="preset_clinic_procedure" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_clinic"/>
+        <field name="entity_type_id" ref="entity_type_procedure"/>
+        <field name="count">2</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="preset_clinic_lab" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_clinic"/>
+        <field name="entity_type_id" ref="entity_type_lab"/>
+        <field name="count">1</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="preset_clinic_reception" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_clinic"/>
+        <field name="entity_type_id" ref="entity_type_reception"/>
+        <field name="count">1</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="preset_clinic_pantry" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_clinic"/>
+        <field name="entity_type_id" ref="entity_type_pantry"/>
+        <field name="count">1</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="preset_clinic_toilet" model="rvt.site.preset.line">
+        <field name="preset_id" ref="preset_clinic"/>
+        <field name="entity_type_id" ref="entity_type_toilet"/>
+        <field name="count">2</field>
+        <field name="sequence">60</field>
+    </record>
+    <record id="preset_empty" model="rvt.site.preset">
+        <field name="name">Empty</field>
+        <field name="site_kind">other</field>
+        <field name="sequence">70</field>
+    </record>
+</odoo>

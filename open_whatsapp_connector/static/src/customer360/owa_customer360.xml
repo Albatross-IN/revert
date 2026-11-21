@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="open_whatsapp_connector.OwaCustomer360">
+        <div class="owa_customer360">
+            <t t-if="this.state.loading">
+                <div class="owa360_loader">
+                    <i class="oi oi-spin" data-icon="autorenew"/> <span>Loading timeline…</span>
+                </div>
+            </t>
+            <t t-elif="this.state.error">
+                <div class="owa360_error">
+                    <i class="oi" data-icon="warning"/> <span t-out="this.state.error"/>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="owa360_header">
+                    <div class="owa360_partner">
+                        <h2 t-out="this.state.partner.name"/>
+                        <div class="owa360_partner_meta">
+                            <span t-if="this.state.partner.mobile" class="owa360_meta_chip">
+                                <i class="oi" data-icon="smartphone"/> <t t-out="this.state.partner.mobile"/>
+                            </span>
+                            <span t-if="this.state.partner.phone" class="owa360_meta_chip">
+                                <i class="oi" data-icon="phone"/> <t t-out="this.state.partner.phone"/>
+                            </span>
+                            <span t-if="this.state.partner.email" class="owa360_meta_chip">
+                                <i class="oi" data-icon="mail"/> <t t-out="this.state.partner.email"/>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="owa360_summary">
+                        <strong t-out="this.state.total"/> <span> events</span>
+                    </div>
+                </div>
+
+                <div class="owa360_timeline">
+                    <t t-foreach="this.state.events" t-as="ev" t-key="ev_index">
+                        <div t-att-class="'owa360_event owa360_color_' + ev.color"
+                             t-on-click="() => this.open(ev)">
+                            <div class="owa360_event_icon">
+                                <i t-att-class="'fa ' + ev.icon"/>
+                            </div>
+                            <div class="owa360_event_body">
+                                <div class="owa360_event_summary" t-out="ev.summary"/>
+                                <div class="owa360_event_meta">
+                                    <span class="owa360_event_type" t-out="ev.type"/>
+                                    <span class="owa360_event_dt" t-out="ev.datetime"/>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                    <div t-if="this.state.events.length === 0" class="owa360_empty">
+                        No events yet for this contact.
+                    </div>
+                </div>
+            </t>
+        </div>
+    </t>
+
+</templates>

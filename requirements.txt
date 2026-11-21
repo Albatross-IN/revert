@@ -1,0 +1,8 @@
+# Python packages Release 1 needs beyond the standard server set (install them into the server's environment).
+phonenumbers          # open_whatsapp_connector
+PyJWT                 # rvt_api: signed tokens
+fastapi>=0.110.0      # fastapi (the module)
+python-multipart
+ujson
+a2wsgi>=1.10.6
+parse-accept-language

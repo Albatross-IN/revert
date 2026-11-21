@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Plain views for administrators. Staff screens live in rvt_desk. -->
+
+    <!-- Trades -->
+    <record id="rvt_trade_view_list" model="ir.ui.view">
+        <field name="name">rvt.trade.list</field>
+        <field name="model">rvt.trade</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="short_name"/>
+                <field name="code"/>
+                <field name="is_usual"/>
+                <field name="covers" optional="show"/>
+                <field name="active" widget="boolean_toggle" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="rvt_trade_view_search" model="ir.ui.view">
+        <field name="name">rvt.trade.search</field>
+        <field name="model">rvt.trade</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('code', 'ilike', self)]"/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+    <record id="rvt_trade_action" model="ir.actions.act_window">
+        <field name="name">Trades</field>
+        <field name="res_model">rvt.trade</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add a trade</p>
+            <p>A trade is a kind of agency. Each project ticks the trades it needs and names the agency for each.</p>
+        </field>
+    </record>
+
+    <!-- Entity types -->
+    <record id="rvt_entity_type_view_list" model="ir.ui.view">
+        <field name="name">rvt.entity.type.list</field>
+        <field name="model">rvt.entity.type</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="site_kind"/>
+                <field name="trade_ids" widget="many2many_tags"/>
+                <field name="is_extra" optional="show"/>
+                <field name="is_whole_site" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="rvt_entity_type_view_form" model="ir.ui.view">
+        <field name="name">rvt.entity.type.form</field>
+        <field name="model">rvt.entity.type</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. Master bedroom"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="site_kind"/>
+                            <field name="is_extra"/>
+                            <field name="is_whole_site"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <group string="Usual trades">
+                        <field name="trade_ids" widget="many2many_checkboxes" nolabel="1" colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="rvt_entity_type_view_search" model="ir.ui.view">
+        <field name="name">rvt.entity.type.search</field>
+        <field name="model">rvt.entity.type</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="trade_ids"/>
+                <filter name="home" string="Home" domain="[('site_kind', '=', 'home')]"/>
+                <filter name="office" string="Office" domain="[('site_kind', '=', 'office')]"/>
+                <filter name="clinic" string="Clinic / hospital" domain="[('site_kind', '=', 'clinic')]"/>
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_kind" string="Kind of site" context="{'group_by': 'site_kind'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="rvt_entity_type_action" model="ir.actions.act_window">
+        <field name="name">Entity types</field>
+        <field name="res_model">rvt.entity.type</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add an entity type</p>
+            <p>An entity is one room or zone of a site. Its type decides which trades are pre-ticked for it.</p>
+        </field>
+    </record>
+
+    <!-- Site presets -->
+    <record id="rvt_site_preset_view_list" model="ir.ui.view">
+        <field name="name">rvt.site.preset.list</field>
+        <field name="model">rvt.site.preset</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="site_kind"/>
+                <field name="line_ids" widget="many2many_tags"/>
+            </list>
+        </field>
+    </record>
+    <record id="rvt_site_preset_view_form" model="ir.ui.view">
+        <field name="name">rvt.site.preset.form</field>
+        <field name="model">rvt.site.preset</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="e.g. 3 BHK"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="site_kind"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+                    </group>
+                    <group string="Entities created">
+                        <field name="line_ids" nolabel="1" colspan="2">
+                            <list editable="bottom">
+                                <field name="sequence" widget="handle"/>
+                                <field name="entity_type_id"/>
+                                <field name="count"/>
+                                <field name="number_from" optional="show"/>
+                            </list>
+                        </field>
+                    </group>
+                    <div class="text-muted">"Whole site" is added to every project and need not be listed.</div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="rvt_site_preset_action" model="ir.actions.act_window">
+        <field name="name">Site presets</field>
+        <field name="res_model">rvt.site.preset</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add a site preset</p>
+            <p>A preset fills the entity list of a new project in one tap ("3 BHK", "Clinic").</p>
+        </field>
+    </record>
+
+    <!-- Standard drawings -->
+    <record id="rvt_drawing_type_view_list" model="ir.ui.view">
+        <field name="name">rvt.drawing.type.list</field>
+        <field name="model">rvt.drawing.type</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="trade_id" placeholder="General set"/>
+                <field name="for_client"/>
+                <field name="needs_client_approval"/>
+                <field name="due_offset"/>
+                <field name="active" widget="boolean_toggle" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="rvt_drawing_type_view_search" model="ir.ui.view">
+        <field name="name">rvt.drawing.type.search</field>
+        <field name="model">rvt.drawing.type</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" filter_domain="['|', ('name', 'ilike', self), ('code', 'ilike', self)]"/>
+                <field name="trade_id"/>
+                <filter name="general" string="General set" domain="[('trade_id', '=', False)]"/>
+                <filter name="for_client" string="Shown to the client" domain="[('for_client', '=', True)]"/>
+                <separator/>
+                <filter name="inactive" string="Archived" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_trade" string="Trade" context="{'group_by': 'trade_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="rvt_drawing_type_action" model="ir.actions.act_window">
+        <field name="name">Standard drawings</field>
+        <field name="res_model">rvt.drawing.type</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add a standard drawing</p>
+            <p>When a trade is ticked on a project, its drawings here are proposed at onboarding.</p>
+        </field>
+    </record>
+</odoo>

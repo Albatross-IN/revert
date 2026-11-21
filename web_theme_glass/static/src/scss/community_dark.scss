@@ -1,0 +1,164 @@
+// =============================================================================
+// Glass — dark colour scheme for Odoo COMMUNITY
+//
+// Enterprise ships its own dark variables (web_enterprise/**/*.dark.scss) and a switch;
+// Community ships neither: its `web.assets_web_dark` bundle is the light bundle plus three
+// component files, and `ir.http.color_scheme()` always answers "light". This file gives
+// Community the missing half. It is NOT listed in the manifest: `ir.http.init()` registers it
+// as an `ir.asset` record (bundle web.assets_web_dark, before primary_variables.scss) only
+// when web_enterprise is not installed, so an Enterprise database never compiles it and its
+// dark mode stays exactly Odoo's. Every value is `!default`, so even if the file were ever
+// compiled after another scheme definition it would not override anything.
+//
+// The theme's own tokens (tokens.scss) derive everything from `$o-webclient-color-scheme`
+// and the `$o-gray-*` scale, so the clay, shadows and accents switch by themselves; the
+// values below are the Glass dark palette (deep blue-grey clay, lifted accents) plus the
+// Bootstrap component variables Odoo does not derive from the grey scale.
+//
+// No flow-control guard around the declarations: Sass scopes a variable first declared
+// inside an @if block to that block, so a guarded `!default` would never reach the bundle.
+// =============================================================================
+
+$o-webclient-color-scheme: dark !default;
+
+// -- the grey scale, inverted: 100 is the deepest surface, 900 the main text ------------
+$o-white: #0F1116 !default;
+$o-black: #F5F6F8 !default;
+$o-gray-100: #171A21 !default;
+$o-gray-200: #21252E !default;      // the clay (tokens: $nm-surface)
+$o-gray-300: #2C313C !default;
+$o-gray-400: #3D4350 !default;      // hairlines, inset shadows
+$o-gray-500: #6C7484 !default;      // faint text
+$o-gray-600: #9AA2B1 !default;      // muted text
+$o-gray-700: #B9BFCB !default;
+$o-gray-800: #D5D9E1 !default;
+$o-gray-900: #ECEEF2 !default;      // main text
+
+// -- accents, lifted for the dark clay (same pair as tokens.scss) -------------------------
+// Semantic colours are used two ways: as GROUNDS under white text (badges, counters, buttons)
+// and as TEXT on the clay. The base values below are tuned for the first use (white text
+// ≥ 3.8:1, the same class as Odoo's light badges); the `*-text-emphasis` tints further down
+// are the second use (≥ 4.5:1 on the clay) — Bootstrap 5.3 derives `.text-info` & co. from
+// them, and in light mode they are shades, which is why they had to be set for dark.
+$o-brand-primary: #7B8FE0 !default;   // 5.0:1 on the clay (btn-outline-primary, links)
+$o-brand-secondary: #9AA2B1 !default;
+$o-action: #1FB3AB !default;
+$o-success: #22954F !default;
+$o-info: #2F8FCB !default;
+$o-warning: #FFC46A !default;
+$o-danger: #C8433B !default;          // white counters / badges 4.9:1
+$o-main-favorite-color: #FFD24D !default;
+$o-main-link-color: $o-action !default;
+$o-main-code-color: #F07CB4 !default;
+
+// -- Odoo's own contextual TEXT inks (.text-success / info / warning / danger): Odoo fixes them
+//    in the `$o-theme-text-colors` map (light shades for a light ground); light tints here,
+//    each ≥ 4.5:1 on the dark clay
+$o-theme-text-colors: (
+    "success": #7EE2A0,
+    "info": #8FD0FF,
+    "warning": #FFD27A,
+    "danger": #FF9088,
+) !default;
+
+// -- Bootstrap 5.3 "emphasis" (text) and "subtle" (ground) variants of the semantic colours --
+$primary-text-emphasis: #A9B7F0 !default;
+$secondary-text-emphasis: #B9BFCB !default;
+$success-text-emphasis: #7EE2A0 !default;
+$info-text-emphasis: #8FD0FF !default;
+$warning-text-emphasis: #FFD27A !default;
+$danger-text-emphasis: #FF9088 !default;
+$light-text-emphasis: #B9BFCB !default;
+$dark-text-emphasis: #ECEEF2 !default;
+$primary-bg-subtle: mix($o-brand-primary, #21252E, 22%) !default;
+$secondary-bg-subtle: #2C313C !default;
+$success-bg-subtle: mix($o-success, #21252E, 22%) !default;
+$info-bg-subtle: mix($o-info, #21252E, 22%) !default;
+$warning-bg-subtle: mix($o-warning, #21252E, 22%) !default;
+$danger-bg-subtle: mix($o-danger, #21252E, 22%) !default;
+$light-bg-subtle: #2C313C !default;
+$dark-bg-subtle: #171A21 !default;
+$primary-border-subtle: mix($o-brand-primary, #21252E, 45%) !default;
+$secondary-border-subtle: #3D4350 !default;
+$success-border-subtle: mix($o-success, #21252E, 45%) !default;
+$info-border-subtle: mix($o-info, #21252E, 45%) !default;
+$warning-border-subtle: mix($o-warning, #21252E, 45%) !default;
+$danger-border-subtle: mix($o-danger, #21252E, 45%) !default;
+$light-border-subtle: #3D4350 !default;
+$dark-border-subtle: #3D4350 !default;
+
+// -- tags and badges (Odoo 20: o_tag_color_N / o_badge_color_N read three palettes of their
+//    own — border, subtle ground, text — which Odoo defines for its dark scheme in web_enterprise
+//    only; the same dark tints read well on the Glass dark clay)
+$o-colors-border:
+    #b1b1b1, #f8907e, #ee9b56, #d1ad41,
+    #37c2ef, #d396e6, #d1a888, #1ccbc2,
+    #86b1fd, #f28db4, #75c77f, #b0a2fd
+    !default;
+$o-colors-bg-subtle:
+    #2e2e2e, #58271f, #542d06, #392c02,
+    #043e50, #3d2046, #463324, #04413e,
+    #172d53, #4a1b2f, #0d3715, #38305c
+    !default;
+$o-colors-text-emphasis:
+    #d7d7d7, #fec9bf, #fecca6, #eed592,
+    #a0e3fe, #f1c5fe, #ebd2bf, #8eebe3,
+    #c3d9fe, #fec5d9, #b0e8b5, #d6d1fe
+    !default;
+
+// -- page surfaces --------------------------------------------------------------------------
+$o-webclient-background-color: $o-gray-200 !default;
+$o-view-background-color: $o-gray-200 !default;
+$o-component-active-color: $o-black !default;
+$o-component-active-bg: mix($o-action, $o-gray-200, 22%) !default;
+
+// -- Bootstrap components that are not derived from the grey scale -------------------------
+$body-bg: $o-gray-200 !default;
+$body-color: $o-gray-900 !default;
+$headings-color: $o-black !default;
+$border-color: $o-gray-400 !default;
+$dropdown-bg: $o-gray-300 !default;
+$dropdown-border-color: $o-gray-400 !default;
+$dropdown-header-color: $o-gray-600 !default;
+$dropdown-link-color: $o-gray-900 !default;
+$dropdown-link-hover-color: $o-black !default;
+$dropdown-link-hover-bg: $o-gray-400 !default;
+$popover-bg: $o-gray-300 !default;
+$popover-border-color: $o-gray-400 !default;
+$tooltip-bg: $o-gray-800 !default;
+$tooltip-color: $o-gray-100 !default;
+$modal-content-bg: $o-gray-200 !default;
+$card-bg: $o-gray-200 !default;
+$card-cap-bg: rgba($o-black, .04) !default;
+$list-group-bg: $o-gray-200 !default;
+$list-group-hover-bg: $o-gray-300 !default;
+$table-bg: transparent !default;
+$table-border-color: $o-gray-400 !default;
+$table-group-separator-color: $o-gray-400 !default;
+$table-striped-bg-factor: .05 !default;
+$table-hover-bg-factor: .08 !default;
+$table-active-bg-factor: .12 !default;
+$input-bg: $o-gray-200 !default;
+$input-color: $o-gray-900 !default;
+$input-border-color: $o-gray-400 !default;
+$input-focus-bg: $o-gray-200 !default;
+$input-focus-border-color: $o-action !default;
+$input-placeholder-color: $o-gray-500 !default;
+$form-range-track-bg: $o-gray-400 !default;
+$form-switch-color: $o-gray-500 !default;
+$kbd-bg: $o-gray-400 !default;
+$kbd-color: $o-gray-900 !default;
+$kbd-box-shadow: none !default;
+$mark-bg: #5C4B12 !default;
+$mark-color: $o-gray-900 !default;
+$box-shadow-sm: 0 .125rem .25rem rgba(#000, .45) !default;
+$box-shadow: 0 .5rem 1rem rgba(#000, .55) !default;
+$box-shadow-lg: 0 1rem 3rem rgba(#000, .65) !default;
+$box-shadow-inset: inset 0 1px 2px rgba(#000, .45) !default;
+$alert-bg-scale: 65% !default;       // alerts: shade the colour for the ground…
+$alert-border-scale: 45% !default;
+$alert-color-scale: -70% !default;   // …and tint it for the text
+$nav-tabs-link-active-bg: $o-gray-200 !default;
+$nav-tabs-link-active-color: $o-black !default;
+$breadcrumb-bg: transparent !default;
+$link-shade-percentage: 20% !default;

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- docs/masters_draft.md §1. Corrected by Revert in Setup after launch. -->
+    <record id="trade_civ" model="rvt.trade">
+        <field name="name">Civil</field>
+        <field name="short_name">Civ</field>
+        <field name="code">civ</field>
+        <field name="covers">Demolition, masonry, plaster, punning, water proofing</field>
+        <field name="sequence">10</field>
+    </record>
+    <record id="trade_tile" model="rvt.trade">
+        <field name="name">Tiles and flooring</field>
+        <field name="short_name">Tile</field>
+        <field name="code">tile</field>
+        <field name="covers">Floor tiles, wall tiles, grouting, epoxy</field>
+        <field name="sequence">20</field>
+    </record>
+    <record id="trade_stone" model="rvt.trade">
+        <field name="name">Stone (Salat)</field>
+        <field name="short_name">Stone</field>
+        <field name="code">stone</field>
+        <field name="covers">Marble, granite, kitchen platform, cladding</field>
+        <field name="sequence">30</field>
+    </record>
+    <record id="trade_elec" model="rvt.trade">
+        <field name="name">Electrical</field>
+        <field name="short_name">Elec</field>
+        <field name="code">elec</field>
+        <field name="covers">Conduit, wiring, points, switchboards, fixtures, testing</field>
+        <field name="sequence">40</field>
+    </record>
+    <record id="trade_plmb" model="rvt.trade">
+        <field name="name">Plumbing</field>
+        <field name="short_name">Plmb</field>
+        <field name="code">plmb</field>
+        <field name="covers">Concealed lines, drainage, CP fittings, sanitary ware</field>
+        <field name="sequence">50</field>
+    </record>
+    <record id="trade_pop" model="rvt.trade">
+        <field name="name">POP / false ceiling</field>
+        <field name="short_name">POP</field>
+        <field name="code">pop</field>
+        <field name="covers">Gypsum and POP ceilings, cornices, punning on ceilings</field>
+        <field name="sequence">60</field>
+    </record>
+    <record id="trade_carp" model="rvt.trade">
+        <field name="name">Carpenter</field>
+        <field name="short_name">Carp</field>
+        <field name="code">carp</field>
+        <field name="covers">Furniture made on site and off site, storage, doors, panelling</field>
+        <field name="sequence">70</field>
+    </record>
+    <record id="trade_col" model="rvt.trade">
+        <field name="name">Colour / polish</field>
+        <field name="short_name">Col</field>
+        <field name="code">col</field>
+        <field name="covers">Paint, polish, texture, wallpaper</field>
+        <field name="sequence">80</field>
+    </record>
+    <record id="trade_alu" model="rvt.trade">
+        <field name="name">Aluminium and glass</field>
+        <field name="short_name">Glass</field>
+        <field name="code">alu</field>
+        <field name="covers">Windows, glass partitions, mirrors, shower enclosures</field>
+        <field name="sequence">90</field>
+    </record>
+    <record id="trade_fab" model="rvt.trade">
+        <field name="name">Fabrication</field>
+        <field name="short_name">Fab</field>
+        <field name="code">fab</field>
+        <field name="covers">MS and SS work, railings, grills, structures</field>
+        <field name="sequence">100</field>
+    </record>
+    <record id="trade_ac" model="rvt.trade">
+        <field name="name">AC</field>
+        <field name="short_name">AC</field>
+        <field name="code">ac</field>
+        <field name="covers">Air-conditioning piping, units, ducting</field>
+        <field name="sequence">110</field>
+    </record>
+    <record id="trade_av" model="rvt.trade">
+        <field name="name">AV, network and intercom</field>
+        <field name="short_name">AV</field>
+        <field name="code">av</field>
+        <field name="covers">AV system, internet, intercom, CCTV</field>
+        <field name="sequence">120</field>
+    </record>
+    <record id="trade_sf" model="rvt.trade">
+        <field name="name">Supplied furniture</field>
+        <field name="short_name">Furn</field>
+        <field name="code">sf</field>
+        <field name="covers">Bought-in loose furniture, chairs, sofas</field>
+        <field name="sequence">130</field>
+    </record>
+    <record id="trade_soft" model="rvt.trade">
+        <field name="name">Soft furnishing</field>
+        <field name="short_name">Soft</field>
+        <field name="code">soft</field>
+        <field name="covers">Curtains, blinds, upholstery, fabric</field>
+        <field name="sequence">140</field>
+    </record>
+    <record id="trade_land" model="rvt.trade">
+        <field name="name">Landscape</field>
+        <field name="short_name">Land</field>
+        <field name="code">land</field>
+        <field name="covers">Garden, planters, outdoor work</field>
+        <field name="sequence">150</field>
+    </record>
+</odoo>

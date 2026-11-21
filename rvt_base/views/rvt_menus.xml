@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Revert shows only to the people given a Revert role (an administrator included): on the live
+         database the office moves over one person at a time, and the others keep the earlier back office.
+         "-base.group_system" takes away the administrators' access that earlier versions gave: a menu's
+         groups are added to on an update, never replaced, unless one is named with a minus. -->
+    <menuitem id="menu_rvt_root" name="Revert" sequence="1"
+              web_icon="rvt_base,static/description/icon.png"
+              groups="rvt_base.group_rvt_staff,-base.group_system"/>
+
+    <menuitem id="menu_rvt_config" name="Configuration" parent="menu_rvt_root" sequence="90"
+              groups="rvt_base.group_rvt_owner,-base.group_system"/>
+    <menuitem id="menu_rvt_trades" name="Trades" parent="menu_rvt_config" action="rvt_trade_action" sequence="10"/>
+    <menuitem id="menu_rvt_agencies" name="Agencies" parent="menu_rvt_config" action="rvt_agency_action" sequence="15"/>
+    <menuitem id="menu_rvt_entity_types" name="Entity types" parent="menu_rvt_config" action="rvt_entity_type_action" sequence="20"/>
+    <menuitem id="menu_rvt_site_presets" name="Site presets" parent="menu_rvt_config" action="rvt_site_preset_action" sequence="30"/>
+    <menuitem id="menu_rvt_drawing_types" name="Standard drawings" parent="menu_rvt_config" action="rvt_drawing_type_action" sequence="40"/>
+    <menuitem id="menu_rvt_settings" name="Settings" parent="menu_rvt_config" action="rvt_settings_action" sequence="90"
+              groups="base.group_system"/>
+</odoo>

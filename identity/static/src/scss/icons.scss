@@ -1,0 +1,10 @@
+// Identity — `.o_identity_icon`: an app icon rendered as an element instead of an <img>.
+// Default look = the tile file, exactly like the image it replaces. A theme may override this
+// and draw the tile + the glyph (`--identity-glyph` as a mask) in its own colours.
+.o_identity_icon {
+    display: block;
+    background: var(--identity-tile) center / contain no-repeat;
+}
+.o_menu_brand_icon.o_identity_icon {
+    aspect-ratio: 1 / 1;
+}

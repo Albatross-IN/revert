@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="web_glass_workspace.PrefsPanel">
+        <div t-if="this.state.open" class="o_glass_prefs_scrim" t-on-click="this.close"/>
+        <aside class="o_glass_prefs" t-att-class="{ o_open: this.state.open }">
+            <div class="o_glass_prefs_head">
+                <i class="oi" data-icon="tune"/>
+                <span class="flex-grow-1">Theme preferences</span>
+                <button class="btn btn-link o_glass_prefs_close" aria-label="Close" t-on-click="this.close"><i class="oi" data-icon="close"/></button>
+            </div>
+
+            <div class="o_glass_prefs_body">
+                <!-- LEFT PANE -->
+                <div class="o_glass_sec">Left pane (add-on)</div>
+                <p class="o_glass_hint">The stock Odoo top bar always stays. The ☰ button at its left shows or hides the pane; choose what happens by default.</p>
+                <div class="o_glass_opts">
+                    <button class="o_glass_opt" t-att-class="{ o_on: this.prefs.nav === 'top' }" t-on-click="() => this.setNav('top')">
+                        <span class="o_glass_mini"><i class="m_top"/></span>Hidden
+                    </button>
+                    <button class="o_glass_opt" t-att-class="{ o_on: this.prefs.nav === 'side' }" t-on-click="() => this.setNav('side')">
+                        <span class="o_glass_mini"><i class="m_top"/><i class="m_side"/></span>Open, full
+                    </button>
+                    <button class="o_glass_opt" t-att-class="{ o_on: this.prefs.nav === 'mini' }" t-on-click="() => this.setNav('mini')">
+                        <span class="o_glass_mini"><i class="m_top"/><i class="m_rail"/></span>Open, icons
+                    </button>
+                </div>
+                <div class="o_glass_row">
+                    <div class="o_glass_lbl"><b>Keep pane expanded</b><small>Off: pane shrinks to icons and expands on hover</small></div>
+                    <button class="o_glass_switch" t-att-class="{ o_on: this.keepExpanded }" t-att-disabled="this.prefs.nav === 'top'" t-on-click="this.toggleKeepExpanded"/>
+                </div>
+
+                <!-- SPLIT FORM VIEW -->
+                <div class="o_glass_sec">Split Form View</div>
+                <div class="o_glass_row">
+                    <div class="o_glass_lbl"><b>Split Form View</b><small>On: clicking a record in a list or kanban opens its form beside the list. Off: stock Odoo behaviour.</small></div>
+                    <button class="o_glass_switch" t-att-class="{ o_on: this.prefs.split }" t-on-click="this.toggleSplit"/>
+                </div>
+                <div class="o_glass_opts o_glass_opts_2" t-att-class="{ o_disabled: !this.prefs.split }">
+                    <button class="o_glass_opt" t-att-class="{ o_on: this.prefs.split_side === 'right' }" t-on-click="() => this.setSplitSide('right')">
+                        <span class="o_glass_mini o_split"><i class="a"/><i class="b"/></span>Form on the right
+                    </button>
+                    <button class="o_glass_opt" t-att-class="{ o_on: this.prefs.split_side === 'bottom' }" t-on-click="() => this.setSplitSide('bottom')">
+                        <span class="o_glass_mini o_split o_col"><i class="a"/><i class="b"/></span>Form below
+                    </button>
+                </div>
+                <div class="o_glass_row" t-att-class="{ o_disabled: !this.prefs.split }">
+                    <div class="o_glass_lbl"><b>Chatter in the split view</b><small>Floating: the chatter pops out into a movable, resizable window that follows the selected record. Docked: it stays below the form in the panel.</small></div>
+                </div>
+                <div class="o_glass_opts o_glass_opts_2" t-att-class="{ o_disabled: !this.prefs.split }">
+                    <button class="o_glass_opt" t-att-class="{ o_on: this.prefs.split_chatter !== 'docked' }" t-on-click="() => this.setSplitChatter('float')">
+                        <i class="oi me-2" data-icon="forum"/>Floats automatically
+                    </button>
+                    <button class="o_glass_opt" t-att-class="{ o_on: this.prefs.split_chatter === 'docked' }" t-on-click="() => this.setSplitChatter('docked')">
+                        <i class="oi me-2" data-icon="anchor"/>Docked below the form
+                    </button>
+                </div>
+
+                <!-- CHATTER -->
+                <div class="o_glass_sec">Chatter</div>
+                <div class="o_glass_opts o_glass_opts_2">
+                    <button class="o_glass_opt" t-att-class="{ o_on: this.prefs.chatter === 'right' }" t-on-click="() => this.setChatter('right')">
+                        <span class="o_glass_mini o_split"><i class="a"/><i class="b"/></span>Right of form
+                    </button>
+                    <button class="o_glass_opt" t-att-class="{ o_on: this.prefs.chatter === 'bottom' }" t-on-click="() => this.setChatter('bottom')">
+                        <span class="o_glass_mini o_split o_col"><i class="a"/><i class="b"/></span>Below form
+                    </button>
+                </div>
+
+                <!-- PHONE -->
+                <div class="o_glass_sec">Phone</div>
+                <div class="o_glass_row">
+                    <div class="o_glass_lbl"><b>Tab bar on a record</b><small>Apps · Menu · Activity · Account while a record's form is open.</small></div>
+                </div>
+                <div class="o_glass_opts o_glass_opts_2">
+                    <button class="o_glass_opt" t-att-class="{ o_on: this.prefs.m_tabbar === 'hide' }" t-on-click="() => this.setTabbar('hide')">
+                        <i class="oi me-2" data-icon="height"/>Hidden while a record is open<small class="d-block text-muted">The form gets the whole screen; Back returns to the list</small>
+                    </button>
+                    <button class="o_glass_opt" t-att-class="{ o_on: this.prefs.m_tabbar !== 'hide' }" t-on-click="() => this.setTabbar('keep')">
+                        <i class="oi me-2" data-icon="grid_view"/>Always there<small class="d-block text-muted">Switch apps from any record</small>
+                    </button>
+                </div>
+
+                <!-- APPEARANCE -->
+                <div class="o_glass_sec">Appearance</div>
+                <div class="o_glass_row">
+                    <div class="o_glass_lbl"><b>Mode</b></div>
+                    <div class="o_glass_seg">
+                        <button t-att-class="{ o_on: this.mode === 'light' }" t-on-click="() => this.setMode('light')">Light</button>
+                        <button t-att-class="{ o_on: this.mode === 'system' }" t-on-click="() => this.setMode('system')">System</button>
+                        <button t-att-class="{ o_on: this.mode === 'dark' }" t-on-click="() => this.setMode('dark')">Dark</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </t>
+
+</templates>

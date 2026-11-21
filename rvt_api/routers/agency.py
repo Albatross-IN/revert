@@ -1,0 +1,68 @@
+"""The agency app: its points, the drawings released to it, its lines on each site. It reads, and it
+does three things: opens a drawing, asks a question on it, and marks its own point done with a photo."""
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Header
+from pydantic import BaseModel
+
+from ..deps import Caller, agency
+from ..errors import not_found
+from ..snapshots import snapshot_response
+
+router = APIRouter(prefix="/agency", tags=["agency"])
+
+
+class Ask(BaseModel):
+    text: str
+    media_id: int | None = None
+    photo: str | None = None
+
+
+class Done(BaseModel):
+    note: str = ""
+    media_id: int | None = None
+    photo: str | None = None
+
+
+def _drawing(who, drawing_id):
+    drawing = who.env["rvt.drawing"].browse(drawing_id).exists()
+    if not drawing:
+        raise not_found()
+    drawing.check_access("read")
+    return drawing
+
+
+@router.get("/home", summary="Everything the agency screens read")
+def home(who: Annotated[Caller, Depends(agency)]):
+    return who.env["rvt.api"].agency_home()
+
+
+@router.get("/snapshot", summary="The agency's slice in the shape of the app's screens")
+def snapshot(who: Annotated[Caller, Depends(agency)], if_none_match: Annotated[str | None, Header()] = None,
+             accept_encoding: Annotated[str | None, Header()] = None):
+    data = who.env["rvt.api"].agency_snapshot()
+    data["me_info"] = who.user.rvt_api_me()
+    return snapshot_response(data, if_none_match, accept_encoding)
+
+
+@router.post("/drawings/{drawing_id}/open", summary="The agency opened the drawing")
+def open_drawing(drawing_id: int, who: Annotated[Caller, Depends(agency)]):
+    drawing = _drawing(who, drawing_id)
+    first = drawing.rvt_open(who.partner)
+    return {"first": bool(first), "rev_id": drawing.sudo().released_revision_id.id}
+
+
+@router.post("/drawings/{drawing_id}/questions", summary="Ask a question on a drawing")
+def ask(drawing_id: int, data: Ask, who: Annotated[Caller, Depends(agency)]):
+    drawing = _drawing(who, drawing_id)
+    photo = who.env["rvt.api.media"]._take(who.user, data.media_id) if data.media_id else data.photo
+    return {"id": drawing.rvt_ask(who.partner, data.text, photo=photo, via="app", person_name=who.partner.name)}
+
+
+@router.post("/points/{point_id}/done", summary="The agency marks its own point done, with a photo of the finished work")
+def point_done(point_id: int, data: Done, who: Annotated[Caller, Depends(agency)]):
+    point = who.env["rvt.point"].browse(point_id).exists()
+    if not point:
+        raise not_found()
+    photo = who.env["rvt.api.media"]._take(who.user, data.media_id) if data.media_id else data.photo
+    return {"ok": point.rvt_agency_done(data.note, photo, who.partner)}

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Put the theme scope class on <body>. The CSS is always in the bundle
+         (compiled once, cached); the class decides whether it applies.
+         Odoo 20 passes the body class as a formatted `body_classname.f` on the
+         `web.layout` call (19 used a `t-set`). -->
+    <template id="webclient_bootstrap_glass" inherit_id="web.webclient_bootstrap" name="Glass body class">
+        <xpath expr="//t[@t-call='web.layout']" position="attributes">
+            <attribute name="body_classname.f">o_web_client{{ ' o_theme_glass' if glass_theme_enabled else '' }}{{ ' o_glass_community' if glass_community else '' }}</attribute>
+        </xpath>
+    </template>
+</odoo>

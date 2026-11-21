@@ -1,0 +1,197 @@
+// =============================================================================
+// Glass — design tokens
+//
+// Frosted glass over a soft colour field. A pane is translucent white (or, in dark mode,
+// translucent light on charcoal) with a bright hairline edge and a blur of whatever lies
+// behind it; nested panes get whiter; lanes are the faintest layer. Depth comes from blur and
+// the edge, not from cast neumorphic shadows.
+//
+// The token NAMES keep the `--nm-*` prefix of the soft-UI family this theme descends from, so
+// every component rule reads the same across the family; only the VALUES are glass. Glass-only
+// tokens are `--gl-*`. Everything is derived from Odoo's own SCSS variables where a colour is
+// Odoo's (inks, states, accents); the colour field itself is the one thing this theme adds.
+// Because this file is part of `web.assets_backend`, and `web.assets_web_dark` includes that
+// bundle after the dark variables are set, the SAME file yields the light and dark tokens.
+// =============================================================================
+
+$-nm-dark: $o-webclient-color-scheme == dark;
+$-gl-ink: #1F2937;                                            // the ink every light cast is mixed from
+
+// The colour field (the ground) ----------------------------------------------
+// A base tone plus three soft blobs — indigo (the accent's hue), sky, violet — big and faint,
+// so a pane always has something to blur. Fixed to the viewport: it never scrolls.
+$gl-ground: if($-nm-dark, #12161E, #EDF0F6) !default;
+$gl-blob-a: if($-nm-dark, rgba(#6F84D9, .32), rgba(#3F54AD, .58)) !default;
+$gl-blob-b: if($-nm-dark, rgba(#7DA8E8, .20), rgba(#7DA8E8, .70)) !default;
+$gl-blob-c: if($-nm-dark, rgba(#B4A4FF, .24), rgba(#B4A4FF, .62)) !default;
+
+// Glass ----------------------------------------------------------------------
+$nm-surface:      if($-nm-dark, rgba(#fff, .08), rgba(#fff, .52)) !default;      // a pane, a key, a field: one translucent white
+$nm-surface-high: if($-nm-dark, rgba(#1A1F29, .90), rgba(#fff, .86)) !default;  // floating objects: nearly opaque so text stays legible over anything
+$gl-well:         if($-nm-dark, rgba(#fff, .035), rgba(#fff, .22)) !default;     // a lane: the faintest layer
+$gl-edge:         if($-nm-dark, rgba(#fff, .10), rgba(#fff, .78)) !default;      // the bright hairline that defines a pane's edge
+$gl-edge-top:     if($-nm-dark, rgba(#fff, .14), rgba(#fff, .95)) !default;      // the 1 px light along a pane's top edge
+$gl-hair:         if($-nm-dark, rgba(#fff, .10), rgba($-gl-ink, .10)) !default;  // a seated field's edge, dividers
+$gl-cast:         if($-nm-dark, rgba(#000, .45), rgba($-gl-ink, .10)) !default;  // a pane's soft cast
+$gl-cast-strong:  if($-nm-dark, rgba(#000, .60), rgba($-gl-ink, .18)) !default;  // a floating object's cast
+
+// The soft-UI family composes a few shadows by hand from these four ingredients (tags,
+// avatars, facets, small keys): in glass the dark side is a faint cast and the light side is
+// nothing, so those recipes degrade to one soft cast.
+$nm-shadow-dark:  $gl-cast !default;
+$nm-shadow-light: transparent !default;
+$nm-inset-dark:   if($-nm-dark, rgba(#000, .35), rgba($-gl-ink, .06)) !default;
+$nm-inset-light:  transparent !default;
+
+// Accent ---------------------------------------------------------------------
+// ONE interactive colour: indigo for everything clickable and every "you are here" state —
+// 5.5:1 as text on the light panes, 6.8:1 with white on it. Dark mode lifts it.
+$nm-brand:  if($-nm-dark, #6F84D9, #3F54AD) !default;
+$nm-action: $nm-brand !default;
+
+// A Material Symbols glyph drawn by CSS (a ::before / ::after). Odoo 20 dropped FontAwesome for
+// Material Symbols ligatures (`<i class="oi" data-icon="check"/>`, web/webclient/icons.scss): the
+// glyph is the icon NAME typed in that font. Mirrors Odoo's material-icon-base.
+@mixin glass-glyph($name, $size: 1em) {
+    content: "#{$name}";
+    display: inline-block;
+    font-family: var(--icon-font-family, 'Material Symbols Outlined');
+    font-style: normal;
+    font-weight: 400;
+    font-size: $size;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    word-wrap: normal;
+    word-break: keep-all;
+    direction: ltr;
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
+}
+
+// The blur behind a pane. Applied deliberately, never through the generic raise mixin: every
+// blurred element is its own compositing layer, so a list of 80 rows or a lane of 40 cards
+// must NOT blur — only the containers do (navbar, form tiles, lanes, the chatter, overlays).
+@mixin gl-blur($amount: var(--gl-blur)) {
+    -webkit-backdrop-filter: blur($amount) saturate(1.6);
+    backdrop-filter: blur($amount) saturate(1.6);
+}
+
+.o_theme_glass {
+    // --- palette (exposed as CSS custom properties so rules stay cheap) ------
+    --gl-ground: #{$gl-ground};
+    --gl-field: radial-gradient(1100px 760px at 8% -8%, #{$gl-blob-a}, transparent 64%),
+                radial-gradient(1000px 640px at 100% 22%, #{$gl-blob-b}, transparent 62%),
+                radial-gradient(900px 700px at 55% 112%, #{$gl-blob-c}, transparent 64%);
+    --gl-well: #{$gl-well};
+    --gl-edge: #{$gl-edge};
+    --gl-edge-top: #{$gl-edge-top};
+    --gl-hair: #{$gl-hair};
+    --gl-cast: #{$gl-cast};
+    --gl-cast-strong: #{$gl-cast-strong};
+    --gl-blur: 18px;
+    --gl-blur-sm: 10px;
+    --nm-surface: #{$nm-surface};
+    --nm-surface-high: #{$nm-surface-high};
+    --nm-shadow-dark: #{$nm-shadow-dark};
+    --nm-shadow-light: #{$nm-shadow-light};
+    --nm-inset-dark: #{$nm-inset-dark};
+    --nm-inset-light: #{$nm-inset-light};
+    --nm-hairline: var(--gl-hair);
+    // Ink scale: labels and secondary values must pass AA on the panes themselves. On a light pane
+    // over the field: text ≈ 12:1, muted ≈ 6:1, faint ≈ 4.6:1.
+    --nm-text: #{if($-nm-dark, $o-gray-900, #1F2937)};
+    --nm-text-muted: #{if($-nm-dark, $o-gray-600, #4B5563)};
+    --nm-text-faint: #{if($-nm-dark, $o-gray-500, #5C6670)};
+    --nm-brand: #{$nm-brand};
+    --nm-brand-rgb: #{red($nm-brand)}, #{green($nm-brand)}, #{blue($nm-brand)};
+    --nm-brand-hover: #{if($-nm-dark, lighten($nm-brand, 6%), darken($nm-brand, 8%))};
+    --nm-brand-contrast: #{color-contrast($nm-brand)};
+    --nm-brand-shadow: #{rgba($nm-brand, if($-nm-dark, .5, .35))};
+    --nm-action: #{$nm-action};
+    --nm-action-hover: #{if($-nm-dark, lighten($nm-action, 6%), darken($nm-action, 8%))};
+    --nm-action-contrast: #{color-contrast($nm-action)};
+    --nm-action-shadow: #{rgba($nm-action, .35)};
+    --nm-active-tint: #{if($-nm-dark, rgba($nm-brand, .18), rgba($nm-brand, .10))};
+    --nm-success: #{$o-success};
+    --nm-info: #{$o-info};
+    --nm-warning: #{$o-warning};
+    --nm-danger: #{$o-danger};
+    --nm-favourite: #{$o-main-favorite-color};
+    --nm-dot: transparent;
+    --nm-glow-brand: transparent;
+    --nm-glow-action: transparent;
+
+    // --- geometry -------------------------------------------------------------
+    --nm-radius-sm: 8px;
+    --nm-radius: 12px;
+    --nm-radius-lg: 18px;
+    --nm-radius-pill: 999px;
+    --nm-d-sm: 2px;  --nm-blur-sm: 6px;
+    --nm-d: 6px;     --nm-blur: 16px;
+    --nm-d-lg: 10px; --nm-blur-lg: 30px;
+    --nm-ease-enter: #{$o-easing-enter};
+    --nm-ease-exit: #{$o-easing-exit};
+
+    // --- composed shadows (reused everywhere; one definition each) ----------
+    // A raise = a soft cast below + the bright edge ring + a 1 px light on top. Everything that
+    // reads `--nm-raised*` gets the glass edge for free; the fill comes from `--nm-surface`.
+    --nm-raised-sm: 0 2px 6px var(--gl-cast), inset 0 0 0 1px var(--gl-edge);
+    --nm-raised:    0 10px 30px var(--gl-cast), inset 0 0 0 1px var(--gl-edge), inset 0 1px 0 var(--gl-edge-top);
+    --nm-raised-lg: 0 18px 44px var(--gl-cast-strong), inset 0 0 0 1px var(--gl-edge), inset 0 1px 0 var(--gl-edge-top);
+    --nm-floating:  0 18px 48px var(--gl-cast-strong), inset 0 0 0 1px var(--gl-edge), inset 0 1px 0 var(--gl-edge-top);
+    --nm-modal:     0 28px 72px var(--gl-cast-strong), inset 0 0 0 1px var(--gl-edge), inset 0 1px 0 var(--gl-edge-top);
+    // A seat = a hairline ring + a 1 px inner shade at the top (the field is a clearer glass)
+    --nm-inset-sm:  inset 0 1px 2px var(--nm-inset-dark), inset 0 0 0 1px var(--gl-hair);
+    --nm-inset:     inset 0 1px 3px var(--nm-inset-dark), inset 0 0 0 1px var(--gl-hair);
+    // A well = the faintest ring, no shade (its fill is `--gl-well`)
+    --nm-well:      inset 0 0 0 1px #{if($-nm-dark, rgba(#fff, .06), rgba(#fff, .45))};
+    --nm-focus:     0 0 0 2px var(--nm-action);
+
+    // --- backlight (see backlight.scss) --------------------------------------
+    // An app's key stays glass; the map in backlight.scss stays for `--nm-app` consumers but
+    // paints nothing (one ink at rest, the accent on hover / active).
+    --nm-bl-legend: 0%;
+    --nm-bl-glow-a: 0%;   --nm-bl-glow-b: 0%;
+    --nm-bl-key: 0%;
+    --nm-bl-ring: 0%;
+    --nm-bl-card: 0%;
+
+    // --- relief: off (a soft-UI family motif; glass has no clay to emboss) --------------------
+    --nm-relief-light: transparent;
+    --nm-relief-dark: transparent;
+    --nm-relief-opacity: 0;
+    --nm-relief: none;
+    --nm-relief-size: auto;
+    --nm-relief-pos: 0 0;
+    --nm-relief-repeat: no-repeat;
+    // --- app icons ----------------------------------------------------------------------------
+    // identity's 'symbol' set is ONE file per app, drawn in light tokens (muted-ink glyph, light
+    // tile, hairline), so light mode at rest needs no filter. Hover and dark mode are filter chains
+    // (solved against the soft-UI family's colours; the glyph inks are the same here).
+    --nm-icon-rest: #{if($-nm-dark, unquote("invert(1) saturate(1.06) hue-rotate(180deg) brightness(1.26) contrast(.67)"), unquote("none"))};
+    --nm-icon-hover: #{if($-nm-dark, unquote("invert(1) sepia(1) saturate(43) hue-rotate(208deg) brightness(1.06) contrast(.64)"), unquote("sepia(.73) saturate(6.11) hue-rotate(181deg) brightness(.93) contrast(1.06)"))};
+    // --- scrollbars: thin, no track, the thumb shows only while the scroll area is hovered
+    --nm-scroll-thumb: #{if($-nm-dark, rgba(#fff, .35), rgba($-gl-ink, .35))};
+    --glass-gutter: 16px;                           // shared left/right edge of control panel, status bar, sheet, list slab
+    --glass-font: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";   // typography.scss
+
+    // --- elevation budget -----------------------------------------------------------------------
+    // Three levels, applied everywhere; a rule that raises something must be able to say which.
+    //   0 ground   the colour field: control panel, search panel, settings rail, status bar —
+    //              boundaries are hairlines or seated wells, never a pane
+    //   1 pane     the navbar, form tiles, the list rows, kanban cards, chatter messages, the
+    //              ONE primary action — `--nm-raised`; blur only on the containers
+    //   2 overlay  dropdowns, popovers, dialogs, sheets, floating chatter — `--nm-floating` / `--nm-modal`, blurred
+    // Inside a pane nothing is raised at rest: inputs are seated, secondary buttons ghost.
+
+    // Re-point Bootstrap 5.3 component variables (Odoo uses an empty prefix).
+    // These are read at runtime by BS components we don't restyle explicitly.
+    --border-radius: var(--nm-radius-sm);
+    --border-radius-sm: var(--nm-radius-sm);
+    --border-radius-lg: var(--nm-radius);
+    --border-radius-xl: var(--nm-radius-lg);
+    --border-color: var(--nm-hairline);
+    --body-bg: var(--gl-ground);
+}

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="open_whatsapp_connector.QrCodeWidget">
+        <div class="o_wa_qr_code_widget text-center">
+            <t t-if="this.showQr">
+                <div class="mb-2">
+                    <img t-att-src="this.qrDataUrl"
+                         class="img-fluid border rounded"
+                         style="max-width: 300px; max-height: 300px;"
+                         alt="WhatsApp QR Code"/>
+                </div>
+                <p class="text-muted small">
+                    Scan with WhatsApp → Settings → Linked Devices → Link a Device
+                </p>
+                <t t-if="this.state.polling">
+                    <span class="badge text-bg-info">
+                        <i class="oi oi-spin me-1" data-icon="autorenew"/>Auto-refreshing...
+                    </span>
+                </t>
+            </t>
+            <t t-if="this.showConnected">
+                <div class="alert alert-success">
+                    <i class="oi me-1" data-icon="check_circle"/>WhatsApp Connected
+                </div>
+            </t>
+            <t t-if="this.showConnecting">
+                <div class="alert alert-info">
+                    <i class="oi oi-spin me-1" data-icon="autorenew"/>Connecting...
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

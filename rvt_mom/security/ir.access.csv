@@ -1,0 +1,9 @@
+id,name,model_id,group_id/id,operation,domain
+access_rvt_visit_staff,rvt.visit staff,rvt.visit,rvt_base.group_rvt_staff,crud,
+access_rvt_visit_system,rvt.visit system,rvt.visit,base.group_system,crud,
+rvt_visit_project_rule,rvt.visit: staff only on a project they may see,rvt.visit,,crud,"[(1, '=', 1)] if not user.has_group('rvt_base.group_rvt_staff') else [('project_id', 'access', 'read')]"
+access_rvt_point_staff,rvt.point staff,rvt.point,rvt_base.group_rvt_staff,crud,
+access_rvt_point_system,rvt.point system,rvt.point,base.group_system,crud,
+rvt_point_project_rule,rvt.point: staff only on a project they may see,rvt.point,,crud,"[(1, '=', 1)] if not user.has_group('rvt_base.group_rvt_staff') else [('project_id', 'access', 'read')]"
+access_rvt_point_agency,rvt.point agency: its own points,rvt.point,rvt_base.group_rvt_agency,r,"[('for_kind', '=', 'agency'), ('partner_id', '=', user.partner_id.commercial_partner_id.id)]"
+access_rvt_point_client,rvt.point client: its own items once the office confirmed them,rvt.point,rvt_base.group_rvt_client,r,"[('for_kind', '=', 'client'), ('client_confirmed', '=', True), ('project_id.rvt_client_contact_ids', 'in', [user.partner_id.id])]"

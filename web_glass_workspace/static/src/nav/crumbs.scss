@@ -1,0 +1,35 @@
+// Navigation path — Back key · page button (drops the trail down) — desktop and tablets (crumbs.xml)
+.o_glass_crumbs {
+    gap: 8px;
+    .o_glass_crumb_back {
+        display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+        width: 36px; height: 36px; padding: 0; border: 0; border-radius: var(--nm-radius-sm);
+        background: var(--nm-surface); color: var(--nm-action); box-shadow: var(--nm-raised-sm);
+        &:hover { color: var(--nm-action-hover); } &:active { box-shadow: var(--nm-inset-sm); }
+    }
+    .o_glass_crumb_btn {
+        display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-width: 0; max-width: 48ch;
+        height: 40px; padding: 0 12px; border: 0; border-radius: var(--nm-radius-sm);
+        background: var(--nm-surface); color: var(--nm-text); box-shadow: var(--nm-raised-sm); text-align: left; line-height: 1.15;
+        &:active { box-shadow: var(--nm-inset-sm); }
+        &.o_static { box-shadow: none; background: transparent; padding-left: 4px; }
+        .o_glass_crumb_name {
+            display: flex; align-items: center; gap: 6px; max-width: 100%; font-size: 15px; font-weight: 600; color: var(--nm-text);
+            > span { max-width: 44ch; } > i { color: var(--nm-action); font-size: 14px; }
+        }
+        .o_glass_crumb_sub { display: block; max-width: 100%; font-size: 11px; color: var(--nm-text-muted); line-height: 1.2; }
+    }
+    // the status indicator (cloud save / discard) keeps its place after the button on desktop
+    + .o_form_status_indicator { margin-left: 4px; }
+}
+.o-dropdown--menu.o_glass_crumb_menu {
+    min-width: 260px; max-width: 92vw; padding: 6px;
+    .o_glass_crumb_head { padding: 6px 12px 4px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--nm-text-faint); }
+    .o_glass_crumb_item {
+        display: flex; align-items: center; gap: 10px; min-height: 42px; border-radius: var(--nm-radius-sm);
+        padding-left: calc(12px + var(--lvl, 0) * 16px);
+        > i:first-child { color: var(--nm-action); }
+        > span { flex: 1 1 auto; min-width: 0; }
+        &.o_current { background: color-mix(in srgb, var(--nm-brand) 12%, transparent); font-weight: 600; .oi[data-icon="check"] { color: var(--nm-brand); } }
+    }
+}

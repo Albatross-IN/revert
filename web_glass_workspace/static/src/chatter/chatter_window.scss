@@ -1,0 +1,171 @@
+// =============================================================================
+// Glass Workspace — floating chatter (window, buttons, split-panel bits)
+// Colours come from the Glass `--nm-*` tokens; the window hosts Odoo's own Chatter untouched.
+// =============================================================================
+
+$glass-chat-tabbar: 58px;
+
+// ---- the window -------------------------------------------------------------
+.o_glass_chatter_win {
+    position: fixed;
+    z-index: 1045;                       // above the split panel, below dialogs (1050+)
+    display: flex;
+    flex-direction: column;
+    background: var(--nm-surface, #fff);
+    border-radius: var(--nm-radius-lg, 18px);
+    box-shadow: var(--nm-modal, 0 12px 40px rgba(0, 0, 0, .25)), 0 0 0 1px var(--nm-hairline, rgba(0, 0, 0, .06));
+    overflow: hidden;
+    animation: o_glass_chatter_in .2s var(--nm-ease-enter, ease-out);
+    &.o_dragging { box-shadow: var(--nm-modal, 0 12px 40px rgba(0, 0, 0, .25)), 0 0 0 2px var(--nm-action, #0e8c8c); animation: none; }
+    &.o_desktop { min-width: 340px; min-height: 260px; }
+    &.o_phone { min-width: 220px; min-height: 190px; }
+    &.o_full { border-radius: var(--nm-radius-lg, 18px) var(--nm-radius-lg, 18px) 0 0; }
+    &.o_minimized { min-height: 0; border-radius: var(--nm-radius-pill, 999px); .o_glass_chatter_hd { padding: 6px 8px 6px 12px; } }
+}
+@keyframes o_glass_chatter_in { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+
+.o_glass_chatter_hd {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 8px 8px 12px;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    box-shadow: 0 10px 12px -12px var(--nm-shadow-dark, rgba(0, 0, 0, .3));
+    position: relative;
+    z-index: 1;
+    &:active { cursor: grabbing; }
+    .o_glass_chatter_grip { display: flex; flex-direction: column; gap: 3px; padding: 0 2px; color: var(--nm-text-faint, #adb5bd); i { display: block; width: 14px; height: 2px; border-radius: 2px; background: currentColor; opacity: .7; } }
+    .o_glass_chatter_ic { width: 30px; height: 30px; border-radius: var(--nm-radius-sm, 8px); display: grid; place-items: center; color: var(--nm-action, #0e8c8c); box-shadow: var(--nm-inset-sm); flex: none; }
+    .o_glass_chatter_ttl {
+        flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.15;
+        small { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--nm-text-muted, #6c757d); font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--nm-text, #212529); }
+    }
+    .o_glass_chatter_live { width: 7px; height: 7px; border-radius: 50%; background: var(--nm-action, #0e8c8c); box-shadow: 0 0 0 3px color-mix(in srgb, var(--nm-action, #0e8c8c) 22%, transparent); }
+    .o_glass_chatter_pin { color: var(--nm-warning, #ffac00); text-transform: none; letter-spacing: 0; }
+    .btn-link {
+        width: 30px; height: 30px; padding: 0; flex: none; border-radius: var(--nm-radius-sm, 8px); color: var(--nm-text-muted, #6c757d);
+        box-shadow: var(--nm-raised-sm); display: grid; place-items: center;
+        &:hover { color: var(--nm-action, #0e8c8c); }
+        &:active, &.o_on { box-shadow: var(--nm-inset-sm); color: var(--nm-action, #0e8c8c); }
+    }
+}
+
+.o_glass_chatter_body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    // Odoo's chatter scrolls inside itself (isChatterAside); its sticky top bar keeps
+    // "Send message / Log note / Activities" — and the composer that opens under them —
+    // always in view, however long the thread is.
+    > .o-mail-Chatter { flex: 1 1 auto; min-height: 0; }
+    .o-mail-Chatter-top { background: var(--nm-surface, #fff); }
+    // in a small window the top bar wraps instead of scrolling sideways
+    .o-mail-Chatter-topbar { flex-wrap: wrap; row-gap: 2px; overflow-x: hidden !important; }
+}
+
+// resize handles
+.o_glass_chatter_rs {
+    position: absolute; z-index: 3; touch-action: none;
+    &.n  { top: 0; left: 14px; right: 14px; height: 7px; cursor: ns-resize; }
+    &.s  { bottom: 0; left: 14px; right: 14px; height: 7px; cursor: ns-resize; }
+    &.e  { right: 0; top: 14px; bottom: 14px; width: 7px; cursor: ew-resize; }
+    &.w  { left: 0; top: 14px; bottom: 14px; width: 7px; cursor: ew-resize; }
+    &.ne { top: 0; right: 0; width: 16px; height: 16px; cursor: nesw-resize; }
+    &.nw { top: 0; left: 0; width: 16px; height: 16px; cursor: nwse-resize; }
+    &.se { bottom: 0; right: 0; width: 18px; height: 18px; cursor: nwse-resize;
+        &::after { content: ""; position: absolute; right: 5px; bottom: 5px; width: 8px; height: 8px; border-right: 2px solid var(--nm-text-faint, #adb5bd); border-bottom: 2px solid var(--nm-text-faint, #adb5bd); border-radius: 0 0 2px 0; opacity: .85; } }
+    &.sw { bottom: 0; left: 0; width: 16px; height: 16px; cursor: nesw-resize; }
+    .o_phone & { &.e, &.w { width: 12px; } &.n, &.s { height: 12px; } &.ne, &.nw, &.se, &.sw { width: 26px; height: 26px; } }
+}
+
+// ---- phone bubble ---------------------------------------------------------------
+.o_glass_chatter_bubble {
+    position: fixed; z-index: 1044; width: 56px; height: 56px; border-radius: 50%; border: 0; padding: 0;
+    background: var(--nm-surface, #fff); box-shadow: var(--nm-raised, 0 6px 16px rgba(0, 0, 0, .2)); color: var(--nm-action, #0e8c8c);
+    display: grid; place-items: center; font-size: 22px; touch-action: none; cursor: grab;
+    .o_glass_chatter_bubble_lb { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: var(--nm-text-muted, #6c757d); white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+}
+
+// ---- split panel: docked chatter hidden while it floats, placeholder strip ----------
+.o_glass_split_panel.o_glass_chatter_floating .o_glass_split_body .o-mail-Form-chatter { display: none !important; }
+.o_glass_split_hd .o_glass_split_chatbtn {
+    display: inline-flex !important; align-items: center; width: auto !important; padding: 0 10px !important; gap: 6px;
+    font-size: 12.5px; font-weight: 600; white-space: nowrap;
+    &.o_on { color: var(--nm-action); box-shadow: var(--nm-inset-sm); }
+}
+.o_glass_split_chatph {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 12px; margin: 0 12px 12px; padding: 10px 14px;
+    border-radius: var(--nm-radius); box-shadow: var(--nm-inset-sm); color: var(--nm-text-muted);
+    .o_glass_split_chatph_ic { width: 32px; height: 32px; border-radius: var(--nm-radius-sm); display: grid; place-items: center; color: var(--nm-action); box-shadow: var(--nm-raised-sm); flex: none; }
+    .o_glass_split_chatph_txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.25; b { color: var(--nm-text); } small { font-size: 12px; } }
+    .btn-link { width: auto !important; padding: 0 10px !important; height: 30px; gap: 6px; font-size: 12.5px; color: var(--nm-text-muted); box-shadow: var(--nm-raised-sm); border-radius: var(--nm-radius-sm); display: inline-flex; align-items: center; &:hover { color: var(--nm-action); } }
+}
+
+// ---- the buttons (kanban cards + list rows on every screen, form control panel on phones) --
+.o_glass_chatter_btn {
+    position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 0; padding: 0;
+    background: var(--nm-surface, #fff); box-shadow: var(--nm-raised-sm); color: var(--nm-action, #0e8c8c); font-weight: 700;
+    -webkit-tap-highlight-color: transparent;
+    i { font-size: 1.05rem; }
+    .o_glass_chatter_cnt { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--nm-surface, #fff); box-shadow: var(--nm-inset-sm); color: var(--nm-text-muted, #6c757d); font-size: 11px; font-weight: 700; line-height: 1; }
+    &.o_open { box-shadow: var(--nm-inset-sm); }
+    &:active { box-shadow: var(--nm-inset-sm); }
+    // form control panel: square button next to the cog menu
+    &.o_cp { width: 36px; height: 36px; border-radius: var(--nm-radius-sm, 8px); flex: 0 0 auto;
+        .o_glass_chatter_cnt { position: absolute; top: -6px; right: -6px; background: var(--nm-danger, #dc3545); color: #fff; box-shadow: none; }
+    }
+    // kanban card: pill in the bottom-right corner
+    &.o_card { position: absolute; right: 8px; bottom: 8px; height: 30px; padding: 0 10px 0 9px; border-radius: 999px; font-size: 12.5px; z-index: 2; }
+    // list row (a card on phones): pill in the top-right corner
+    &.o_row { height: 28px; padding: 0 9px 0 8px; border-radius: 999px; font-size: 12px; }
+}
+// desktop kanban: a strip is reserved at the bottom of the card for the pill (the card's own
+// bottom row — avatar, priority, activity — keeps its place above it); dashboards excluded
+.o_kanban_renderer:not(.o_kanban_dashboard) .o_kanban_record:has(> .o_glass_chatter_btn.o_card) { padding-bottom: 40px; }
+.o_kanban_dashboard .o_glass_chatter_btn.o_card { display: none; }
+// desktop list: the chatter column (before Odoo's actions column, so Odoo's width logic for
+// its last column is untouched and the column is counted when the table is fitted to the screen)
+.o_list_table {
+    th.o_glass_chatter_th, td.o_glass_chatter_th { width: 44px; min-width: 44px; padding: 0 !important; border-left: 0 !important; }
+    td.o_glass_chatter_cell { width: 44px; min-width: 44px; padding: 0 6px !important; text-align: center; vertical-align: middle; cursor: default;
+        .o_glass_chatter_btn.o_row { height: 26px; padding: 0 8px 0 7px; font-size: 11.5px; }
+    }
+}
+
+@media (max-width: 767.98px) {
+    body.o_theme_glass {
+        // the window sits above the mobile tab bar — never under it
+        .o_glass_chatter_win.o_phone, .o_glass_chatter_bubble { z-index: 1043; }
+        // form control panel: the row is flex-nowrap with min-width:0, so without `flex: none`
+        // the key was squeezed to 17px and its icon spilled over "New" (measured live);
+        // a fixed 36px key with 4px on each side sits level with New / cog / smart buttons
+        .o_control_panel .o_glass_chatter_btn.o_cp {
+            flex: 0 0 auto !important; width: 36px !important; min-width: 36px; height: 36px; margin: 0 4px !important; align-self: center;
+        }
+        // kanban card: keep the card content clear of the pill
+        .o_kanban_record:has(> .o_glass_chatter_btn.o_card) { padding-bottom: 42px !important; }
+        .o_kanban_dashboard .o_glass_chatter_btn.o_card { display: inline-flex; }   // phones: the pill is the only way to the chatter
+        // list row-card: the cell is an absolutely-placed corner, not a data cell
+        .o_view_controller.o_list_view .o_list_table tbody {
+            tr.o_data_row { position: relative !important; }
+            tr.o_data_row > td.o_glass_chatter_cell {
+                display: block !important; position: absolute !important; top: 9px !important; right: 10px !important;
+                width: auto !important; padding: 0 !important; margin: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important;
+            }
+            // the card title keeps clear of the pill (the theme's title rule reads this variable)
+            tr.o_data_row:has(> td.o_glass_chatter_cell) { --glass-title-clear: 56px; }
+        }
+        // the stage picker button never floats over an open chatter window
+        &.o_glass_chatter_open .o_glass_m_stagefab { display: none !important; }
+        // no chatter buttons on the cards / rows of a record-selection dialog ("Search: Customer"):
+        // they are noise in a picker and the window would open behind the dialog (QA BUG-0006)
+        .modal .o_glass_chatter_btn { display: none !important; }
+        // while a shell sheet (Apps / Menu / Account…) is up, the chatter steps aside, like the native bars
+        &.o_glass_m_locked .o_glass_chatter_win, &.o_glass_m_locked .o_glass_chatter_bubble { visibility: hidden !important; }
+    }
+}

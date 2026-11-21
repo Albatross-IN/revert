@@ -1,0 +1,53 @@
+<odoo>
+    <!-- ================================================================
+         Odoo 20 port: ir.rule was merged into ir.access. These four
+         records keep the v19 "conditional domain" pattern: the domain is
+         a Python expression evaluated with `user` in context, so the
+         visibility mode parameters keep working without any active-flag
+         toggling (immune to module-upgrade reloads, as before).
+
+         Restriction rows (no group) intersect for everyone; the admin
+         exemption therefore lives INSIDE the expression, exactly as in
+         v19. The last record is a grant (group row) that OR-widens
+         WhatsApp Administrators back to every WhatsApp conversation in
+         'own_agent' mode.
+         ================================================================ -->
+
+    <!-- Accounts: 'shared' => unrestricted; 'own_team' => owner + that
+         account's Sales-Team leader only (peers excluded). READ only. -->
+    <record id="owa_account_own_team_rule" model="ir.access">
+        <field name="name">WhatsApp Account: owner + team leader (own_team mode)</field>
+        <field name="model_id" ref="model_owa_account"/>
+        <field name="operation">r</field>
+        <field name="domain">[(1, '=', 1)] if (user.has_group('open_whatsapp_connector.group_owa_admin') or user.env['ir.config_parameter'].sudo().get_str('open_whatsapp_connector.account_visibility', 'shared') != 'own_team') else ['|', ('user_id', '=', user.id), ('team_id.user_id', '=', user.id)]</field>
+    </record>
+
+    <!-- (1) Per-agent WhatsApp conversation isolation. READ only. -->
+    <record id="owa_chat_own_agent_rule" model="ir.access">
+        <field name="name">WhatsApp Channel: agent sees only own conversations</field>
+        <field name="model_id" ref="mail.model_discuss_channel"/>
+        <field name="operation">r</field>
+        <field name="domain">[(1, '=', 1)] if (user.has_group('open_whatsapp_connector.group_owa_admin') or user.env['ir.config_parameter'].sudo().get_str('open_whatsapp_connector.chat_visibility', 'shared') != 'own_agent') else ['|', ('channel_type', '!=', 'whatsapp'), '|', ('assignee_id', '=', False), ('assignee_id', '=', user.id)]</field>
+    </record>
+
+    <!-- (2) Mirror the isolation onto discuss.channel.member so agent B
+         cannot enumerate the members of agent A's hidden WhatsApp channel
+         via a direct search_read on discuss.channel.member. READ only. -->
+    <record id="owa_chat_member_own_agent_rule" model="ir.access">
+        <field name="name">WhatsApp Channel Member: agent sees only own conversations</field>
+        <field name="model_id" ref="mail.model_discuss_channel_member"/>
+        <field name="operation">r</field>
+        <field name="domain">[(1, '=', 1)] if (user.has_group('open_whatsapp_connector.group_owa_admin') or user.env['ir.config_parameter'].sudo().get_str('open_whatsapp_connector.chat_visibility', 'shared') != 'own_agent') else ['|', ('channel_id.channel_type', '!=', 'whatsapp'), '|', ('channel_id.assignee_id', '=', False), ('channel_id.assignee_id', '=', user.id)]</field>
+    </record>
+
+    <!-- (3) Admin GRANT: in 'own_agent' mode, WhatsApp Administrators read
+         EVERY WhatsApp conversation regardless of assignment or membership.
+         In 'shared' mode the domain matches nothing -> no effect. -->
+    <record id="owa_chat_admin_whatsapp_rule" model="ir.access">
+        <field name="name">WhatsApp Channel: administrators see all conversations</field>
+        <field name="model_id" ref="mail.model_discuss_channel"/>
+        <field name="group_id" ref="open_whatsapp_connector.group_owa_admin"/>
+        <field name="operation">r</field>
+        <field name="domain">[('channel_type', '=', 'whatsapp')] if user.env['ir.config_parameter'].sudo().get_str('open_whatsapp_connector.chat_visibility', 'shared') == 'own_agent' else [('id', '=', False)]</field>
+    </record>
+</odoo>

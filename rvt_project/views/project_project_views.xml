@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="project_project_view_form_rvt" model="ir.ui.view">
+        <field name="name">project.project.form.rvt</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Revert" name="rvt" groups="rvt_base.group_rvt_staff">
+                    <group>
+                        <group string="Client and site">
+                            <field name="rvt_client_id"/>
+                            <field name="rvt_client_contact_ids" widget="many2many_tags"/>
+                            <field name="rvt_site_kind"/>
+                            <field name="rvt_site_label" placeholder="e.g. 3 BHK + garden"/>
+                            <field name="rvt_site_area" placeholder="e.g. Bopal"/>
+                            <field name="rvt_site_address"/>
+                            <field name="rvt_billed_to_default" widget="radio" options="{'horizontal': true}"/>
+                        </group>
+                        <group string="Team">
+                            <field name="rvt_principal_id"/>
+                            <field name="rvt_designer_ids" widget="many2many_tags"/>
+                            <field name="rvt_coordinator_ids" widget="many2many_tags"/>
+                            <field name="rvt_onboarded"/>
+                            <field name="rvt_onboarded_on" invisible="not rvt_onboarded"/>
+                        </group>
+                    </group>
+                    <separator string="Trades and agencies"/>
+                    <field name="rvt_trade_plan_ids" context="{'default_project_id': id}">
+                        <list editable="bottom" decoration-danger="is_undecided_late">
+                            <field name="trade_id"/>
+                            <field name="agency_id" placeholder="Undecided" context="{'default_rvt_is_agency': True}"/>
+                            <field name="contact_ids" widget="many2many_tags"/>
+                            <field name="decide_by" invisible="agency_id"/>
+                            <field name="line_count"/>
+                            <field name="is_undecided_late" column_invisible="1"/>
+                        </list>
+                    </field>
+                    <separator string="Rooms and zones"/>
+                    <field name="rvt_entity_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="rvt_entity_type_id"/>
+                            <field name="rvt_entity_state" widget="badge"
+                                   decoration-success="rvt_entity_state == 'done'" decoration-info="rvt_entity_state == 'in_progress'"/>
+                            <field name="rvt_line_done_count" string="Done"/>
+                            <field name="rvt_line_count" string="Of"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="project_project_view_search_rvt" model="ir.ui.view">
+        <field name="name">project.project.search.rvt</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_project_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <filter name="rvt_onboarded" string="Onboarded" domain="[('rvt_onboarded', '=', True)]" groups="rvt_base.group_rvt_staff"/>
+                <filter name="rvt_not_onboarded" string="Not onboarded yet" domain="[('rvt_onboarded', '=', False)]" groups="rvt_base.group_rvt_staff"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

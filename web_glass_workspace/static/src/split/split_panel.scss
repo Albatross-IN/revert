@@ -1,0 +1,191 @@
+// =============================================================================
+// Glass Workspace — Split Form View
+// The list/kanban renderer and the panel are siblings inside `.o_content`; the
+// split only exists while `.o_glass_split_open` is on the view root.
+// =============================================================================
+.o_content.o_glass_split_open {
+    --glass-split: 50%;
+    position: relative;
+    overflow: hidden;
+
+    // RIGHT split (default): the panel + divider float over a reserved strip on the right,
+    // while the normal content — dashboards, alerts, banners AND the renderer — keeps its
+    // native top-to-bottom flow on the left. This is why we do NOT flex `.o_content`:
+    // many apps (Purchase, Sales, CRM …) inject extra siblings (e.g. `.o_purchase_dashboard`)
+    // into `.o_content`; a flex row would line them up beside the list and crush the panel.
+    &.o_glass_split_right {
+        padding-right: calc(100% - var(--glass-split));
+        // The list side must scroll INSIDE the reserved box. `.o_kanban_renderer` ships as
+        // overflow:visible, so without this its columns (often wider than half the screen)
+        // spill out to the right and render on top of / under the panel. Force internal
+        // scrolling so the grid stays cleanly on the left, full height, top to bottom.
+        > .o_list_renderer, > .o_kanban_renderer, > .o_renderer {
+            overflow: auto !important;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        > .o_glass_split_panel {
+            position: absolute; top: 0; right: 0; bottom: 0;
+            width: calc(100% - var(--glass-split) - 8px);
+            overflow: hidden;
+        }
+        > .o_glass_split_divider {
+            position: absolute; top: 0; bottom: 0; height: auto; width: 8px;
+            right: calc(100% - var(--glass-split) - 8px);
+        }
+        // list hidden by the edge tab → the form takes the whole width
+        &.o_glass_split_collapsed {
+            padding-right: 0;
+            > .o_glass_split_divider { display: none; }
+            > .o_glass_split_panel { width: 100%; }
+        }
+    }
+
+    // BOTTOM split: stack in a column; the renderer fills the remaining height, the panel
+    // takes the lower share, and any dashboard/banner keeps its natural height on top.
+    &.o_glass_split_bottom {
+        display: flex; flex-flow: column nowrap;
+        > .o_list_renderer, > .o_kanban_renderer, > .o_renderer { flex: 1 1 auto; min-height: 0; overflow: auto; }
+        > .o_glass_split_divider { flex: 0 0 8px; }
+        > .o_glass_split_panel { flex: 0 0 calc(100% - var(--glass-split)); min-height: 0; }
+        &.o_glass_split_collapsed {
+            > .o_glass_split_divider, > .o_glass_split_panel { display: none; }
+        }
+    }
+}
+
+.o_glass_split_divider {
+    position: relative;
+    cursor: col-resize;
+    touch-action: none;
+    user-select: none;
+    z-index: 5;
+    &::after {
+        content: ""; position: absolute; inset: 40% 2px; border-radius: 4px;
+        box-shadow: var(--nm-inset-sm);
+    }
+    &:hover::after, &.o_glass_split_dragging::after { background: var(--nm-action); box-shadow: none; }
+    .o_glass_split_bottom > & { cursor: row-resize; &::after { inset: 2px 40%; } }
+}
+
+.o_glass_split_panel {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background-color: var(--nm-surface);
+    box-shadow: -10px 0 16px -14px var(--nm-shadow-dark);
+    &[data-side="bottom"] { box-shadow: 0 -10px 16px -14px var(--nm-shadow-dark); }
+
+    .o_glass_split_hd {
+        flex: 0 0 auto;
+        display: flex; align-items: center; gap: 6px;
+        padding: 8px 10px 6px 12px;
+        .o_glass_split_ic {
+            width: 32px; height: 32px; border-radius: var(--nm-radius-sm); display: grid; place-items: center;
+            color: var(--nm-action); box-shadow: var(--nm-inset-sm);
+        }
+        .o_glass_split_ttl {
+            flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; line-height: 1.15;
+            small { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--nm-text-muted); font-weight: 700; }
+            b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        }
+        .o_glass_split_nav { display: flex; align-items: center; gap: 2px; }
+        .o_glass_split_count { font-size: 12px; color: var(--nm-text-muted); font-variant-numeric: tabular-nums; margin-right: 4px; }
+        .btn-link {
+            width: 30px; height: 30px; padding: 0; border-radius: var(--nm-radius-sm); color: var(--nm-text-muted);
+            box-shadow: var(--nm-raised-sm); display: grid; place-items: center;
+            &:hover { color: var(--nm-action); }
+            &:active { box-shadow: var(--nm-inset-sm); }
+        }
+    }
+
+    .o_glass_split_body {
+        flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; flex-direction: column;
+        // the embedded form: its (breadcrumb-less) control panel keeps the save/discard
+        // indicator and cog menu; New and the 1/1 pager are not meaningful here
+        .o_form_button_create, .o_cp_pager { display: none !important; }
+        .o_control_panel { padding-top: 0 !important; }
+        > .o_view_controller, .o_form_view_container, .o_form_view { flex: 1 1 auto; min-height: 0; }
+    }
+
+
+    // The embedded form sits in a ~half-width panel: force its chatter BELOW the sheet so
+    // the form is never crushed into a narrow wrapping column (universal — every module).
+    .o_form_renderer { flex-direction: column !important; flex-wrap: nowrap !important; }
+    // aside chatter is placed before the sheet in the DOM (moved right by flex order for
+    // the docked layout) — pin the order so the sheet always comes first, chatter below
+    .o_form_renderer > .o_form_sheet_bg { order: 0 !important; width: 100% !important; flex: 0 0 auto !important; }
+    .o_form_renderer > .o-mail-Form-chatter, .o_form_renderer > .o-mail-ChatterContainer {
+        order: 1 !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; flex: 0 0 auto !important;
+    }
+
+    // edge tab: hide / show the list so the form gets the full width
+    .o_glass_split_edge {
+        position: absolute; right: 0; top: 45%; width: 26px; height: 44px;
+        border: 0; border-radius: 10px 0 0 10px; padding: 0;
+        background: var(--nm-action); color: var(--nm-action-contrast);
+        box-shadow: -3px 3px 8px var(--nm-action-shadow);
+        z-index: 6;
+    }
+}
+
+// -----------------------------------------------------------------------------------------------
+// Narrow list pane (BUG-0047). Module kanban cards are laid out for a window-wide renderer: "row
+// cards" (Time Off, Allocations, Website Visitors, Mailing Lists, Surveys) are as wide as the
+// renderer with a Bootstrap grid keyed to the BROWSER window (col-lg-* / col-sm-*, or plain
+// col-4 / col-2 in a flex row), Time Off caps its rows at 5.1rem; other cards simply need more
+// than ~390px (a 220px search panel beside them, Work Orders' two-per-row flex-basis). In the
+// split pane they crushed — identically with the theme's CSS off (qa/split_pane.md).
+// GlassSplitPanel measures the pane (ResizeObserver on .o_content, right split only) and flags
+// itself `o_glass_pane_mid` below 1500px and `o_glass_pane_narrow` below 768px (Odoo's md
+// breakpoint); the rules hang on those flags through :has(), so nothing is added to Odoo's DOM.
+$glass-pane-mid: ".o_content.o_glass_split_right:has(> .o_glass_split_panel.o_glass_pane_mid)";
+$glass-pane-narrow: ".o_content.o_glass_split_right:has(> .o_glass_split_panel.o_glass_pane_narrow)";
+
+// MID (< 1500px — at 1300px Time Off's ribbon still sits on its buttons): a card never hides its own content; lg / xl grid columns give up their fixed
+// share and wrap; Time Off's / Allocations' col-4 / col-2 flex row wraps too, its record no
+// longer centred; Work Orders one card per line (the module's own layout below lg)
+#{$glass-pane-mid} .o_kanban_renderer:not(.o_glass_split_panel *) {
+    .o_kanban_record:not(.o_kanban_ghost) { max-height: none !important; }
+    .o_kanban_record [class*="col-lg"],
+    .o_kanban_record [class*="col-xl"] { flex: 1 1 auto !important; width: auto !important; max-width: none !important; }
+}
+.o_holidays_view_kanban #{$glass-pane-mid} .o_kanban_renderer:not(.o_glass_split_panel *) {
+    .o_kanban_record:not(.o_kanban_ghost) { justify-content: flex-start !important; }
+    .o_hr_holidays_value { flex-wrap: wrap !important; column-gap: 20px; }
+    .o_hr_holidays_value > [class*="col-"] { flex: 0 1 auto !important; width: auto !important; }
+}
+.o_mrp_workorder_kanban #{$glass-pane-mid} .o_kanban_renderer:not(.o_glass_split_panel *) .o_kanban_record { flex-basis: 100% !important; }
+
+// NARROW (< 768px): what the modules do on a phone — every responsive column stacks, "d-none
+// d-md-*" extras hide, Time Off / Allocations show the module's own phone card, Work Orders' header
+// stacks, and a search panel folds ABOVE the cards as a scrollable strip instead of leaving them 150px
+#{$glass-pane-narrow} .o_kanban_renderer:not(.o_glass_split_panel *) .o_kanban_record {
+    [class*="col-sm"], [class*="col-md"], [class*="col-lg"], [class*="col-xl"] {
+        flex: 0 0 100% !important; width: 100% !important; max-width: 100% !important; text-align: left !important;
+    }
+    .d-none[class*="d-md-"], .d-none[class*="d-lg-"] { display: none !important; }
+}
+.o_holidays_view_kanban #{$glass-pane-narrow} .o_kanban_renderer:not(.o_glass_split_panel *).o_kanban_ungrouped {
+    .o_hr_holidays_kanban { display: none !important; }
+    .o_hr_holidays_kanban_mobile { display: block !important; min-width: 0; }
+}
+.o_mrp_workorder_kanban #{$glass-pane-narrow} .o_kanban_renderer:not(.o_glass_split_panel *) .o_kanban_record_top { flex-direction: column !important; }
+#{$glass-pane-narrow}.o_component_with_search_panel {
+    flex-direction: column !important;
+    > .o_search_panel { width: auto !important; flex: 0 0 auto !important; max-height: 34% !important; overflow: auto !important; }
+    > .o_kanban_renderer, > .o_list_renderer { width: 100% !important; }
+}
+
+// the record shown in the panel
+.o_list_renderer tr.o_glass_split_current > td {
+    background-color: color-mix(in srgb, var(--nm-action) 14%, var(--nm-surface)) !important;
+}
+.o_list_renderer tr.o_glass_split_current > td:first-child { box-shadow: inset 3px 0 0 var(--nm-action); }
+.o_kanban_renderer .o_kanban_record.o_glass_split_current {
+    box-shadow: var(--nm-inset-sm) !important;
+    background-color: color-mix(in srgb, var(--nm-action) 10%, var(--nm-surface)) !important;
+}

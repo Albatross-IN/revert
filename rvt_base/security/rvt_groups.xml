@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_rvt" model="ir.module.category">
+        <field name="name">Revert</field>
+        <field name="sequence">5</field>
+    </record>
+
+    <!-- The role ladder: owner ⊃ principal ⊃ staff -->
+    <record id="privilege_rvt_role" model="res.groups.privilege">
+        <field name="name">Revert role</field>
+        <field name="category_id" ref="module_category_rvt"/>
+        <field name="sequence">1</field>
+    </record>
+    <record id="group_rvt_staff" model="res.groups">
+        <field name="name">Staff</field>
+        <field name="sequence">1</field>
+        <field name="privilege_id" ref="privilege_rvt_role"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+        <field name="comment">Works in the Revert window on the projects whose team they are on.</field>
+    </record>
+    <record id="group_rvt_principal" model="res.groups">
+        <field name="name">Principal consultant</field>
+        <field name="sequence">2</field>
+        <field name="privilege_id" ref="privilege_rvt_role"/>
+        <field name="implied_ids" eval="[(4, ref('group_rvt_staff'))]"/>
+        <field name="comment">Sees every project and approves drawing releases.</field>
+    </record>
+    <record id="group_rvt_owner" model="res.groups">
+        <field name="name">Owner</field>
+        <field name="sequence">3</field>
+        <field name="privilege_id" ref="privilege_rvt_role"/>
+        <field name="implied_ids" eval="[(4, ref('group_rvt_principal'))]"/>
+        <field name="comment">Sees everything, including bill amounts and totals; keeps the master lists.</field>
+    </record>
+
+    <!-- Two flags; a person may hold both -->
+    <record id="privilege_rvt_designer" model="res.groups.privilege">
+        <field name="name">Designer / draftsman</field>
+        <field name="category_id" ref="module_category_rvt"/>
+        <field name="sequence">2</field>
+    </record>
+    <record id="group_rvt_designer" model="res.groups">
+        <field name="name">Designer</field>
+        <field name="privilege_id" ref="privilege_rvt_designer"/>
+        <field name="implied_ids" eval="[(4, ref('group_rvt_staff'))]"/>
+        <field name="comment">Makes drawings and sends them for release.</field>
+    </record>
+    <record id="privilege_rvt_coordinator" model="res.groups.privilege">
+        <field name="name">Coordinator</field>
+        <field name="category_id" ref="module_category_rvt"/>
+        <field name="sequence">3</field>
+    </record>
+    <record id="group_rvt_coordinator" model="res.groups">
+        <field name="name">Coordinator</field>
+        <field name="privilege_id" ref="privilege_rvt_coordinator"/>
+        <field name="implied_ids" eval="[(4, ref('group_rvt_staff'))]"/>
+        <field name="comment">Coordinates agencies on site, writes MOM points and keeps the work grid.</field>
+    </record>
+
+    <!-- People outside the office: they sign in to the app with a phone number -->
+    <record id="privilege_rvt_outside" model="res.groups.privilege">
+        <field name="name">Outside the office</field>
+        <field name="category_id" ref="module_category_rvt"/>
+        <field name="sequence">4</field>
+    </record>
+    <record id="group_rvt_agency" model="res.groups">
+        <field name="name">Agency person</field>
+        <field name="sequence">1</field>
+        <field name="privilege_id" ref="privilege_rvt_outside"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_portal'))]"/>
+        <field name="comment">Sees its own work lines, the drawings released to its trade, its points and its bills.</field>
+    </record>
+    <record id="group_rvt_client" model="res.groups">
+        <field name="name">Client</field>
+        <field name="sequence">2</field>
+        <field name="privilege_id" ref="privilege_rvt_outside"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_portal'))]"/>
+        <field name="comment">Sees the drawings marked for the client and its own pending items.</field>
+    </record>
+</odoo>

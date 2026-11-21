@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- <title> + favicon on every page (backend, login, portal, website) -->
+    <template id="layout" inherit_id="web.layout" name="Identity: web layout">
+        <xpath expr="//head/title" position="replace">
+            <t t-set="identity" t-value="identity or env['identity.brand'].get()"/>
+            <title t-out="title or identity['name']"/>
+        </xpath>
+        <xpath expr="//head/link[@rel='shortcut icon']" position="replace">
+            <link rel="icon" type="image/png" t-att-href="x_icon or identity['favicon_url']"/>
+        </xpath>
+    </template>
+
+    <!-- backend bootstrap: PWA colour + apple touch icon -->
+    <template id="webclient_bootstrap" inherit_id="web.webclient_bootstrap" name="Identity: webclient bootstrap">
+        <xpath expr="//meta[@name='theme-color']" position="replace">
+            <t t-set="identity" t-value="identity or env['identity.brand'].get()"/>
+            <meta name="theme-color" t-att-content="identity['theme_color']"/>
+        </xpath>
+        <xpath expr="//link[@rel='apple-touch-icon']" position="replace">
+            <link rel="apple-touch-icon" t-att-href="identity['apple_icon_url']"/>
+        </xpath>
+    </template>
+
+    <!-- login card: always show a logo (Odoo 20 hides it while the company
+         uses the default one; /web/binary/company_logo then serves the brand
+         logo, see controllers/main.py) + footer -->
+    <template id="login_layout" inherit_id="web.login_layout" name="Identity: login layout">
+        <xpath expr="//img[contains(@t-attf-src, '/web/binary/company_logo')]/.." position="attributes">
+            <attribute name="t-if">True</attribute>
+        </xpath>
+        <xpath expr="//a[contains(@href, 'odoo.com')]" position="replace">
+            <t t-set="identity" t-value="identity or env['identity.brand'].get()"/>
+            <t t-if="identity['powered_by']">
+                <a t-if="identity['url']" t-att-href="identity['url']" target="_blank">Powered by <span t-out="identity['name']"/></a>
+                <span t-else="" class="text-muted">Powered by <span t-out="identity['name']"/></span>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- "Powered by" badge used by portal, website and frontend footers -->
+    <template id="brand_promotion_message" inherit_id="web.brand_promotion_message" name="Identity: brand promotion">
+        <xpath expr="//t[@t-set='odoo_logo']" position="replace">
+            <t t-set="identity" t-value="identity or env['identity.brand'].get()"/>
+            <t t-set="odoo_logo">
+                <a t-if="identity['url']" target="_blank" t-att-href="identity['url']" class="fw-bold text-reset text-decoration-none"><t t-out="identity['name']"/></a>
+                <span t-else="" class="fw-bold"><t t-out="identity['name']"/></span>
+            </t>
+        </xpath>
+        <xpath expr="//t[contains(@t-out, 'final_message')]" position="replace">
+            <!-- _message is dropped on purpose: website passes a "Create a free website" odoo.com link -->
+            <t t-if="identity['powered_by']" t-out="final_message % (odoo_logo, '')"/>
+        </xpath>
+    </template>
+
+    <!-- offline page -->
+    <template id="webclient_offline" inherit_id="web.webclient_offline" name="Identity: offline page">
+        <xpath expr="//div[hasclass('card')]/img" position="attributes">
+            <attribute name="alt">Logo</attribute>
+        </xpath>
+        <xpath expr="//div[hasclass('card')]/p" position="replace">
+            <t t-set="identity" t-value="identity or env['identity.brand'].get()"/>
+            <p>Check your network connection and come back here. <t t-out="identity['name']"/> will load as soon as you're back online.</p>
+        </xpath>
+    </template>
+
+</odoo>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- the button itself: only for models that have a chatter (kanban cards and list rows on
+         every screen size, the form control panel on phones only — a desktop form shows its
+         own chatter) -->
+    <t t-name="web_glass_workspace.ChatterButton">
+        <button t-if="this.visible" type="button"
+                class="o_glass_chatter_btn"
+                t-att-class="{ o_open: this.isOpen, o_cp: this.props.variant === 'cp', o_card: this.props.variant === 'card', o_row: this.props.variant === 'row' }"
+                t-att-title="this.title" t-att-aria-label="this.title"
+                t-on-click="this.onClick" t-on-pointerdown.stop="" t-on-touchstart.stop="">
+            <i class="oi" data-icon="forum"/>
+            <span t-if="this.count" class="o_glass_chatter_cnt" t-out="this.count"/>
+        </button>
+    </t>
+
+    <!-- FORM: in the control panel row on phones (next to the cog menu) -->
+    <t t-name="web_glass_workspace.FormView.chatter" t-inherit="web.FormView" t-inherit-mode="extension">
+        <xpath expr="//t[@t-set-slot='control-panel-additional-actions']/CogMenu" position="before">
+            <t t-if="this.ui.isSmall and this.model.root.resId" t-component="this.glassChatterButton"
+               resModel="this.model.root.resModel" resId="this.model.root.resId" variant="'cp'"/>
+        </xpath>
+    </t>
+
+    <!-- KANBAN: on every card (bottom-right), phones and desktop — never on Odoo's sample-data
+         cards, never inside a record-picker dialog, and ↗ only where the card itself may open
+         its record (can_open) -->
+    <t t-name="web_glass_workspace.KanbanRecord.chatter" t-inherit="web.KanbanRecord" t-inherit-mode="extension">
+        <xpath expr="//article" position="inside">
+            <t t-if="this.props.record.resId and !this.props.record.model.useSampleModel and !this.env.inDialog" t-component="this.glassChatterButton"
+               resModel="this.props.record.resModel" resId="this.props.record.resId" variant="'card'"
+               openRecord="this.props.canOpenRecords ? (() => this.props.openRecord(this.props.record)) : undefined"/>
+        </xpath>
+    </t>
+
+    <!-- LIST: a column with the button on every row (a corner pill on the phone cards), placed
+         just before Odoo's actions column so its own "last column" width logic is untouched;
+         header and footer get the matching empty cell so the table stays aligned. The column
+         exists only once the model is known to have a chatter (glassChatterCol). -->
+    <t t-name="web_glass_workspace.ListRenderer.chatter" t-inherit="web.ListRenderer" t-inherit-mode="extension">
+        <xpath expr="//thead//th[hasclass('o_list_actions_header')]" position="before">
+            <th t-if="this.glassChatterCol" class="o_glass_chatter_th w-print-0 p-print-0" tabindex="-1"/>
+        </xpath>
+        <xpath expr="//tfoot//tr/td[last()]" position="before">
+            <td t-if="this.glassChatterCol" class="o_glass_chatter_th w-print-0 p-print-0"/>
+        </xpath>
+    </t>
+    <t t-name="web_glass_workspace.ListRenderer.RecordRow.chatter" t-inherit="web.ListRenderer.RecordRow" t-inherit-mode="extension">
+        <!-- the column's label travels with each cell: on phone cards (rows without a header
+             row) the theme prints it before the value ("Ownership 35 %") -->
+        <xpath expr="//td[hasclass('o_data_cell')]" position="attributes">
+            <attribute name="t-att-data-glass-label">column.label</attribute>
+        </xpath>
+        <xpath expr="//tr[hasclass('o_data_row')]/t[@t-set='useUnlink']" position="before">
+            <td t-if="this.glassChatterCol and record.resId" class="o_glass_chatter_cell w-print-0 p-print-0" tabindex="-1">
+                <t t-component="this.glassChatterButton"
+                   resModel="record.resModel" resId="record.resId" variant="'row'"
+                   openRecord="() => this.props.openRecord(record)"/>
+            </td>
+        </xpath>
+    </t>
+
+</templates>

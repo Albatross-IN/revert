@@ -1,0 +1,240 @@
+// =============================================================================
+// Glass — Point of Sale UI (/pos/ui)
+//
+// The POS is a standalone OWL app loaded from `point_of_sale.assets_prod`, OUTSIDE the
+// web client, so `body.o_theme_glass` and the backend tokens are not present here. This
+// file is self-contained: it declares the same clay palette on the POS root (`.pos`) and
+// gives the chrome and register the neumorphic treatment (the restaurant floor/tables are
+// left at Odoo default). Only colour,
+// radius and shadow are touched — never the POS layout.
+// =============================================================================
+
+// --- shared key mixins (top-level so every rule below can reuse them) -------------------
+// a coloured, lifted action key with a matching soft glow (Set Table, Payment, …)
+@mixin glass-key($c) {
+    background-color: #{$c} !important;
+    border: 0 !important;
+    color: #fff !important;
+    box-shadow: 3px 3px 8px #{"color-mix(in srgb, #{$c} 42%, transparent)"}, -2px -2px 6px var(--nm-shadow-light) !important;
+    &:hover { box-shadow: 4px 4px 12px #{"color-mix(in srgb, #{$c} 52%, transparent)"}, -2px -2px 6px var(--nm-shadow-light) !important; }
+    &:active { box-shadow: inset 2px 2px 6px rgba(0,0,0,.28) !important; }
+}
+// the "opened / clicked" state: key seats in (inset) and its label lights up (backlit text)
+@mixin glass-lit($c: var(--nm-action)) {
+    box-shadow: var(--nm-inset-sm) !important;
+    color: #{$c} !important;
+    background-color: #{"color-mix(in srgb, #{$c} 8%, var(--nm-surface))"} !important;
+    text-shadow: 0 0 6px #{"color-mix(in srgb, #{$c} 36%, transparent)"}, 0 0 14px #{"color-mix(in srgb, #{$c} 18%, transparent)"};
+}
+
+.pos {
+    // --- palette (mirrors tokens.scss; self-contained so the POS bundle compiles alone) ---
+    --nm-surface: #e9ecef;
+    --nm-surface-high: #f8f9fa;
+    // shadow ink = tokens.scss's `$-nm-ink` for Odoo 20's grey scale (a 70/30 mix of gray-500/600)
+    --nm-shadow-dark: rgba(154, 162, 170, .55);
+    --nm-shadow-light: rgba(255, 255, 255, .95);
+    --nm-inset-dark: rgba(154, 162, 170, .45);
+    --nm-inset-light: rgba(255, 255, 255, .9);
+    --nm-hairline: rgba(154, 162, 170, .3);
+    --nm-text: #212529;
+    --nm-text-muted: #6c757d;
+    --nm-brand: #4A5FB5;
+    --nm-action: #0E8C8C;
+    --nm-success: #28a745;
+    --nm-danger: #dc3545;
+    --nm-warning: #ffac00;
+    --nm-radius-sm: 8px;
+    --nm-radius: 12px;
+    --nm-radius-lg: 18px;
+    --nm-raised-sm: 3px 3px 6px var(--nm-shadow-dark), -3px -3px 6px var(--nm-shadow-light);
+    --nm-raised: 6px 6px 12px var(--nm-shadow-dark), -4px -4px 10px var(--nm-shadow-light);
+    --nm-inset-sm: inset 2px 2px 4px var(--nm-inset-dark), inset -2px -2px 4px var(--nm-inset-light);
+    --nm-inset: inset 3px 3px 6px var(--nm-inset-dark), inset -3px -3px 6px var(--nm-inset-light);
+    --nm-well: inset 4px 4px 10px var(--nm-inset-dark), inset -4px -4px 10px var(--nm-inset-light);
+
+    background-color: var(--nm-surface);
+    color: var(--nm-text);
+    // the register's login screen ("Open Register", Odoo 20) paints the attendance kiosk's light
+    // wallpaper through these variables — also in dark mode, under light text: the clay instead,
+    // with the soft brand glows of the home menu
+    --homeMenu-bg-color: var(--nm-surface);
+    --homeMenu-bg-image: radial-gradient(circle at 12% 18%, #{"color-mix(in srgb, var(--nm-brand) 8%, transparent)"} 0, transparent 38%), radial-gradient(circle at 88% 82%, #{"color-mix(in srgb, var(--nm-action) 8%, transparent)"} 0, transparent 40%);
+
+    // --- surfaces: sweep Bootstrap greys used across the POS to clay --------------------
+    .bg-view, .bg-100, .bg-200, .bg-300, .bg-white, .o_pos_content { background-color: var(--nm-surface) !important; }
+    .border, .border-top, .border-bottom, .border-start, .border-end { border-color: var(--nm-hairline) !important; }
+
+    // --- restaurant Floor / Tables screen: keep Odoo's DEFAULT look (user preference) ----
+    // Undo the clay surface + hairline sweep inside the floor plan so it renders as stock
+    // Odoo (the tables themselves were never themed). Higher specificity wins over the sweep.
+    .floor-screen, .floor-screen.bg-300 { background-color: #dee2e6 !important; }
+    .floor-screen .bg-view, .floor-screen .bg-white { background-color: #fff !important; }
+    .floor-screen .bg-100 { background-color: #f8f9fa !important; }
+    .floor-screen .bg-200 { background-color: #e9ecef !important; }
+    .floor-screen .border, .floor-screen .border-top, .floor-screen .border-bottom,
+    .floor-screen .border-start, .floor-screen .border-end { border-color: #dee2e6 !important; }
+
+    // --- top header --------------------------------------------------------------------
+    .pos-topheader {
+        background-color: var(--nm-surface) !important;
+        border-bottom: 0 !important;
+        box-shadow: 0 6px 14px -12px var(--nm-shadow-dark);
+    }
+
+    // --- neutral buttons become keys; semantic buttons keep their meaning ---------------
+    .btn {
+        border: 0;
+        border-radius: var(--nm-radius-sm);
+    }
+    .btn.btn-light, .btn.btn-secondary, .btn-light, .btn-secondary,
+    .register-label, .orders-button, .oe_status {
+        background-color: var(--nm-surface) !important;
+        color: var(--nm-text) !important;
+        box-shadow: var(--nm-raised-sm);
+        &:hover { box-shadow: var(--nm-raised); }
+        &:active { box-shadow: var(--nm-inset-sm) !important; color: var(--nm-action) !important; }
+    }
+    // Odoo 20's "Tables" key is an outline button that keeps its light-mode ink in the dark POS
+    .btn-outline-secondary, .table-button { color: var(--nm-text) !important; }
+    // the table / order badges (`bg-*-subtle`, pale in both schemes): a seated clay pill with a tint
+    .badge[class*="-subtle"] {
+        background-color: #{"color-mix(in srgb, var(--nm-action) 16%, var(--nm-surface))"} !important;
+        color: var(--nm-text) !important; border-color: transparent !important; box-shadow: var(--nm-inset-sm);
+    }
+    // Register / Orders tabs: "closed" = raised key, "opened" = seated + backlit label
+    .register-label.active, .orders-button.active { @include glass-lit(); }
+    .btn.btn-primary, .btn-primary {
+        background-color: var(--nm-brand) !important; border: 0 !important; color: #fff !important;
+        box-shadow: 3px 3px 8px #{"color-mix(in srgb, var(--nm-brand) 38%, transparent)"}, -2px -2px 6px var(--nm-shadow-light);
+        &:active { box-shadow: inset 2px 2px 5px rgba(0,0,0,.25) !important; }
+    }
+    .btn.btn-success, .btn-success { background-color: var(--nm-success) !important; border: 0 !important; }
+    .btn.btn-danger, .btn-danger { background-color: var(--nm-danger) !important; border: 0 !important; }
+
+    // --- inputs / search fields → seated wells ----------------------------------------
+    input.form-control, .form-control, .input-group, .pos-search-bar input, textarea.form-control {
+        background-color: var(--nm-surface) !important;
+        border: 0 !important;
+        border-radius: var(--nm-radius-sm) !important;
+        box-shadow: var(--nm-inset-sm);
+    }
+
+    // --- product screen ----------------------------------------------------------------
+    // product cards: clay tile with a very low-opacity colour "backlight" (a faint tint +
+    // soft inner glow), the hue rotating per card so the grid reads lively but calm.
+    .product-list:not(.category-list) .product {
+        --pc: var(--nm-brand);
+        border: 0 !important;
+        border-radius: var(--nm-radius) !important;
+        background-color: #{"color-mix(in srgb, var(--pc) 5%, var(--nm-surface))"} !important;
+        box-shadow: var(--nm-raised-sm), inset 0 0 20px #{"color-mix(in srgb, var(--pc) 9%, transparent)"};
+        color: var(--nm-text);
+        transition: box-shadow .18s ease, transform .12s;
+        &:hover { transform: translateY(-1px);
+            box-shadow: var(--nm-raised), inset 0 0 22px #{"color-mix(in srgb, var(--pc) 16%, transparent)"}; }
+        &:active { box-shadow: var(--nm-inset-sm); transform: translateY(.5px); }
+        .product-name, .product-content { color: var(--nm-text) !important; }
+        &:nth-child(7n+1) { --pc: #4A5FB5; }  // brand indigo
+        &:nth-child(7n+2) { --pc: #1DBFA8; }  // teal
+        &:nth-child(7n+3) { --pc: #F5A623; }  // amber
+        &:nth-child(7n+4) { --pc: #8E5A8C; }  // plum
+        &:nth-child(7n+5) { --pc: #2B9FE6; }  // blue
+        &:nth-child(7n+6) { --pc: #EE6352; }  // coral
+        &:nth-child(7n+7) { --pc: #0F7F7A; }  // teal-deep
+    }
+    // fallback for any other product-card markup
+    .product-card, .o_pos_product_card {
+        background-color: var(--nm-surface) !important; border: 0 !important;
+        border-radius: var(--nm-radius) !important; box-shadow: var(--nm-raised-sm);
+        &:hover { box-shadow: var(--nm-raised); }
+    }
+    // category buttons (Misc / Desks / Chairs …): a two-state neumorphic key.
+    // Odoo signals the open category by DROPPING `.opacity-75`, so we key off that:
+    //   • closed / off  → raised clay key, image + name clearly shown
+    //   • opened        → seated (inset) "clicked" key with a backlit teal label
+    .category-list .category-button, .category-simple-button {
+        background-color: var(--nm-surface) !important;
+        border: 0 !important;
+        border-radius: var(--nm-radius-sm) !important;
+        box-shadow: var(--nm-raised-sm);
+        color: var(--nm-text);
+        transition: box-shadow .16s ease, color .16s ease, opacity .16s ease;
+        .category-img-thumb { box-shadow: var(--nm-raised-sm); }
+        &:hover { box-shadow: var(--nm-raised); }
+        // closed / off state — keep img + name legible (Odoo dims it to .75; lift to .92)
+        &.opacity-75 { opacity: .92 !important; }
+        // opened state — the currently selected category (no opacity-75) lights up
+        &:not(.opacity-75) { @include glass-lit(); }
+    }
+    // numpad, action pad, control buttons → clay keys
+    .numpad .numpad-button, .numpad .btn, .numpad button, .actionpad .btn, .control-buttons .btn, .control-button {
+        background-color: var(--nm-surface) !important;
+        border: 0 !important;
+        border-radius: var(--nm-radius-sm) !important;
+        box-shadow: var(--nm-raised-sm);
+        color: var(--nm-text);
+        &:active { box-shadow: var(--nm-inset-sm); }
+    }
+    // colour the function keys' text (the "calculator" legends), each with a faint backlight
+    .numpad {
+        .numpad-qty { color: var(--nm-action) !important; }                                   // Qty
+        .numpad-price { color: var(--nm-brand) !important; }                                  // Price
+        .o_colorlist_item_numpad_color_1 { color: var(--nm-danger) !important; }              // ⌫ backspace
+        .o_colorlist_item_numpad_color_3 { color: var(--nm-warning) !important; }             // +/-
+        .o_colorlist_item_numpad_color_6 { color: var(--nm-action) !important; }              // decimal .
+        // the selected mode (Qty / % / Price) lights up: seated key + glowing legend
+        .numpad-button.active {
+            box-shadow: var(--nm-inset-sm) !important;
+            color: var(--nm-action) !important;
+            background-color: #{"color-mix(in srgb, var(--nm-action) 8%, var(--nm-surface))"} !important;
+            text-shadow: 0 0 6px #{"color-mix(in srgb, var(--nm-action) 34%, transparent)"}, 0 0 14px #{"color-mix(in srgb, var(--nm-action) 16%, transparent)"};
+        }
+    }
+    // the big Payment action reads as the primary key
+    .pay-order-button, .button.pay, [class*="pay"].btn, .control-buttons .btn.btn-primary {
+        background-color: var(--nm-action) !important; color: #fff !important;
+        box-shadow: 3px 3px 8px #{"color-mix(in srgb, var(--nm-action) 40%, transparent)"}, -2px -2px 6px var(--nm-shadow-light) !important;
+    }
+
+    // --- restaurant register action buttons: colour each by what it does ----------------
+    // Stock Odoo paints Set Table / Set Tab / Assign / Plan / Send / Fire / Payment all as
+    // one flat btn-primary, so they read identically. Give each a "true" hue tied to its job
+    // (a coloured lifted key with a matching soft glow) so the register is legible at a glance.
+    // Set Table → seating / place: a clear table-blue
+    .set-table.btn, button.set-table   { @include glass-key(#2B7DE0); }
+    // Set Tab → open / name a floating tab: amber (a bar-tab warmth)
+    .new-tab.btn, button.new-tab       { @include glass-key(#E8912A); }
+    // Assign → confirm the table choice: success green
+    .assign-button.btn                 { @include glass-key(var(--nm-success)); }
+    // Plan → jump to the floor plan (navigation): brand indigo
+    .plan-button.btn                   { @include glass-key(var(--nm-brand)); }
+    // Fire course → send to the kitchen now (urgent): warm red
+    .fire-btn.btn                      { @include glass-key(#E4572E); }
+    // Send / Submit order → dispatch the order: teal action
+    .submit-order.btn, .btn-switchpane.order-button.btn-primary { @include glass-key(var(--nm-action)); }
+    // Restaurant Payment button when highlighted → teal action (matches the main pay key)
+    .pay-order-button-restaurant.btn   { @include glass-key(var(--nm-action)); }
+    // order panel (right side) + orderlines
+    .order-container, .rightpane, .order-summary, .product-screen .order {
+        background-color: var(--nm-surface) !important;
+    }
+    .orderline { border-radius: var(--nm-radius-sm); &.selected { background-color: #{"color-mix(in srgb, var(--nm-action) 10%, var(--nm-surface))"} !important; box-shadow: var(--nm-inset-sm); } }
+
+    // --- payment / ticket / partner screens: cards & rows -----------------------------
+    .paymentmethod, .payment-method-button, .payment-numpad .btn { border-radius: var(--nm-radius-sm) !important; box-shadow: var(--nm-raised-sm); &.active { box-shadow: var(--nm-inset-sm); } }
+    .ticket-screen .order-row, .partnerlist .partner-line, .orders .order-row {
+        border-radius: var(--nm-radius-sm); background-color: var(--nm-surface) !important;
+        &:hover { box-shadow: var(--nm-raised-sm); }
+    }
+
+
+
+    // --- dialogs / popups --------------------------------------------------------------
+    .modal-content, .popup, .o_dialog .modal-content {
+        background-color: var(--nm-surface) !important;
+        border: 0 !important;
+        border-radius: var(--nm-radius-lg) !important;
+        box-shadow: 14px 14px 32px var(--nm-shadow-dark), -8px -8px 24px var(--nm-shadow-light);
+    }
+}

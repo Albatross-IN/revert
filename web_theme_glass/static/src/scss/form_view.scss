@@ -1,0 +1,383 @@
+// =============================================================================
+// Glass — Form view enhancements (Phase A, CSS only)
+// See docs/neumorphic/form_view_ux_audit.md. Each block is tagged A1…A12.
+// Rules only touch presentation; DOM, tab order and behaviour are untouched.
+// =============================================================================
+
+.o_theme_glass {
+    // ---------------------------------------------------------------- A1 depth budget
+    // Inside a sheet only inputs may be inset; notebook, tables, totals, chatter are flat.
+    .o_form_view {
+        .o_notebook {
+            .o_notebook_headers { padding: 0; box-shadow: none; background: transparent; border-radius: 0; width: 100%; border-bottom: 1px solid var(--nm-hairline); margin-bottom: 4px; }
+            .nav, .nav-tabs { gap: 0; background-color: transparent; border: 0; }
+            .nav-item { margin: 0; }
+            .nav-link {
+                border-radius: 0; padding: 10px 16px; margin-bottom: -1px; position: relative; color: var(--nm-text-muted); background: transparent !important; box-shadow: none;
+                &::after { content: "" !important; position: absolute; left: 12px; right: 12px; bottom: 0; height: 2px; border-radius: 1px; background: transparent; }
+                &:hover { color: var(--nm-text); background: transparent; }
+                // active tab: seated pill (inset tint) + weight + underline rail — reads at a glance in soft-UI
+                &.active {
+                    color: var(--nm-action); font-weight: 500; background: var(--nm-active-tint) !important; border-radius: var(--nm-radius-sm) var(--nm-radius-sm) 0 0;
+                    box-shadow: inset 2px 2px 4px var(--nm-inset-dark), inset -2px 0 4px var(--nm-inset-light);
+                    &::after { background: var(--nm-action); left: 0; right: 0; height: 2px; }
+                }
+                &.o_page_invalid::after { background: var(--nm-danger); }
+            }
+        }
+        .o_notebook_content { padding-top: 16px; }
+        .o_field_x2many .o_list_renderer .o_list_table {
+            box-shadow: none; border-radius: 0; background: transparent; --table-bg: transparent;
+            tbody td, thead th { background-color: transparent; }
+            // Odoo pads short x2many lists with up to 3 empty <tr>; they only add dead space
+            tbody > tr:not(.o_data_row):not(.o_group_header):not(:has(.o_field_x2many_list_row_add)) { display: none; }
+        }
+        .oe_subtotal_footer { box-shadow: none; background: transparent; border-radius: 0; padding: 0; }
+    }
+
+    // ---------------------------------------------------------------- A2 input sizing
+    // Inputs sized by data type, not by column width (char/text/many2one stay full width).
+    .o_form_view .o_inner_group {
+        // `min(…, 100%)`: a capped width must never exceed the widget's own cell — inside an inline
+        // row (quantity + unit, hours + %) the plain rem caps made inputs overlap their neighbour (QA BUG-0002)
+        .o_field_date .o_input, .o_field_daterange > .o_input { max-width: #{"min(10rem, 100%)"}; }
+        .o_field_datetime .o_input { max-width: #{"min(13rem, 100%)"}; }
+        .o_field_float .o_input, .o_field_integer .o_input, .o_field_percentage .o_input { max-width: #{"min(9rem, 100%)"}; text-align: right; }
+        .o_field_selection .o_input, .o_field_selection select { max-width: #{"min(18rem, 100%)"}; }
+        .o_field_float_time .o_input { max-width: #{"min(7rem, 100%)"}; text-align: center; }
+        // narrow inline-row inputs ("05:00", "1.00 Hours") keep their digits with slimmer side padding
+        .o_row .o_input { padding-left: 6px; padding-right: 6px; }
+
+        .o_field_widget[name$="_code"] .o_input, .o_field_widget[name="ref"] .o_input { max-width: 14rem; }
+    }
+    .o_form_view {
+        // Views size some inputs by character count (`o_input_3ch`, `style="width: 6ch"`,
+        // `style="width: 3rem"`) assuming Odoo's zero side padding; our 10px padding ate most of
+        // those boxes ("0", "00:30", "20.00", "100 %" were cut — QA regression). A `ch` width
+        // becomes the text room (content-box) and a fixed-width widget keeps a 4px padding.
+        .o_field_widget[class*="o_input_"] > input.o_input { box-sizing: content-box; padding-left: 6px; padding-right: 6px; }
+        .o_field_widget[style*="width"] .o_input { padding-left: 4px; padding-right: 4px; }
+    }
+    .o_form_view {
+        // Monetary: Odoo draws the currency symbol in an absolutely-positioned overlay span that ALSO
+        // carries the o_input class, and mirrors the value in a ghost. Boxing the input and the overlay
+        // separately put "$" over the field and pushed the value away from it (QA BUG-0002). One inset
+        // box on the wrapper instead, symbol + value inside it, start-aligned like stock Odoo.
+        .o_field_monetary > div.d-inline-flex {
+            border-radius: var(--nm-radius-sm); background-color: var(--nm-surface); @include nm-inset; padding: 0 10px; max-width: #{"min(12rem, 100%)"};
+            transition: box-shadow .15s;
+            &:focus-within { box-shadow: var(--nm-inset), var(--nm-focus); }
+            // min-width 0: an <input> never shrinks below its default ~100px as a flex item, so in a
+            // narrow widget (`mw-50`, `o_hr_narrow_field`) it poked out of the box over its neighbour
+            input.o_input { box-shadow: none; background: transparent; padding-left: 0; padding-right: 0; text-align: start; max-width: none; min-width: 0; }
+            span.o_input.position-absolute { box-shadow: none; background: transparent; padding: 6px 0; left: 10px; width: calc(100% - 20px); }
+        }
+        .o_field_widget.o_readonly_modifier.o_field_monetary > div.d-inline-flex { box-shadow: none; background: transparent; padding: 0; }
+    }
+
+    // ---------------------------------------------------------------- A3 label column & rhythm
+    .o_form_view {
+        @media (min-width: 576px) {
+            .o_inner_group { grid-template-columns: 9rem minmax(0, 1fr); column-gap: 16px; row-gap: 2px; }
+            .o_inner_group.o_form_fw_labels { grid-template-columns: 9rem minmax(0, 1fr); }
+        }
+        .o_inner_group > .o_cell { min-height: 36px; padding-top: 2px; padding-bottom: 2px; }
+        .o_inner_group > .o_cell.o_cell_custom > .o_col, .o_inner_group > .o_cell.o_cell_custom > div { width: 100%; }
+        // two `nolabel` fields side by side put a widget in the fixed 9rem label column; a widget
+        // with its own min-width (Peppol EAS: 200px) overflowed into its neighbour (QA regression)
+        .o_inner_group > .o_cell.o_cell_custom:not(.o_wrap_input) > .o_field_widget { min-width: 0; max-width: 100%; }
+        .o_inner_group > .o_cell.o_wrap_label, .o_inner_group > .o_cell.o_wrap_input {
+            display: flex; align-items: center;
+            &.o_wrap_label { align-items: flex-start; padding-top: 9px; .o_form_label { line-height: 18px; } }
+            &.o_wrap_label { color: var(--nm-text-muted); .o_form_label { margin: 0; line-height: 1.3; } }
+            // tall widgets align to the top with their label
+            &:has(textarea, .o_field_text, .o_field_html, .o_field_x2many, .o_field_many2many_tags, .o_field_properties, .o_field_image, .o_field_binary) { align-items: flex-start; padding-top: 6px; }
+        }
+        // Odoo 20 dissolves the TIN / additional-identifiers wrappers into the group grid
+        // (additional_identifiers.scss); as a flex cell the TIN input shrank to 14px
+        .o_inner_group > .o_cell:has(> [name="identifiers"]),
+        .o_inner_group > .o_cell:has(> .o_field_widget.o_field_additional_identifiers_list) { display: contents; }
+        .o_inner_group > .o_cell.o_wrap_input > .o_field_widget, .o_inner_group > .o_cell.o_wrap_input > div { flex: 1 1 auto; min-width: 0; width: 100%; }
+        .o_horizontal_separator { margin-top: 14px; margin-bottom: 4px; }
+        .o_group { row-gap: 8px; }
+    }
+
+    // ---------------------------------------------------------------- A4 read-only figures
+    // Computed / read-only values are figures, not boxes; empty read-only rows disappear.
+    .o_form_view .o_inner_group {
+        .o_field_widget.o_readonly_modifier {
+            // not the checkbox wrapper: Bootstrap's .form-check needs its left padding for the floated
+            // input, without it a read-only checkbox collapsed to 0px (QA BUG-0017)
+            .o_input, > span, > div:not(.form-check) { box-shadow: none; background: transparent; padding-left: 0; }
+            font-variant-numeric: tabular-nums; color: var(--nm-text);
+            &.o_field_monetary, &.o_field_float, &.o_field_integer { font-weight: 500; }
+        }
+        // hide the whole row of an empty read-only field (label cell + value cell)
+        > .o_cell.o_wrap_label:has(+ .o_cell > .o_field_widget.o_readonly_modifier.o_field_empty),
+        > .o_cell:has(> .o_field_widget.o_readonly_modifier.o_field_empty) { display: none; }
+    }
+
+    // ---------------------------------------------------------------- A5 (dropped)
+    // The "single-stage pipeline" seen in the audit was caused by the theme's track padding making
+    // Odoo collapse the statusbar; fixed in theme.scss. The full pipeline is the state widget.
+
+    // ---------------------------------------------------------------- A6 calm edit row (x2many lists)
+    .o_form_view .o_field_x2many .o_list_table, .o_list_table.o_list_table_ungrouped {
+        tbody .o_data_row {
+            > td { height: 40px; padding: 2px 12px; vertical-align: middle; }
+            &.o_selected_row {
+                > td { background-color: transparent !important; box-shadow: inset 0 -1px 0 var(--nm-action), inset 0 1px 0 var(--nm-action); }
+                > td:first-child { box-shadow: inset 1px 0 0 var(--nm-action), inset 0 -1px 0 var(--nm-action), inset 0 1px 0 var(--nm-action); }
+                > td:last-child { box-shadow: inset -1px 0 0 var(--nm-action), inset 0 -1px 0 var(--nm-action), inset 0 1px 0 var(--nm-action); }
+                .o_field_widget .o_input, .o_field_widget .form-select, .o_field_widget .o_input_dropdown .o_input {
+                    box-shadow: none; background: transparent; border-radius: 0; padding: 4px 4px; border-bottom: 1px solid transparent;
+                }
+                .o_field_widget .o_input:focus, .o_field_widget .form-select:focus, .o_field_widget .o_input_dropdown:focus-within > .o_input, .o_field_widget .o-autocomplete:focus-within > .o_input {
+                    background: var(--nm-surface); border-radius: var(--nm-radius-sm); border-bottom-color: transparent; box-shadow: var(--nm-inset), var(--nm-focus); padding: 4px 8px;
+                }
+                .o_field_many2one_selection .o_input_dropdown::after { display: none; }
+                .o_field_tags.o_tags_input { padding: 2px 4px; box-shadow: none; border-bottom: 1px solid transparent; border-radius: 0; }
+                .o_field_tags.o_tags_input:focus-within { box-shadow: var(--nm-inset), var(--nm-focus); border-radius: var(--nm-radius-sm); border-bottom-color: transparent; }
+                .o_external_button, .o_field_many2one_extra .btn { box-shadow: none; }
+            }
+        }
+    }
+
+    // read-only rows: any widget input renders as plain text (no inset boxes inside a table)
+    .o_list_table .o_data_row:not(.o_selected_row) {
+        .o_input, textarea.o_input, .o_field_tags.o_tags_input { box-shadow: none !important; background: transparent !important; padding: 0; border-radius: 0; }
+        .o_field_widget .o_input_dropdown::after { display: none; }
+    }
+
+    // ---------------------------------------------------------------- A7 table edges
+    .o_form_view .o_field_x2many .o_list_table {
+        th:last-child, td:last-child { padding-right: 16px; }
+        th:first-child, td:first-child { padding-left: 12px; }
+        .o_list_actions_header, .o_list_record_remove { width: 40px; min-width: 40px; text-align: center; }
+        .o_list_record_remove button { opacity: .55; &:hover { opacity: 1; color: var(--nm-danger); } }
+        thead th { padding-top: 8px; padding-bottom: 8px; }
+        .o_handle_cell { width: 28px; color: var(--nm-text-faint); }
+    }
+
+    // ---------------------------------------------------------------- A8 footer actions
+    .o_field_x2many_list_row_add {
+        padding: 8px 12px !important;
+        a { color: var(--nm-text-muted); font-weight: 400; margin-right: 18px; &:hover { color: var(--nm-action); text-decoration: none; } }
+        a:first-child { color: var(--nm-action); font-weight: 500; &::before { content: "+ "; } }
+    }
+
+    // ---------------------------------------------------------------- A9 totals type scale
+    .o_form_view .oe_subtotal_footer {
+        border-top: 1px solid var(--nm-hairline); padding-top: 10px; margin-top: 8px; font-variant-numeric: tabular-nums; row-gap: 0;
+        grid-template-columns: 1fr auto !important;   // label + value stay on one line on phones too (Odoo stacks them)
+        > .o_cell { min-height: 30px; padding: 2px 0; }
+        .o_cell.o_wrap_label { color: var(--nm-text-muted); font-weight: 400; font-size: 13px; justify-content: flex-end; }
+        .o_cell.o_wrap_input { justify-content: flex-end; }
+        .o_field_monetary, .o_field_widget { font-size: 13px; font-weight: 400; text-align: right; }
+        .oe_subtotal_footer_separator { border-top: 1px solid var(--nm-hairline); margin-top: 6px; padding-top: 8px; font-size: 18px !important; font-weight: 500 !important; color: var(--nm-text); }
+        .o_cell.o_wrap_label:has(+ .o_cell .oe_subtotal_footer_separator), .o_cell.o_wrap_label.oe_subtotal_footer_separator { font-size: 15px; font-weight: 500; color: var(--nm-text); border-top: 1px solid var(--nm-hairline); margin-top: 6px; padding-top: 8px; }
+        // last row (amount due / residual) takes the action colour
+        > .o_cell.o_wrap_input:last-child .o_field_widget, > .o_cell.o_wrap_input:last-child .o_field_widget span { color: var(--nm-action); font-weight: 500; }
+    }
+    // terms / notes placeholder gets a real (quiet) field affordance
+    .o_form_view .o_field_html.o_field_widget:not(.o_readonly_modifier), .o_form_view .o_field_text textarea.o_input { min-height: 44px; }
+
+    // ---------------------------------------------------------------- A10 chatter
+    // The aside is the same clay surface as Discuss (edge cast, small relief motif);
+    // every message / activity is a raised key, the composer an inset well.
+    .o-mail-Form-chatter.o-aside, .o-mail-ChatterContainer.o-aside { width: 400px !important; max-width: 400px; flex-grow: 0 !important; }
+    // same surface as Discuss: plain clay, no tint
+    .o-mail-Form-chatter, .o-mail-ChatterContainer, .o-mail-Form-chatter .o-mail-Chatter, .o-mail-ChatterContainer .o-mail-Chatter { background-color: var(--nm-surface) !important; }
+    // inner containers stay transparent so the relief (::before) shows through the whole panel
+    .o-mail-Form-chatter .o-mail-Chatter-content, .o-mail-Form-chatter .o-mail-Chatter-top, .o-mail-Form-chatter .o-mail-Thread, .o-mail-Form-chatter .o-mail-Chatter .bg-view,
+    .o-mail-ChatterContainer .o-mail-Chatter-content, .o-mail-ChatterContainer .o-mail-Thread { background: transparent !important; }
+    .o-mail-Form-chatter .o-mail-Chatter, .o-mail-ChatterContainer .o-mail-Chatter {
+        box-shadow: var(--glass-cast-left); border-radius: 0; margin: 0; border: 0 !important;      // flat surface, edge cast — like the Discuss panels
+        position: relative; isolation: isolate; overflow: hidden;
+        &::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background-image: var(--nm-relief); background-size: var(--nm-relief-size); background-position: var(--nm-relief-pos); background-repeat: var(--nm-relief-repeat); opacity: var(--nm-relief-opacity); pointer-events: none; z-index: 0; }
+        > * { position: relative; z-index: 1; }
+        .o-mail-Thread { padding: 2px 12px 14px !important; }
+        .o-mail-Message {
+            margin: 8px 0 !important; padding: 10px 12px !important; border: 0 !important; border-radius: var(--nm-radius);
+            background-color: var(--nm-surface) !important; box-shadow: var(--nm-raised-sm); transition: box-shadow .15s var(--nm-ease-enter), transform .15s var(--nm-ease-enter);
+            &:hover { background-color: var(--nm-surface) !important; box-shadow: var(--nm-raised); transform: translateY(-1px); }
+            .o-mail-Message-bubble { background: transparent !important; border: 0 !important; box-shadow: none; padding: 0 !important; }
+            .o-mail-Message-body { padding: 4px 0 0 !important; }
+            .o-mail-Message-avatarContainer { border-radius: 10px !important; padding: 2px; background-color: var(--nm-surface); box-shadow: var(--nm-inset-sm); }
+            .o-mail-Message-avatar { border-radius: 8px !important; }
+        }
+        .o-mail-ActivityList, .o-mail-Activity { margin: 8px 0 !important; padding: 10px 12px !important; border: 0 !important; border-radius: var(--nm-radius); background-color: var(--nm-surface) !important; box-shadow: var(--nm-raised-sm); }
+        .o-mail-ActivityList .o-mail-Activity { margin: 6px 0 0 !important; padding: 8px 10px !important; box-shadow: var(--nm-inset-sm); }
+        .o-mail-Composer-inputContainer, .o-mail-Composer-input { border: 0 !important; border-radius: var(--nm-radius) !important; background-color: var(--nm-surface) !important; box-shadow: var(--nm-inset); }
+        .o-mail-Composer-input { box-shadow: none; }
+        .o-mail-Composer-actions .btn, .o-mail-Composer-quickActions .btn { background: transparent; box-shadow: none; }
+        .o-mail-Composer-send { background-color: var(--nm-action) !important; color: var(--nm-action-contrast) !important; box-shadow: var(--nm-raised-sm); }
+        // topbar: one centred line that fits the 400px aside — Odoo gives Activity a `my-2` the
+        // other buttons lack, and lets the row scroll sideways when the buttons overflow.
+        .o-mail-Chatter-topbar, .o-mail-Chatter-top, .o-mail-Chatter-topbar > .o-mail-Followers, .o-mail-Chatter-topbar > .d-contents { background: transparent !important; }   // no strip of its own: the well's tint shows through
+        .o-mail-Chatter-topbar {
+            padding: 12px 12px 6px; gap: 4px; align-items: center; flex-wrap: wrap; overflow: visible !important;   // stock one-line layout; wraps only if an app adds buttons
+            > .btn, > .btn.my-2, .o-mail-Followers-button.my-2, .o-mail-Chatter-attachFiles.my-2 { margin: 0 !important; }
+            > .btn:not(.btn-link) { height: 30px; padding: 0 9px; font-size: 12.5px; line-height: 30px; white-space: nowrap; }
+            .o-mail-Chatter-topbarGrow { padding: 0 !important; min-width: 2px; }
+            .o-mail-Followers { margin: 0 !important; }
+            .btn-link, .o-mail-Followers-button, .o-mail-Chatter-attachFiles { padding: 0 3px !important; height: 30px; display: inline-flex; align-items: center; color: var(--nm-text-muted); &:hover { color: var(--nm-action); } }
+            .o-mail-Followers-button.active { color: var(--nm-action); }
+        }
+    }
+    .o-mail-Form-chatter:not(.o-aside) .o-mail-Chatter { box-shadow: var(--glass-cast-up); }
+
+    // ---------------------------------------------------------------- A11 save / discard keys (Odoo's own indicator, no added text)
+    // v3.4: two real keys, not glyphs — save is the filled action key, discard a raised clay key.
+    // `.o_form_view` is part of the selector so it outranks the generic `.o_form_view .btn` rules in theme.scss.
+    .o_form_view .o_form_status_indicator {
+        .o_form_status_indicator_buttons:not(.invisible) {
+            align-items: center; gap: 8px; margin-left: 10px; border-color: var(--nm-hairline) !important; padding-left: 10px !important;
+            .o_form_button_save, .o_form_button_cancel {
+                border-radius: var(--nm-radius-sm); padding: 5px 10px !important; line-height: 20px; font-size: 15px; transform: none;
+                &:focus-visible { outline: 2px solid var(--nm-action); outline-offset: 2px; }
+            }
+            .o_form_button_save {
+                background: var(--nm-action); color: var(--nm-action-contrast);
+                box-shadow: var(--nm-d-sm) var(--nm-d-sm) var(--nm-blur-sm) var(--nm-action-shadow), calc(var(--nm-d-sm) * -1) calc(var(--nm-d-sm) * -1) var(--nm-blur-sm) var(--nm-shadow-light);
+                &:hover { background: var(--nm-action-hover); color: var(--nm-action-contrast); box-shadow: var(--nm-d) var(--nm-d) var(--nm-blur) var(--nm-action-shadow), calc(var(--nm-d) * -1) calc(var(--nm-d) * -1) var(--nm-blur) var(--nm-shadow-light); }
+                &:active { box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .35), inset -2px -2px 6px rgba(255, 255, 255, .15); }
+                &:disabled { opacity: .45; box-shadow: none; }
+            }
+            .o_form_button_cancel {
+                background: var(--nm-surface); color: var(--nm-text); box-shadow: var(--nm-raised-sm);
+                &:hover { color: var(--nm-danger); background: var(--nm-surface); box-shadow: var(--nm-raised); }
+                &:active { box-shadow: var(--nm-inset-sm); }
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- A13 mobile: x2many rows as cards (no horizontal scroll)
+    @media (max-width: 767.98px) {
+        .o_field_x2many .o_list_renderer { overflow-x: visible !important; }
+        .o_field_x2many .o_list_renderer .o_list_table {
+            display: block; width: 100% !important; min-width: 0 !important; table-layout: auto;
+            thead, tfoot { display: none; }
+            tbody { display: block; }
+            tbody > tr { display: block; height: auto !important; }
+            // One line = one card: the first field is the title on its own row, every other field
+            // is a block — small-caps label above, value below — laid out two per row so values
+            // line up in columns ("perfectly aligned", user request). The drag handle sits at the
+            // left edge, the row actions (attachments, delete, chatter) on one line at the
+            // bottom-right. Editable rows keep the same grid: label above the input.
+            tbody > tr.o_data_row {
+                display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 12px; position: relative;
+                padding: 10px 12px; border-bottom: 1px solid var(--nm-hairline);
+                &:has(> td.o_handle_cell) { padding-left: 34px; }
+                > td {
+                    display: flex; flex-direction: column; flex: 1 1 calc(50% - 6px); width: auto !important; min-width: 0 !important; max-width: 100% !important; height: auto !important;
+                    padding: 0 !important; border: 0 !important; box-shadow: none !important; white-space: normal; text-align: left; font-size: 13.5px; line-height: 1.35; color: var(--nm-text);
+                    overflow-wrap: break-word;
+                }
+                // the column label above the value ("QUANTITY / 1.00"): the header row is hidden on
+                // the cards, so bare figures were unreadable (user report: "static holders missing")
+                > td.o_data_cell[data-glass-label]:not(:empty)::before {
+                    content: attr(data-glass-label); display: block; margin-bottom: 2px; font-size: .64rem; font-weight: 600; letter-spacing: .05em; line-height: 1.2; text-transform: uppercase; color: var(--nm-text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                }
+                // title = first data cell (or the one right after the handle / selector): full row, no label
+                // (the handle cell is itself a data cell carrying the "Sequence" label — never shown)
+                > td.o_data_cell:first-child, > td.o_handle_cell + td.o_data_cell, > td.o_list_record_selector + td.o_data_cell {
+                    flex: 1 1 100%; font-size: 14.5px; font-weight: 600; color: var(--nm-text);
+                }
+                > td.o_data_cell[data-glass-label]:first-child::before, > td.o_handle_cell + td.o_data_cell[data-glass-label]::before,
+                > td.o_list_record_selector + td.o_data_cell[data-glass-label]::before, > td.o_handle_cell[data-glass-label]::before { content: none; }
+                > td.o_list_record_selector, > td:empty { display: none; }
+                // drag handle: a grip at the left edge (lines can still be reordered by touch)
+                > td.o_handle_cell, > td.o_data_cell.o_handle_cell { display: flex !important; position: absolute; left: 9px; top: 50%; transform: translateY(-50%); flex: none; width: 16px !important; font-size: 14px; color: var(--nm-text-faint); .o_row_handle { color: inherit; } }
+                > td.o_list_number { font-variant-numeric: tabular-nums; }
+                > td[name="discount"]::after { content: " %"; }
+                > td[name="price_subtotal"], > td[name="price_total"], > td[name="amount"], > td[name="amount_currency"], > td[name="balance"], > td[name="debit"], > td[name="credit"] { font-weight: 600; }
+                // a column with a blank label (Odoo's "count next to a button" pattern, e.g. the
+                // BoM attachments count) is not a field block: it joins the actions row, muted
+                > td.o_data_cell[data-glass-label=" "], > td.o_data_cell[data-glass-label=""] { order: 99; flex: 0 0 auto; margin-left: auto; align-self: center; font-size: 12px; color: var(--nm-text-muted); &::before { content: none; } }
+                // actions: their own line at the bottom-right — the ::after is the line break; the
+                // first action pushes right (margin auto), the following ones sit 8px apart
+                &::after { content: ""; flex: 1 1 100%; order: 98; height: 0; margin: -8px 0 0; }
+                > td.o_list_button, > td.o_list_record_remove, > td.o_glass_chatter_cell { order: 99; flex: 0 0 auto; flex-direction: row; align-items: center; margin-left: auto; width: auto !important; }
+                > :is(td.o_list_button, td.o_list_record_remove, td.o_glass_chatter_cell, td.o_data_cell[data-glass-label=" "], td.o_data_cell[data-glass-label=""])
+                ~ :is(td.o_list_button, td.o_list_record_remove, td.o_glass_chatter_cell, td.o_data_cell[data-glass-label=" "], td.o_data_cell[data-glass-label=""]) { margin-left: 8px; }
+                // row actions as keys ("Details", "Confirm" as pills; delete / attachment icons as
+                // 32px squares) on one line, clearly apart from the "＋ Add a line" key underneath
+                // (user report: the delete icon and "Add a product" read as one row)
+                > td.o_list_button .btn, > td.o_list_record_remove .btn, > td.o_list_record_remove button {
+                    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+                    height: 32px; min-width: 32px; padding: 0 12px; border: 0; border-radius: var(--nm-radius-sm);
+                    background: var(--nm-surface); box-shadow: var(--nm-raised-sm); color: var(--nm-action);
+                    font-size: .82rem; font-weight: 600; line-height: 1; white-space: nowrap;
+                    &:active { box-shadow: var(--nm-inset-sm); }
+                }
+                > td.o_list_record_remove button { width: 32px; padding: 0; color: var(--nm-text-muted); }
+                &:not(:has(> td.o_list_button, > td.o_list_record_remove, > td.o_glass_chatter_cell, > td.o_data_cell[data-glass-label=" "]))::after { display: none; }
+                // editing: the field widget fills its block, the label stays above the input
+                .o_field_widget, .o_field_widget > .o_input, .o_field_widget .o_input_dropdown, .o_field_widget .o-autocomplete { width: 100% !important; max-width: 100% !important; min-width: 0 !important; }
+                &.o_selected_row { box-shadow: inset 0 0 0 1px var(--nm-action); border-radius: var(--nm-radius-sm); }
+            }
+            tbody > tr:has(.o_field_x2many_list_row_add) { display: block; }
+            // "＋ Add a line / Add a product / Catalog": keys on their own row under the cards
+            .o_field_x2many_list_row_add {
+                display: flex; flex-wrap: wrap; gap: 8px 10px; padding: 12px !important;
+                > a, > button {
+                    display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px !important;
+                    border-radius: 999px; background: var(--nm-surface); box-shadow: var(--nm-raised-sm);
+                    color: var(--nm-action); font-size: .86rem; font-weight: 600; text-decoration: none; white-space: nowrap;
+                    &:active { box-shadow: var(--nm-inset-sm); }
+                }
+            }
+            // an empty read-only list (no rows, no "Add a line") vanished completely on phones —
+            // header hidden above, padding rows hidden in A1 (QA BUG-0024): show the column names, muted
+            &:not(:has(tbody > tr.o_data_row, .o_field_x2many_list_row_add)) thead {
+                display: block;
+                tr { display: flex; flex-wrap: wrap; gap: 2px 12px; padding: 8px 12px; }
+                th { display: inline-block; width: auto !important; padding: 0 !important; border: 0 !important; font-size: 12px; font-weight: 500; color: var(--nm-text-faint); white-space: nowrap; .o_resize { display: none; } }
+                th.o_list_record_selector, th.o_handle_cell, th.o_list_actions_header, th.o_list_controller, th:empty { display: none; }
+            }
+        }
+        // x2many KANBAN (Odoo's phone view of order / invoice / transfer lines): Odoo glues the
+        // line cards together (no border, -1px margins) and ends the stack with a same-looking
+        // "Add …" card, so the last line and the add control read as one block (user report).
+        // A gap between the line cards, and "Add" as a dashed ＋ key.
+        .o_field_x2many .o_kanban_renderer {
+            .o_kanban_record:not(.o_kanban_ghost):not(.o-kanban-button-new) {
+                --KanbanRecord-padding-v: 10px;
+                --KanbanRecord-padding-h: 12px;
+                margin: 0 0 8px !important; border-radius: var(--nm-radius-sm) !important;
+                box-shadow: var(--nm-raised-sm) !important;
+                // the amount column of a line card (`col-4`, "Tax excl.: 1,000.00") wrapped onto two
+                // lines at 342px: let it take the width it needs, the label column gets the rest
+                > .row > .col-3, > .row > .col-4 { flex: 0 0 auto; width: auto; max-width: 60%; white-space: nowrap; }
+                > .row > .col-8, > .row > .col-9 { flex: 1 1 0; width: auto; min-width: 0; }
+            }
+            .o_kanban_record.o-kanban-button-new {
+                display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px;
+                margin: 2px 0 4px !important; padding: 12px !important; min-height: 44px;
+                border: 1.5px dashed var(--nm-hairline) !important; border-radius: var(--nm-radius-sm) !important;
+                background: transparent; box-shadow: none !important; color: var(--nm-action); font-weight: 600;
+                &::before { @include glass-glyph("add", 16px); }
+                &:active { box-shadow: var(--nm-inset-sm) !important; }
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- A12 tabular numerals
+    .o_list_number, .o_field_monetary, .o_field_float, .o_field_integer, .o_field_percentage, .oe_subtotal_footer, .o_stat_value, .o_pager_counter { font-variant-numeric: tabular-nums; }
+
+    // sheet padding tidy-up (part of A3/A7): consistent 24/32, less dead space below tables
+    .o_form_view .o_form_sheet { padding: 24px 32px 28px; }
+    .o_form_view .o_form_sheet_bg { padding-bottom: 12px; }
+    .o_form_view .o_field_x2many .o_list_renderer { margin-bottom: 0; }
+}
+
+// Glass Workspace — "chatter below" preference (body.o_glass_chatter_bottom): drop the aside
+// chatter under the sheet, full width, for every form.
+body.o_glass_chatter_bottom {
+    .o_form_renderer { flex-direction: column !important; flex-wrap: nowrap !important; }
+    .o_form_renderer > .o_form_sheet_bg { order: 0 !important; width: 100% !important; flex: 0 0 auto !important; }
+    .o_form_renderer > .o-mail-Form-chatter, .o_form_renderer > .o-mail-ChatterContainer {
+        order: 1 !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; flex: 0 0 auto !important;
+    }
+}

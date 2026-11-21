@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- A day: somebody on site without network all morning must still be able to send at two o'clock. -->
+    <record id="param_access_ttl" model="ir.config_parameter">
+        <field name="key">rvt_api.access_token_ttl_minutes</field>
+        <field name="value">1440</field>
+    </record>
+    <record id="param_refresh_ttl" model="ir.config_parameter">
+        <field name="key">rvt_api.refresh_token_ttl_days</field>
+        <field name="value">90</field>
+    </record>
+</odoo>

@@ -1,0 +1,842 @@
+// =============================================================================
+// Neumorphic Backend Theme — component layer
+//
+// Scope: everything lives under `.o_theme_glass` (put on <body> by the server
+// template when the setting is on). Selectors are Odoo 20's real structural
+// classes. Rules only touch surface / shadow / radius / colour — never layout
+// or the DOM — so every view keeps working exactly as before.
+//
+// Performance notes
+//  * compiled once by Odoo's asset pipeline into the minified backend bundle
+//  * shadows are pre-composed CSS variables (see tokens.scss) → tiny rules
+//  * only `transform`, `box-shadow`, `opacity`, `background-color` are animated
+//  * no `filter`/`backdrop-filter` on large surfaces, no JS, no extra requests
+//  * `prefers-reduced-motion` honoured
+// =============================================================================
+
+@mixin nm-raised($lvl: "") { box-shadow: var(--nm-raised#{$lvl}); }
+@mixin nm-inset($lvl: "")  { box-shadow: var(--nm-inset#{$lvl}); }
+@mixin nm-well { box-shadow: var(--nm-well); }
+
+.o_theme_glass {
+    background-color: var(--gl-ground);
+    background-image: var(--gl-field);
+    background-attachment: fixed;
+    color: var(--nm-text);
+
+    // Bootstrap bakes Odoo's aubergine (#714B67) into every `primary` utility — bg-primary,
+    // border-primary, text-primary, progress bars, the Timesheet/Planning grid bar-charts,
+    // badges and ribbons. Re-point the Bootstrap primary token at the Glass brand so all of
+    // them carry the brand consistently; the `-rgb` form keeps `bg-opacity-*` utilities working.
+    --bs-primary: var(--nm-brand);
+    --bs-primary-rgb: var(--nm-brand-rgb);
+    // …and the emphasis ink (`text-primary-emphasis`: the figures of the Sales / Purchase dashboard
+    // tiles) — Bootstrap bakes a shaded aubergine into it, which was the last purple on the clay
+    --bs-primary-text-emphasis: var(--nm-brand);
+    --primary-text-emphasis: var(--nm-brand);
+    .text-primary-emphasis { color: var(--nm-brand) !important; }
+    // Sales' dashboard tiles ("To Deliver", "To Invoice") colour their figure through these
+    // variables (sale/dashboard.scss); the purple tile is Odoo's brand — here it is the accent
+    --DashboardCard__purple-color: var(--nm-brand);
+    --DashboardCard__purple-color--active: var(--nm-brand-hover);
+
+    // ------------------------------------------------------------------ 1. Ground
+    .o_web_client, .o_action_manager, .o_content { background-color: transparent; }
+    .o_action_manager > .o_action { background-color: transparent; }
+    // Odoo's "view background" utility is pure white (dashboard strips, side panels, offcanvas…):
+    // it becomes a pane of glass.
+    .bg-view { background-color: var(--nm-surface) !important; }
+    // Bootstrap paints `.text-primary` with Odoo's purple baked in as an RGBA literal; re-point it at the brand
+    .text-primary { --color: rgba(var(--nm-brand-rgb), var(--text-opacity, 1)); }
+    // Odoo compiles `.bg-primary` / `.text-bg-primary` to `background-color: var(--background-color)`
+    // where `--background-color` bakes in the aubergine — so `--bs-primary-rgb` alone is ignored.
+    // Re-point `--background-color` at the brand (keeping the `bg-opacity-*` mechanism) so the
+    // Timesheet/Planning grid bar-charts, badges, ribbons and progress bars carry the Glass brand.
+    .bg-primary, .text-bg-primary { --background-color: rgba(var(--nm-brand-rgb), var(--bg-opacity, 1)) !important; }
+    .border-primary { --border-color: var(--nm-brand) !important; border-color: var(--nm-brand) !important; }
+    // v2: a link is text (many2one values, vendors, companies… were half the cells of a list in the
+    // accent); the accent means "actionable now" and stays on buttons, add-lines and active states
+    a { color: var(--nm-action); &:hover { color: var(--nm-action-hover); } }
+    a:not(.btn):not(.dropdown-item):not(.nav-link):not(.o_kanban_load_more):not(.oe_kanban_action) { color: var(--nm-text); &:hover { color: var(--nm-action); text-decoration: underline; } }
+    .o_field_x2many_list_row_add a { color: var(--nm-action); }
+    kbd { border-radius: 6px; background: var(--nm-surface); color: var(--nm-text-muted); @include nm-raised("-sm"); box-shadow: 2px 2px 4px var(--nm-shadow-dark), -2px -2px 4px var(--nm-shadow-light); }
+
+    // ---------------------------------------------------------------- 2. Buttons
+    .btn {
+        // Enterprise 20 builds with $enable-gradients: every button carries a white sheen through
+        // `--gradient`; clay keys are flat (Odoo itself clears it on a few components)
+        --gradient: none;
+        border: 0;
+        border-radius: var(--nm-radius-sm);
+        font-weight: 500;
+        background-color: var(--nm-surface);
+        color: var(--nm-text);
+        @include nm-raised("-sm");
+        transition: box-shadow .15s var(--nm-ease-enter), transform .15s var(--nm-ease-enter), background-color .15s, color .15s;
+
+        &:hover { transform: translateY(-1px); @include nm-raised; }
+        &:active, &.active, &.show { transform: none; @include nm-inset; }
+        &:focus-visible { outline: 2px solid var(--nm-action); outline-offset: 2px; box-shadow: var(--nm-raised-sm); }
+        &:disabled, &.disabled { opacity: .5; transform: none; }
+    }
+    .btn-primary, .oe_highlight.btn-secondary {
+        background-color: var(--nm-brand); color: var(--nm-brand-contrast);
+        box-shadow: var(--nm-d-sm) var(--nm-d-sm) var(--nm-blur-sm) var(--nm-brand-shadow), calc(var(--nm-d-sm) * -1) calc(var(--nm-d-sm) * -1) var(--nm-blur-sm) var(--nm-shadow-light);
+        &:hover { background-color: var(--nm-brand-hover); color: var(--nm-brand-contrast); box-shadow: var(--nm-d) var(--nm-d) var(--nm-blur) var(--nm-brand-shadow), calc(var(--nm-d) * -1) calc(var(--nm-d) * -1) var(--nm-blur) var(--nm-shadow-light); }
+        &:active, &.active { background-color: var(--nm-brand); color: var(--nm-brand-contrast); box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .35), inset -2px -2px 6px rgba(255, 255, 255, .15); }
+    }
+    .btn-secondary, .btn-light {
+        background-color: var(--nm-surface); color: var(--nm-text);
+        &:hover { background-color: var(--nm-surface); color: var(--nm-text); }
+        &:active, &.active, &.show { background-color: var(--nm-active-tint); color: var(--nm-action); }
+    }
+    .btn-success { background-color: var(--nm-success); color: #fff; }
+    .btn-info    { background-color: var(--nm-info); color: #fff; }
+    .btn-warning { background-color: var(--nm-warning); color: #111827; }
+    .btn-danger  { background-color: var(--nm-danger); color: #fff; }
+    .btn-success, .btn-info, .btn-warning, .btn-danger { &:hover { filter: brightness(1.05); } &:active, &.active { box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .3); } }
+    [class*="btn-outline-"] {
+        background-color: transparent; box-shadow: none; border: 1.5px solid var(--nm-hairline);
+        &:hover { transform: none; background-color: var(--nm-surface); @include nm-raised("-sm"); }
+        &:active, &.active { @include nm-inset("-sm"); }
+    }
+    .btn-outline-primary { color: var(--nm-brand); border-color: var(--nm-brand); &:hover { color: var(--nm-brand); } }
+    .btn-outline-secondary { color: var(--nm-text); &:hover { color: var(--nm-text); } }
+    .btn-outline-danger { color: var(--nm-danger); border-color: var(--nm-danger); &:hover { color: var(--nm-danger); } }
+    .btn-link, .btn-link:hover, .btn-link:active {
+        background-color: transparent; box-shadow: none; transform: none; color: var(--nm-action);
+        &.text-danger { color: var(--nm-danger); }
+    }
+    .btn-link:hover { text-decoration: underline; }
+    .btn-close { border-radius: 50%; background-color: var(--nm-surface); @include nm-raised("-sm"); opacity: .8; &:hover { opacity: 1; } }
+    .btn-group {
+        border-radius: var(--nm-radius-sm); @include nm-raised("-sm");
+        > .btn { box-shadow: none; transform: none; border-radius: 0; &:hover { box-shadow: none; transform: none; } }
+        > .btn:first-child { border-top-left-radius: var(--nm-radius-sm); border-bottom-left-radius: var(--nm-radius-sm); }
+        > .btn:last-child { border-top-right-radius: var(--nm-radius-sm); border-bottom-right-radius: var(--nm-radius-sm); }
+        > .btn + .btn { margin-left: 0; border-left: 1px solid var(--nm-hairline); }
+        > .btn.active, > .btn:active { @include nm-inset("-sm"); }
+    }
+    // Enterprise 20's segmented control (`.o_switcher`: view switcher, graph toolbars, Discuss
+    // action groups) slides a highlight (::before) under the active key: a clay key row whose
+    // sliding highlight is a seated well — the keys themselves stay flat
+    &:not(.o_glass_community) .o_switcher {
+        --o-Switcher-backgroundColor: var(--nm-surface);
+        --o-Switcher-border: 0;
+        --o-Switcher-activeBackgroundColor: var(--nm-surface);
+        border-radius: var(--nm-radius-sm); @include nm-raised("-sm");
+        &::before { box-shadow: var(--nm-inset-sm); }
+        > .btn, > .btn:hover, > .btn:active, > .btn.active { background: transparent !important; box-shadow: none !important; transform: none !important; }
+        > .btn.active { color: var(--nm-action); }
+    }
+    // Stat buttons (form button box)
+    .oe_button_box, .o-form-buttonbox {
+        gap: 12px;
+        .oe_stat_button {
+            min-height: 44px; border-radius: var(--nm-radius); background-color: var(--nm-surface); @include nm-raised("-sm");
+            > .oi, > .o_button_icon { color: var(--nm-action); }
+            .o_stat_value { font-weight: 500; color: var(--nm-text); }
+            .o_stat_text { color: var(--nm-text-muted); }
+        }
+        .o_button_more { border-radius: var(--nm-radius); }
+    }
+    // tablet / narrow laptop (768–991px): the raised stat buttons no longer fit on one line and their
+    // labels ran past the screen edge (QA BUG-0008) — let the box wrap
+    @media (max-width: 991.98px) {
+        .oe_button_box, .o-form-buttonbox { flex-wrap: wrap; }
+        .oe_button_box .oe_stat_button, .o-form-buttonbox .oe_stat_button { min-width: 0; }
+    }
+
+    // ----------------------------------------------------------------- 3. Inputs
+    .o_input, .form-control, .form-select, textarea.o_input {
+        border: 0; border-radius: var(--nm-radius-sm);
+        padding: 6px 10px;
+        background-color: var(--nm-surface); color: var(--nm-text);
+        @include nm-inset;
+        transition: box-shadow .15s;
+        &::placeholder { color: var(--nm-text-faint); }
+        &:focus, &:focus-within { box-shadow: var(--nm-inset), var(--nm-focus); }
+        .o_input { box-shadow: none; padding: 0; background: transparent; }   // nested inputs (Odoo pattern)
+    }
+    // a value longer than its box ends in "…" while the input is not being edited (Odoo only does
+    // this for placeholders; the padded boxes clip a few px sooner than stock Odoo — QA regression)
+    input.o_input:not(:focus) { text-overflow: ellipsis; }
+    .form-select { background-color: var(--nm-surface); }
+    .o_required_modifier .o_input, .o_required_modifier .form-select { box-shadow: var(--nm-inset), inset 0 -2px 0 var(--nm-text); }
+    .o_field_invalid .o_input, .o_field_invalid.o_input { box-shadow: var(--nm-inset), 0 0 0 2px var(--nm-danger); }
+    .o_readonly_modifier .o_input, .o_field_widget.o_readonly_modifier .o_input { box-shadow: none; background: transparent; padding-left: 0; padding-right: 0; }
+    .o_form_label { font-weight: 500; color: var(--nm-text-muted); }
+    .o_field_many2one_selection .o_external_button, .o_external_button { color: var(--nm-action); }
+    .o_field_tags.o_tags_input { padding: 4px 8px; }
+    // Checkbox / radio / switch
+    .form-check-input {
+        border: 0; width: 1.25em; height: 1.25em; border-radius: 6px;
+        background-color: var(--nm-surface); @include nm-inset("-sm");
+        transition: background-color .15s, box-shadow .15s;
+        &:checked { background-color: var(--nm-action); box-shadow: 2px 2px 4px var(--nm-action-shadow), -2px -2px 4px var(--nm-shadow-light); }
+        &:indeterminate { background-color: var(--nm-action); }
+        &:focus, &:focus-visible { box-shadow: var(--nm-inset-sm), var(--nm-focus); }
+        &[type="radio"] { border-radius: 50%; &:checked { background-color: var(--nm-surface); @include nm-inset("-sm"); background-image: radial-gradient(circle, var(--nm-action) 0 38%, transparent 42%); } }
+    }
+    .form-switch .form-check-input {
+        width: 2.6em; height: 1.4em; border-radius: 1em; background-image: none; position: relative;
+        &::after { content: ""; position: absolute; top: .17em; left: .17em; width: 1.06em; height: 1.06em; border-radius: 50%; background: var(--nm-surface-high); box-shadow: 2px 2px 4px var(--nm-shadow-dark), -1px -1px 2px var(--nm-shadow-light); transition: left .2s var(--nm-ease-enter); }
+        &:checked { background-color: var(--nm-success); box-shadow: inset 2px 2px 4px rgba(0, 0, 0, .2); &::after { left: 1.37em; background: #fff; } }
+    }
+    .form-range { height: 8px; border-radius: 4px; background-color: var(--nm-surface); @include nm-inset("-sm"); &::-webkit-slider-thumb { background: var(--nm-surface-high); border: 3px solid var(--nm-action); box-shadow: 3px 3px 6px var(--nm-shadow-dark), -2px -2px 5px var(--nm-shadow-light); } }
+    // Priority & favourite
+    .o_priority .o_priority_star.oi-filled, .o_favorite .oi-filled { color: var(--nm-favourite); text-shadow: 1px 1px 2px var(--nm-shadow-dark); }
+    // state_selection dot
+    .o_status { background-color: var(--nm-surface); @include nm-inset("-sm"); border: 0; &.o_status_green { background-color: var(--nm-success); box-shadow: 1px 1px 3px var(--nm-shadow-dark); } &.o_status_red { background-color: var(--nm-danger); box-shadow: 1px 1px 3px var(--nm-shadow-dark); } }
+    // progress bar
+    .progress { border-radius: 6px; background-color: var(--nm-surface); @include nm-inset("-sm"); overflow: hidden; }
+    .progress > div, .progress .progress-bar { border-radius: 6px; }
+    // datetime picker
+    .o_datetime_picker {
+        border: 0; border-radius: var(--nm-radius); background-color: var(--nm-surface-high); box-shadow: var(--nm-floating); @include gl-blur;
+        .o_date_item_cell { border-radius: 50%; &:hover { @include nm-inset("-sm"); } &.o_selected { background-color: var(--nm-action); color: var(--nm-action-contrast); box-shadow: 2px 2px 5px var(--nm-action-shadow); } &.o_highlighted:not(.o_selected) { background-color: var(--nm-active-tint); } &.o_today { box-shadow: inset 0 0 0 1.5px var(--nm-action); } }
+        .o_datetime_button, .o_zoom_out { border-radius: var(--nm-radius-sm); }
+    }
+    .o_time_picker_input, .o_datetime_input { text-align: center; }
+    // colour list
+    .o_colorlist { border-radius: var(--nm-radius-pill); padding: 6px 10px; background-color: var(--nm-surface); @include nm-inset("-sm"); button { box-shadow: 2px 2px 4px var(--nm-shadow-dark), -1px -1px 2px var(--nm-shadow-light); } }
+    // signature / dropzone / code editor
+    .o_signature, .o_web_sign_signature { border-radius: var(--nm-radius); background-color: var(--nm-surface); @include nm-well; border: 0; }
+    .o_dropzone, .o-Dropzone { border-radius: var(--nm-radius); border: 2px dashed var(--nm-hairline); background-color: var(--nm-surface); @include nm-well; }
+    .o_code_editor, .ace_editor { border-radius: var(--nm-radius); box-shadow: inset 4px 4px 10px rgba(0, 0, 0, .45), 0 0 0 4px var(--nm-surface), var(--nm-raised-sm); }
+
+    // ------------------------------------------------------- 4. Tags & badges
+    .o_tag[class*="o_tag_color_"] {
+        --background-color: var(--nm-surface);    // Odoo prints its colour through these vars
+        --color: var(--nm-text);
+        border-radius: var(--nm-radius-pill); padding-left: 16px;
+        // Enterprise 20 rings every coloured tag with a 1px border of its colour: a clay key
+        // carries its colour in the dot only
+        border: 0 !important; &::after { border: 0 !important; }
+        @include nm-raised("-sm"); box-shadow: 2px 2px 4px var(--nm-shadow-dark), -2px -2px 4px var(--nm-shadow-light);
+        &::before { content: ""; position: absolute; left: 6px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--nm-tag-color, #{nth($o-colors, 1)}); box-shadow: inset 1px 1px 1px rgba(0, 0, 0, .15); }
+        .o_delete { color: var(--nm-text-faint); }
+    }
+    @for $i from 1 through length($o-colors) {
+        .o_tag.o_tag_color_#{$i - 1} { --nm-tag-color: #{nth($o-colors, $i)}; }
+    }
+    .badge {
+        border-radius: var(--nm-radius-pill); font-weight: 400; padding: .25em .6em;   // v2: v1's wider pill truncated "Sales Order" → "Sales …" in stock column widths
+        &:not([class*="text-bg-"]):not([class*="bg-"]) { background-color: var(--nm-surface); color: var(--nm-text); @include nm-raised("-sm"); box-shadow: 2px 2px 4px var(--nm-shadow-dark), -2px -2px 4px var(--nm-shadow-light); }
+    }
+    // Round photos only. Odoo 20's AvatarTag puts `.o_avatar` on the whole tag <span> as well, so the
+    // unscoped v3 rule turned every avatar tag (assignees, attendees, autocomplete rows) into a 50%
+    // radius ellipse whose shadow tapered to nothing under the first and last letters.
+    img.o_avatar, .o_m2o_avatar img, img.o_m2m_avatar { border-radius: 50%; box-shadow: 2px 2px 4px var(--nm-shadow-dark), -1px -1px 3px var(--nm-shadow-light); }
+    // Avatar tag with a name: a raised clay pill, the photo seated at its left edge
+    .o_tag.o_avatar:has(.o_tag_badge_text) {
+        border-radius: var(--nm-radius-pill); padding: 2px 10px 2px 2px; background-color: var(--nm-surface);
+        box-shadow: 2px 2px 4px var(--nm-shadow-dark), -2px -2px 4px var(--nm-shadow-light);
+        img.o_m2m_avatar { box-shadow: none; }
+        .o_tag_badge_text { margin-left: 6px; }
+        // Odoo's hover backdrop (a bordered rectangle behind the tag, all Bootstrap !important
+        // utilities) becomes a tint inside the pill
+        .o_avatar_backdrop { inset: 0 !important; margin: 0 !important; border: 0 !important; box-shadow: none !important; border-radius: var(--nm-radius-pill) !important; background-color: var(--nm-active-tint) !important; }
+        .o_delete { padding-left: 4px; }
+    }
+
+    // ----------------------------------------- 5. Dropdowns, popovers, tooltips
+    .o-dropdown--menu, .dropdown-menu, .o-autocomplete--dropdown-menu {
+        border: 0; border-radius: var(--nm-radius); padding: 8px;
+        background-color: var(--nm-surface-high); box-shadow: var(--nm-floating); @include gl-blur;
+    }
+    .dropdown-item, .o-dropdown-item, .ui-menu-item .dropdown-item {
+        border-radius: var(--nm-radius-sm); color: var(--nm-text);
+        // pressed look on hover / keyboard focus only: a mouse click leaves an item :focus-ed
+        // until something else takes the focus, so plain :focus kept items looking "clicked"
+        // (user report, desktop)
+        &:hover, &:focus-visible, &.focus, &.o-navigable.focus, &.ui-state-active { background-color: var(--nm-surface); color: var(--nm-text); @include nm-inset("-sm"); }
+        &.selected, &.active { background-color: transparent; color: var(--nm-action); font-weight: 500; }
+        &.text-danger:hover { color: var(--nm-danger); }
+    }
+    .dropdown-header { color: var(--nm-text-faint); text-transform: uppercase; font-size: 11px; letter-spacing: .06em; }
+    .dropdown-divider { border-color: var(--nm-hairline); opacity: 1; }
+    .o_select_menu_toggler { border-radius: var(--nm-radius-sm); }
+    .o_select_menu_searchbox .o_input { margin: 0 4px 8px; }
+    .o_popover, .popover {
+        border: 0; border-radius: var(--nm-radius); background-color: var(--nm-surface-high); box-shadow: var(--nm-floating); @include gl-blur;
+        .popover-arrow::before, .popover-arrow::after { border-color: transparent; }
+        --popover-arrow-color: var(--nm-surface-high);
+        --popover-bg: var(--nm-surface-high);
+        --popover-border-color: transparent;
+    }
+    .o-tooltip, .tooltip-inner { border-radius: var(--nm-radius-sm); background-color: #{if($o-webclient-color-scheme == dark, $o-gray-300, $o-gray-800)}; color: #{if($o-webclient-color-scheme == dark, $o-gray-900, $o-gray-100)}; box-shadow: 3px 3px 8px var(--nm-shadow-dark); }
+
+    // --------------------------------------------- 6. Notebook, pager, breadcrumb
+    .o_notebook {
+        .o_notebook_headers { border: 0; padding: 6px; border-radius: var(--nm-radius); background-color: var(--nm-surface); @include nm-inset; width: max-content; max-width: 100%; }
+        .nav-tabs { border: 0; gap: 4px; }
+        .nav-link { border: 0 !important; border-radius: var(--nm-radius-sm); padding: 7px 16px; font-weight: 500; color: var(--nm-text-muted); background: transparent;
+            &:hover { color: var(--nm-text); }
+            &.active { color: var(--nm-action); background-color: var(--nm-surface); @include nm-raised("-sm"); }
+            &::before, &::after { content: none !important; }
+            &.o_page_invalid { color: var(--nm-danger); } }
+        &.vertical .o_notebook_headers { width: auto; }
+    }
+    .o_pager .o_pager_counter .o_pager_value { font-weight: 500; }
+    .o_pager .btn { min-width: 34px; }
+    .breadcrumb-item.active, .o_last_breadcrumb_item { color: var(--nm-text); font-weight: 500; }
+    .o_control_panel_breadcrumbs .o_back_button { border-radius: var(--nm-radius-sm); }
+
+    // --------------------------------------------------- 7. Overlays & feedback
+    .modal-content { border: 0; border-radius: var(--nm-radius-lg); background-color: var(--nm-surface-high); box-shadow: var(--nm-modal); @include gl-blur; }
+    .modal-header, .modal-footer { border: 0; }
+    .modal-backdrop { background-color: #{if($o-webclient-color-scheme == dark, $o-white, $o-gray-900)}; }
+    .o_notification { border: 0; border-radius: var(--nm-radius); background-color: var(--nm-surface-high); box-shadow: var(--nm-floating) !important; @include gl-blur;
+        .o_notification_bar { border-radius: var(--nm-radius) 0 0 var(--nm-radius); box-shadow: inset -1px 0 2px rgba(0, 0, 0, .15); }
+        .o_notification_title { font-weight: 500; } }
+    .o_command_palette { border: 0; border-radius: var(--nm-radius-lg); background-color: var(--nm-surface-high); box-shadow: var(--nm-modal); @include gl-blur;
+        .o_command_palette_search { border-bottom: 1px solid var(--nm-hairline); .o_input { box-shadow: none; background: transparent; } }
+        .o_command { border-radius: var(--nm-radius-sm); &.o_command_focus, &:hover { background-color: var(--nm-surface); color: var(--nm-action); @include nm-inset("-sm"); } } }
+    .o_bottom_sheet_sheet { border-radius: var(--nm-radius-lg) var(--nm-radius-lg) 0 0; background-color: var(--nm-surface-high); box-shadow: 0 -8px 24px var(--gl-cast-strong), inset 0 1px 0 var(--gl-edge-top); border: 0; @include gl-blur; .o_bottom_sheet_handle_bar { background: var(--nm-surface); @include nm-inset("-sm"); } }
+    .o_loading_indicator { border-radius: var(--nm-radius-pill); background-color: var(--nm-surface-high); color: var(--nm-text); @include nm-raised("-sm"); }
+    .o_blockUI .o_spinner, .o_block .o_spinner { color: var(--nm-action); }
+    .o_reward { border-radius: var(--nm-radius-lg); box-shadow: var(--nm-modal); }
+    .alert { border: 0; border-left: 6px solid var(--nm-alert, var(--nm-info)); border-radius: var(--nm-radius); background-color: var(--nm-surface); color: var(--nm-text); @include nm-raised("-sm");
+        &.alert-info { --nm-alert: var(--nm-info); } &.alert-success { --nm-alert: var(--nm-success); } &.alert-warning { --nm-alert: var(--nm-warning); } &.alert-danger { --nm-alert: var(--nm-danger); } }
+    .card { border: 0; border-radius: var(--nm-radius); background-color: var(--nm-surface); @include nm-raised; .card-header { background: transparent; border-bottom: 1px solid var(--nm-hairline); } }
+    .list-group-item { border: 0; border-radius: var(--nm-radius-sm); margin-bottom: 6px; background-color: var(--nm-surface); @include nm-raised("-sm"); &.active { background-color: var(--nm-active-tint); color: var(--nm-action); @include nm-inset("-sm"); } }
+    .accordion-button { border: 0; border-radius: var(--nm-radius-sm); background-color: var(--nm-surface); color: var(--nm-text); @include nm-raised("-sm"); &:not(.collapsed) { color: var(--nm-action); @include nm-inset("-sm"); } }
+
+    // --------------------------------------------------------- 8. Webclient shell
+    // Level 0 (v2): the bar is the ground — a hairline under it, no cast. The app tile is the
+    // one key in the bar; section entries are text with a seated pill for the open / active one.
+    .o_main_navbar {
+        border: 0; border-bottom: 1px solid var(--gl-edge); background-color: var(--nm-surface); box-shadow: 0 1px 0 var(--gl-hair), 0 6px 20px var(--gl-cast);
+        position: relative; z-index: 2; @include gl-blur;
+        // Odoo drives entry backgrounds through these variables: make them flat
+        --NavBar-entry-backgroundColor: transparent;
+        --NavBar-entry-backgroundColor--hover: transparent;
+        --NavBar-entry-backgroundColor--focus: transparent;
+        --NavBar-entry-backgroundColor--active: var(--nm-active-tint);
+        --NavBar-entry-padding-left: 12px; --NavBar-entry-padding-right: 12px;
+        display: flex; align-items: center; gap: 2px; padding: 0 12px 0 8px;
+        // one 8 px rhythm: [tile] 8 [entries…] ; systray at right
+        // Enterprise: the toggle holds grid icon + app icon + app name (animated) — surface only, no layout
+        .o_menu_toggle { border-radius: 10px; margin: 8px 8px 8px 0; background-color: var(--nm-surface); color: var(--nm-brand); @include nm-raised("-sm"); &:hover, &:focus-visible { color: var(--nm-brand); background-color: var(--nm-surface); }
+            .o_menu_brand { color: var(--nm-text); font-weight: 500; } }
+        .o_menu_brand { color: var(--nm-text); font-weight: 500; &:hover { background: transparent; color: var(--nm-text); } }
+        .o_menu_sections { gap: 2px; align-items: center; }
+        // section entries are keys: raised at rest, pressed (inset) while open / clicked — the
+        // pressed legend takes the app backlight (backlight.scss §3)
+        .o_menu_sections { gap: 6px; }
+        .o_menu_sections .o_nav_entry, .o_menu_sections > .dropdown-toggle, .o_menu_sections > .dropdown > .dropdown-toggle, .o_menu_sections_more .dropdown-toggle, .o_navbar_apps_menu .dropdown-toggle {
+            border-radius: var(--nm-radius-sm); color: var(--nm-text-muted); margin: 0; padding: 6px 12px; line-height: 20px; background-color: transparent; box-shadow: none; transition: box-shadow .15s, color .15s, background-color .15s;
+            &:hover { color: var(--nm-text); transform: none; box-shadow: none; background-color: var(--nm-active-tint); }
+            &.active, &.show, &:active, &:focus-visible { color: var(--nm-action); font-weight: 500; transform: none; background-color: var(--nm-surface); @include nm-inset("-sm"); outline: 0 !important; border: 0 !important; }
+        }
+        .o_menu_systray { gap: 2px; }
+        img.o_menu_brand_icon { filter: var(--nm-icon-hover); }   // v3: image fallback for the active app
+        // v3: a pill, not 50 % — on a square toggle it is still a circle, on the wide company switcher a
+        // stadium (50 % made an ellipse that cut the first and last letters of the company name)
+        .o_menu_systray > * > .dropdown-toggle, .o_menu_systray .o_switch_company_menu > *, .o_menu_systray .o_user_menu > * { border-radius: var(--nm-radius-pill); }
+        .o_menu_systray .o_switch_company_menu { padding-inline: 14px; .oe_topbar_name { max-width: 15rem; } }
+        .o_menu_systray .dropdown-toggle:hover, .o_menu_systray .dropdown-toggle.show { background-color: var(--nm-surface); @include nm-inset("-sm"); }
+        .o_menu_systray .badge, .o_menu_systray .o-mail-ActivityMenu-counter, .o_menu_systray .o-mail-MessagingMenuInDropdown-counter { background-color: var(--nm-danger) !important; color: #fff; border-radius: 8px; }
+    }
+    .o_burger_menu { background-color: var(--nm-surface); .o_burger_menu_content { background-color: var(--nm-surface); } .o_sidebar_topbar { background-color: var(--nm-surface); box-shadow: var(--nm-raised-sm); } .o_burger_menu_avatar { border-radius: 50%; box-shadow: var(--nm-raised-sm); } }
+    .o_switch_company_item { border-radius: var(--nm-radius-sm); &:hover { background-color: var(--nm-surface); @include nm-inset("-sm"); } }
+    .o_user_menu .o_user_avatar { border-radius: 50%; box-shadow: var(--nm-raised-sm); }
+    // Identity glyph icons (v3) ------------------------------------------------
+    // identity renders an app icon as `.o_identity_icon` with `--identity-glyph` (the glyph file) and
+    // `--identity-tile`. Drawn here entirely from tokens — option E of the 2026-09-27 review: a
+    // lighter tile at 78 % of the box with a 26 % radius and a hairline, the glyph at 56 % of the
+    // tile as a mask painted in the muted ink. States change colours only, so transitions are clean.
+    .o_identity_icon {
+        position: relative; background: transparent !important; box-shadow: none; padding: 0; filter: none !important;
+        &::before {
+            content: ""; position: absolute; inset: 11%; border-radius: 26%;
+            background-color: var(--nm-surface-high); box-shadow: 0 0 0 1px var(--nm-hairline);
+            transition: background-color .18s, box-shadow .18s;
+        }
+        &::after {
+            content: ""; position: absolute; inset: 0; background-color: var(--nm-text-muted);
+            -webkit-mask: var(--identity-glyph) center / 100% 100% no-repeat; mask: var(--identity-glyph) center / 100% 100% no-repeat;
+            transition: background-color .18s;
+        }
+    }
+    .o_menu_brand_icon.o_identity_icon { aspect-ratio: 1 / 1; &::after { background-color: var(--nm-action); } &::before { box-shadow: 0 0 0 1px var(--nm-action); background-color: var(--nm-active-tint); } }   // the current app carries the accent
+    // Enterprise home menu ---------------------------------------------------
+    // Enterprise sizes its home-menu backdrop (`100% 40%` on a layer): the field keeps its own geometry
+    &.o_home_menu_background, .o_home_menu_background { background-color: var(--gl-ground) !important; background-image: var(--gl-field) !important; background-size: auto !important; background-position: 0 0 !important; background-repeat: no-repeat !important; background-attachment: fixed !important; }
+    .o_home_menu {
+        background: transparent !important;
+        .o_input, .form-control { background-color: var(--nm-surface); }
+        // the app search field (shown on touch devices; keyboards type straight into the grid)
+        .o_home_menu_search_input { border: 0; border-radius: var(--nm-radius) !important; padding: 8px 14px !important; background-color: var(--nm-surface) !important; color: var(--nm-text); @include nm-inset; &::placeholder { color: var(--nm-text-faint); } &:focus { outline: 0; box-shadow: var(--nm-inset), 0 0 0 1px var(--nm-action-shadow); } }
+        .o_app {
+            position: relative; border-radius: var(--nm-radius); background: transparent; transition: none;
+            // v3: the key (clay fill + shadows) is a pseudo-element BEHIND the icon, so the rest / hover
+            // colour filter on the <img> never touches the shadows (in dark mode the inversion turned
+            // them into halos). Geometry mirrors web_enterprise: a 70 px square, .5rem below the top.
+            &::before {
+                content: ""; position: absolute; top: .5rem; left: 50%; width: 70px; height: 70px; margin-left: -35px;
+                border-radius: 20px; background-color: var(--nm-surface); pointer-events: none;
+                box-shadow: var(--nm-inset), 0 0 0 4px var(--nm-surface);     // E: a seated well at rest, no cast; the tile inside is the file's
+                transform: translateY(2px) scale(.96); transform-origin: center bottom;
+                transition: transform .18s var(--nm-ease-enter), box-shadow .18s var(--nm-ease-enter);
+            }
+            .o_app_icon {
+                position: relative; border-radius: 20px !important; padding: 0; background-color: transparent; box-shadow: none;
+                transform: translateY(2px) scale(.96); transform-origin: center bottom;
+                filter: var(--nm-icon-rest);              // v3: images without a glyph file (tokens.scss); never transitioned (hue flashes)
+                transition: transform .18s var(--nm-ease-enter);
+            }
+            .o_caption { color: var(--nm-text); opacity: .85; transition: opacity .18s, color .18s; }
+            &:hover, &:focus-visible, &.o_focused {
+                background: transparent; box-shadow: none;
+                &::before { transform: translateY(-4px) scale(1.04); box-shadow: 0 0 0 4px var(--nm-surface), 8px 8px 18px var(--nm-shadow-dark), -6px -6px 14px var(--nm-shadow-light), 0 0 18px 4px rgba(var(--nm-brand-rgb), .16); }
+                .o_app_icon { transform: translateY(-4px) scale(1.04); filter: var(--nm-icon-hover); }
+                .o_caption { opacity: 1; color: var(--nm-action); }
+                // the glyph element (identity_enterprise): E's hover — tile takes the active tint and an accent hairline, glyph the accent
+                .o_identity_icon::before { background-color: var(--nm-active-tint); box-shadow: 0 0 0 1px var(--nm-action); }
+                .o_identity_icon::after { background-color: var(--nm-action); }
+            }
+            &:active { &::before, .o_app_icon { transform: translateY(1px) scale(.98); transition-duration: .08s; } }
+        }
+    }
+    // v3: images without a glyph element keep the rest filter only (a hover filter would transition through other hues)
+    .o_modules_kanban .o_kanban_record aside img { filter: var(--nm-icon-rest); }
+    .settings_tab .tab .icon, .app_settings_block .icon { filter: var(--nm-icon-rest); }
+    .o_burger_menu img.o_app_icon, .o_burger_menu .o_app_icon img { filter: var(--nm-icon-rest); }
+    .o_expiration_panel, .o_sysadmin_panel { border-radius: var(--nm-radius); border-left: 6px solid var(--nm-warning); background-color: var(--nm-surface); @include nm-raised; }
+
+    // -------------------------------------------------- 9. Control panel & search
+    // Level 0 (v2): the control panel is part of the ground, not a card holding cards. It has one
+    // raised object — the primary action — one well (search) and one seated group (pager · view
+    // switcher); every other button is a ghost that gains its key on hover.
+    .o_control_panel {
+        background-color: transparent; border: 0; border-radius: 0; margin: 0; padding: 10px var(--glass-gutter) 6px; box-shadow: none;
+        .o_control_panel_main_buttons .btn-primary { min-width: 64px; }
+        .o_control_panel_main_buttons .btn { height: 36px; }
+        .o_control_panel_main_buttons { gap: 8px !important; }
+        .o_control_panel_main_buttons .btn-outline-primary { border: 0; background-color: transparent; color: var(--nm-brand); box-shadow: none; &:hover { color: var(--nm-brand); @include nm-raised("-sm"); background-color: var(--nm-surface); } }
+        // (the save / discard keys are excluded: they are real keys, form_view.scss A11)
+        .btn:not(.btn-primary):not(.o_switcher .btn):not(.btn-group .btn):not(.o_searchview .btn):not(.o_form_status_indicator_buttons .btn) {
+            box-shadow: none; background-color: transparent;
+            &:hover { transform: none; background-color: var(--nm-surface); @include nm-raised("-sm"); }
+            &:active, &.active, &.show { background-color: var(--nm-surface); @include nm-inset("-sm"); }
+        }
+        // pager and view switcher: one seated group each, the active key raised inside the well
+        .btn-group, .o_pager .btn-group { background-color: var(--nm-surface); @include nm-inset("-sm"); > .btn.active, > .btn:active { @include nm-inset("-sm"); } }
+        .o_switcher { @include nm-inset("-sm"); &::before { box-shadow: var(--nm-raised-sm); } }
+
+        // Path: Odoo's own stacked layout ([New] then parent link above the record title) is kept;
+        // the parent link is the way back, so it is a backlit legend (backlight.scss §6).
+        .o_control_panel_breadcrumbs { align-items: center; gap: 8px; min-height: 36px; flex: 1 1 auto !important; min-width: 0; }
+        .o_breadcrumb { flex: 0 1 auto !important; max-width: 100%; }
+        .breadcrumb, .o_breadcrumb .breadcrumb { background: transparent !important; padding: 0; margin: 0; }
+        .breadcrumb-item { align-items: center; .btn.btn-light { background: transparent; box-shadow: none; padding: 0 2px !important; color: var(--nm-text-faint); } }
+        .breadcrumb-item + .breadcrumb-item::before { color: var(--nm-text-faint); }
+        .o_last_breadcrumb_item { color: var(--nm-text); > span.text-truncate { max-width: 40ch; } .o_form_status_indicator { margin-left: 4px; } }
+    }
+    // Search: the whole input-group (field + ▾ toggler) is ONE inset well. Odoo auto-focuses the
+    // search on list views, so the focused state must stay quiet: a 1px action hairline, not a ring.
+    // Odoo 20 draws the group as a pill (`rounded-pill`, !important): the well keeps the theme's radius
+    .o_cp_searchview, .o_cp_searchview.rounded-pill {
+        border-radius: var(--nm-radius) !important; background-color: var(--nm-surface); @include nm-inset; min-height: 40px; align-items: stretch;
+        transition: box-shadow .15s;
+        &:focus-within { box-shadow: var(--nm-inset), 0 0 0 1px var(--nm-action-shadow); }
+    }
+    .o_searchview, .o_cp_searchview .o_searchview { border: 0 !important; border-radius: var(--nm-radius) 0 0 var(--nm-radius); background: transparent !important; box-shadow: none !important; padding-left: 12px; min-height: 40px;
+        .o_searchview_icon { color: var(--nm-text-faint); }
+        .o_searchview_input { box-shadow: none; background: transparent; }
+        // the magnifier is a bare `.btn` in Odoo 20 (click = search): part of the well, not a key
+        > .btn, > .btn:hover, > .btn:active { background: transparent !important; box-shadow: none !important; transform: none !important; }
+    }
+    .o_searchview_dropdown_toggler { border-radius: 0 var(--nm-radius) var(--nm-radius) 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; color: var(--nm-text-faint); padding: 0 12px 0 8px; transform: none !important;
+        &:hover, &.show { color: var(--nm-action); box-shadow: none !important; } }
+    // standalone search inputs (settings page, dialogs) keep the inset directly on the field
+    .o_searchview:not(.o_cp_searchview .o_searchview) { background-color: var(--nm-surface) !important; @include nm-inset; border-radius: var(--nm-radius); }
+    .o_searchview_facet {
+        background-color: var(--nm-surface-high) !important; border-radius: var(--nm-radius-sm); box-shadow: 2px 2px 4px var(--nm-shadow-dark), -1px -1px 3px var(--nm-shadow-light);
+        // Odoo 20 paints field / filter labels with Bootstrap utilities (`bg-primary-subtle
+        // text-primary`, both !important): the label colours below have to be !important as well
+        .o_searchview_facet_label { background-color: var(--nm-action) !important; color: var(--nm-action-contrast) !important; border-radius: var(--nm-radius-sm) 0 0 var(--nm-radius-sm) !important; }
+        .o_facet_remove { color: var(--nm-text-faint); &:hover { color: var(--nm-danger); } }
+    }
+    .o_group_by_menu .o_searchview_facet_label, .o_searchview_facet .o_searchview_facet_label.o_facet_groupby { background-color: var(--nm-brand) !important; color: var(--nm-brand-contrast) !important; }
+    .o_searchview_facet .o_searchview_facet_label.o_facet_favorite { background-color: var(--nm-favourite) !important; color: #111827 !important; }
+    .o_cp_switch_buttons .btn { min-width: 36px; }
+    .o_search_panel {
+        // `bg-view` would paint it lighter than the clay; it is a well seated in the same surface
+        border: 0 !important; border-radius: var(--nm-radius); margin: 6px 0 12px var(--glass-gutter); padding: 10px 10px 16px !important; background-color: var(--gl-well) !important; @include nm-well; height: auto !important; max-height: calc(100% - 18px);
+        .o_search_panel_section_header { padding: 14px 8px 6px !important; font-size: 11px; letter-spacing: .08em; color: var(--nm-text-faint); .o_search_panel_section_icon { display: none; } }
+        // rows are a flat list: the generic .list-group-item card treatment must not apply here
+        .list-group-item, .o_search_panel_category_value, .o_search_panel_category_value > header { margin: 0; padding: 0; background: transparent; box-shadow: none; border: 0; border-radius: 0; }
+        .o_search_panel_category_value > header { border-radius: var(--nm-radius-sm); color: var(--nm-text-muted); font-weight: 400 !important;
+            &:hover { color: var(--nm-text); background: transparent; }
+            &.active { background-color: var(--nm-surface); color: var(--nm-action) !important; font-weight: 500 !important; @include nm-raised("-sm"); .o_search_panel_label_title { font-weight: 500; color: var(--nm-action); } .o_search_panel_counter { color: var(--nm-action); opacity: .7; } }
+        }
+        .o_search_panel_label { padding: 7px 10px; border-radius: var(--nm-radius-sm); }
+        .o_search_panel_label_title { font-weight: inherit !important; }
+        .o_toggle_fold:empty { display: none; }
+        .o_search_panel_counter { color: var(--nm-text-faint); font-size: 11px; padding-right: 10px; font-variant-numeric: tabular-nums; }
+        > .btn-light { box-shadow: none; background: transparent; color: var(--nm-text-faint); }
+    }
+
+    // ----------------------------------------------------------- 10. Form view
+    .o_form_view {
+        background-color: transparent;
+        // A form dialog IS the modal content (<div class="modal-content o_form_view">): it must stay
+        // opaque, otherwise the page / navbar / tab bar show through its header and footer (QA BUG-0001)
+        &.modal-content { background-color: var(--nm-surface-high); @include gl-blur; }
+        // v2: the status bar is the sheet's header band — same clay, the top corners of the
+        // document, a hairline under it — so the page reads as ONE raised document instead of two
+        // slabs with a gap (the sheet starts ≈ 40 px higher). The bar casts only up and to the
+        // sides; the sheet casts only down, so no highlight line shows at the seam.
+        .o_form_statusbar { border: 0 !important; border-bottom: 1px solid var(--nm-hairline) !important; border-radius: var(--nm-radius-lg) var(--nm-radius-lg) 0 0; margin: 0 0 -1px; padding: 10px 16px !important; background-color: var(--nm-surface);
+            box-shadow: 10px -2px 24px -8px var(--nm-shadow-dark), -4px -4px 12px var(--nm-shadow-light); position: relative; z-index: 1; }
+        .o_form_sheet_bg { background: transparent; border: 0; padding-top: 0 !important; padding-left: var(--glass-gutter) !important; padding-right: var(--glass-gutter) !important; }
+        .o_form_sheet { border: 0 !important; border-radius: var(--nm-radius-lg); background-color: var(--nm-surface); box-shadow: var(--nm-raised-lg); }
+        .o_form_sheet_bg:has(> .o_form_statusbar) > .o_form_sheet { border-radius: 0 0 var(--nm-radius-lg) var(--nm-radius-lg); box-shadow: 10px 10px 24px var(--nm-shadow-dark), -4px 2px 12px var(--nm-shadow-light); }
+        .o_form_sheet_bg > .alert { margin: 0 12px; }
+        .oe_avatar, .o_field_image .o_image_uploader_container img { border-radius: 22px; background-color: var(--nm-surface); @include nm-well; }
+        .oe_title .o_input { font-weight: 500; }
+        .o_horizontal_separator { color: var(--nm-action); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; border-top: 1px solid var(--nm-hairline); padding-top: 6px; }
+        // save / discard keys are styled in form_view.scss (A11); the "flat until hover" rule that lived here
+        // outranked it and left a white glyph on a transparent button (v3.4)
+        .oe_subtotal_footer { border-radius: var(--nm-radius); padding: 10px 14px; background-color: var(--nm-surface); @include nm-inset; }
+        .o_web_ribbon { box-shadow: 2px 2px 6px var(--nm-shadow-dark); }
+        .o_setting_box { border-radius: var(--nm-radius); padding: 14px 16px; background-color: var(--nm-surface); @include nm-raised("-sm"); margin-bottom: 12px; }
+        .o_cell.o_wrap_label { color: var(--nm-text-muted); }
+    }
+    // Status pipeline: keep Odoo's markup, replace the chevron clip-path by pill segments.
+    // NB: StatusBarField collapses the pipeline into one dropdown as soon as the track is taller than a
+    // button (zero tolerance), so the track must add NO vertical padding — the inset trough is a pseudo-element.
+    .o_field_statusbar > .o_statusbar_status {
+        position: relative; padding: 0 !important; gap: 2px; background: transparent; box-shadow: none; margin: 4px 0;
+        &::before { content: ""; position: absolute; inset: -4px; border-radius: var(--nm-radius-pill); background-color: var(--nm-surface); @include nm-inset("-sm"); pointer-events: none; }
+        // Odoo 20 wraps each inline stage button in `div.o_arrow_button_wrap`; without the second
+        // selector the stages kept Odoo's chevron clip-path (which also clipped the raised key away)
+        // and the current stage was indistinguishable from the others.
+        > .o_arrow_button:not(.d-none), > .o_arrow_button_wrap > .o_arrow_button:not(.d-none), > .dropdown-toggle:not(.d-none) {
+            position: relative; clip-path: none !important; margin-left: 0 !important; padding: 5px 16px !important; border-radius: var(--nm-radius-pill) !important;
+            background-color: transparent; box-shadow: none; color: var(--nm-text-muted); transform: none; line-height: 20px;
+            &::before, &::after { content: none !important; }
+            &:hover { background-color: transparent; color: var(--nm-text); }
+            // current stage = the one raised key on the track: accent ink on the accent tint, semibold
+            &.o_arrow_button_current, &.active { color: var(--nm-action); font-weight: 600; background-color: var(--nm-active-tint); @include nm-raised("-sm"); }
+            &.disabled, &:disabled { opacity: 1; }
+        }
+        > .dropdown-toggle.o_arrow_button:not(.d-none)::after { content: "" !important; }   // keep the caret glyphs Odoo draws with "…"
+        // time-in-stage badge (statusbar_duration): same ink as the current stage, not Odoo's teal `.text-action`
+        .o_arrow_button_current .text-action { color: var(--nm-action) !important; }
+    }
+    // Chatter (mail)
+    .o-mail-Chatter { background-color: var(--nm-surface); border-radius: var(--nm-radius-lg); @include nm-well; margin: 8px 12px; border: 0 !important;
+        .o-mail-Chatter-topbar { background: transparent; border: 0; }
+        .o-mail-Message { border-radius: var(--nm-radius); margin: 6px 0; background-color: var(--nm-surface); @include nm-raised("-sm"); &:hover { background-color: var(--nm-surface); } }
+        .o-mail-Composer .o-mail-Composer-input, .o-mail-Composer-input { border-radius: var(--nm-radius); border: 0; background-color: var(--nm-surface); @include nm-inset; }
+        .o-mail-Composer-bg { background: transparent; }
+    }
+    .o-mail-Thread { background: transparent; }
+
+    // ----------------------------------------------------------- 11. List view
+    .o_list_view, .o_list_renderer {
+        background-color: transparent;
+        .o_list_table {
+            border-collapse: separate; border-spacing: 0; background-color: var(--nm-surface);
+            // Bootstrap paints every cell with --table-bg (pure white in Odoo): rows take a very low
+            // lift above the clay instead, so the slab reads as one surface with legible banding.
+            --table-bg: #{"color-mix(in srgb, var(--nm-surface-high) 45%, var(--nm-surface))"};
+            --table-accent-bg: transparent;
+            --table-hover-bg: var(--nm-active-tint);
+            --table-striped-bg: #{"color-mix(in srgb, var(--nm-surface-high) 25%, var(--nm-surface))"};
+            --table-color: var(--nm-text);
+            thead { background-color: var(--nm-surface); box-shadow: none;
+                th { border: 0 !important; border-bottom: 1px solid var(--nm-hairline) !important; background-color: var(--nm-surface); color: var(--nm-text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; font-weight: 500; box-shadow: none; } }   // v2: a hairline, not a fourth shadow edge under the control panel
+            tbody td { border-top: 1px solid var(--nm-hairline); border-bottom: 0; }
+            tbody tr:first-child td { border-top: 0; }
+            .o_data_row.o_data_row_selected > td { background-color: var(--nm-active-tint) !important; }
+            .o_data_row.o_selected_row > td { box-shadow: inset 0 -1px 0 var(--nm-action), inset 0 1px 0 var(--nm-action); background-color: var(--nm-surface) !important; }
+            .o_group_header > td, .o_group_header > th { background-color: var(--nm-surface) !important; @include nm-inset("-sm"); font-weight: 500; border: 0; }
+            tfoot td { background-color: var(--nm-surface); border-top: 2px solid var(--nm-hairline); border-bottom: 0; font-weight: 500; }
+            .o_list_sortable_icon { color: var(--nm-action); }
+        }
+    }
+    .o_list_controller, .o_list_view .o_content { background-color: transparent; }
+    // the gutter is padding on the renderer, not a margin on the table: Odoo's column-width hook
+    // sizes the columns to the renderer's width minus its padding (column_width_hook.js), so a
+    // margin on the table left every desktop list 14px wider than its scroller (a permanent
+    // sideways wiggle, measured on Countries / Contacts / Sales Orders)
+    .o_view_controller.o_list_view .o_list_renderer { padding-left: var(--glass-gutter); padding-right: var(--glass-gutter); }
+    .o_list_renderer .o_list_table { border-radius: var(--nm-radius-lg); box-shadow: var(--nm-raised); overflow: hidden; margin: 6px 0 12px; width: 100%; }   // level 1 (v2): same lift as a card
+    // x2many lists live inside an already-raised sheet / modal: keep them flat
+    .o_form_view .o_list_renderer .o_list_table, .o_field_x2many .o_list_renderer .o_list_table, .modal .o_list_renderer .o_list_table {
+        box-shadow: none; margin: 0; width: 100%; border-radius: var(--nm-radius-sm);
+        thead th { box-shadow: none; border-bottom: 1px solid var(--nm-hairline) !important; }
+    }
+    .o_selection_container, .o_list_selection_box, .o_multi_selection_buttons { border-radius: var(--nm-radius-pill); background-color: var(--nm-surface-high); @include nm-raised; }
+
+    // --------------------------------------------------------- 12. Kanban view
+    .o_kanban_view, .o_kanban_renderer { background-color: transparent; }
+    .o_kanban_renderer.o_kanban_grouped {
+        .o_kanban_group { border-radius: var(--nm-radius-lg); margin: 8px 8px 8px 12px; padding: 12px; background-color: var(--gl-well); @include nm-well; border: 0; @include gl-blur(var(--gl-blur-sm));
+            &.o_column_folded { border-radius: var(--nm-radius); @include nm-raised("-sm"); }
+            --KanbanGroup-padding-h: 12px;   // Odoo's hover/drop hack sizes the header bleed from this; match our padding
+            // Stage header. Enterprise's kanban_header.scss gives the sticky header `box-shadow: inherit`,
+            // so on a clay column it repeated the column's pressed well as a second box around the stage
+            // title, and Bootstrap's `mx-n3` (-16px) overhung our 12px column padding by 4px a side.
+            // At rest the header is transparent and sits in the well; once stuck (Enterprise adds
+            // `o_kanban_header_sticky`) it turns clay and fades the cards out in clay, not Odoo's grey.
+            .o_kanban_header {
+                box-shadow: none !important;
+                background-color: transparent;
+                margin-left: -12px !important; margin-right: -12px !important;
+                padding-left: 12px !important; padding-right: 12px !important;
+                border-radius: var(--nm-radius-lg) var(--nm-radius-lg) 0 0;
+                &.o_kanban_header_sticky { background-color: var(--nm-surface);
+                    &::after { background: linear-gradient(to bottom, var(--nm-surface) 0%, color-mix(in srgb, var(--nm-surface) 75%, transparent) 80%, transparent 100%); backdrop-filter: none; } }
+                .o_column_title { font-weight: 500; }
+            }
+            .o_column_progress { border-radius: 4px; background-color: var(--nm-surface) !important; @include nm-inset("-sm"); overflow: hidden; }
+            .o_kanban_counter_side { font-weight: 500; }
+        }
+    }
+    .o_kanban_record {
+        border: 0 !important; border-radius: var(--nm-radius); background-color: var(--nm-surface); box-shadow: var(--nm-raised);
+        transition: transform .15s var(--nm-ease-enter), box-shadow .15s var(--nm-ease-enter);
+        &:hover, &:focus-within { transform: translateY(-2px); box-shadow: var(--nm-raised-lg); }
+        &.o_kanban_ghost { box-shadow: none; opacity: .4; border: 2px dashed var(--nm-hairline) !important; }
+        // colour rail (Odoo uses a 3px left border + ::after; keep colour, soften shape)
+        &[class*="o_kanban_color_"] { border-left: 0 !important; padding-left: 18px;
+            &::after { width: 4px !important; border-radius: 2px; top: 12px !important; bottom: 12px !important; left: 8px !important; } }
+        .o_kanban_record_title, .o_kanban_record_headings strong { font-weight: 500; }
+    }
+    // Image cards (Lunch dishes, product / gallery photos …): seat the card like a pressed
+    // key at rest and lift it to a raised key on hover, so the photo reads as a tactile
+    // button. The image element itself is never restyled — kept exactly as Odoo ships it.
+    // (Each :has() takes a single argument — libsass mishandles a comma list inside :has().)
+    // Prominent card images only: `.o_field_image` (widget="image": products, lunch, employee
+    // photos), `.o_kanban_image` (classic main image: contacts), and the fill/wrapper variants.
+    // Deliberately NOT small avatars (`many2one_avatar_user` → `.o_m2o_avatar`, so CRM/Sales text
+    // cards stay clean raised) and NOT `widget="background_image"` (POS floor / hero images live
+    // in the POS app and form views — never a kanban image field — so they're untouched).
+    .o_kanban_record:has(.o_field_image),
+    .o_kanban_record:has(.o_kanban_image),
+    .o_kanban_record:has(.o_card_image_fill),
+    .o_kanban_record:has(.o_kanban_image_wrapper) {
+        box-shadow: var(--nm-inset) !important;
+        &:hover, &:focus-within { box-shadow: var(--nm-raised-lg) !important; transform: translateY(-2px); }
+    }
+    .o_kanban_quick_create { border: 0; border-radius: var(--nm-radius); background-color: var(--nm-surface); box-shadow: 0 0 0 2px var(--nm-action), var(--nm-raised); }
+    .o_column_quick_create .o_quick_create_folded { border-radius: var(--nm-radius); color: var(--nm-action); }
+    .o_kanban_load_more, .o_kanban_group .o_kanban_add:not(.btn-primary) { color: var(--nm-action); }
+    .o_kanban_dashboard .o_kanban_record { box-shadow: var(--nm-raised-lg); }
+
+    // ------------------------------------------------------- 13. Calendar view
+    .o_calendar_container { background-color: transparent; }
+    .o_calendar_widget, .o_calendar_renderer {
+        .fc-scrollgrid, .fc-theme-standard td, .fc-theme-standard th, .fc-scrollgrid-section > * { border-color: transparent !important; }
+        .fc-col-header-cell, .fc-day-header { color: var(--nm-text-faint); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; background: transparent; }
+        .fc-daygrid-day { padding: 3px; .fc-daygrid-day-frame { border-radius: var(--nm-radius-sm); background-color: var(--nm-surface); @include nm-inset("-sm"); } }
+        .fc-day-today .fc-daygrid-day-frame { box-shadow: var(--nm-inset-sm), inset 0 0 0 1.5px var(--nm-action); }
+        .fc-day-today .fc-daygrid-day-number { color: var(--nm-action); font-weight: 500; }
+        .fc-day-other .fc-daygrid-day-frame { opacity: .5; }
+        .fc-event, .fc-daygrid-event, .fc-timegrid-event { border: 0; border-radius: 6px; box-shadow: 1px 1px 3px var(--nm-shadow-dark); &:hover { box-shadow: 2px 2px 4px var(--nm-shadow-dark); } }
+        .fc-timegrid-slot, .fc-timegrid-col { border-color: var(--nm-hairline) !important; }
+        .fc-popover { border: 0; border-radius: var(--nm-radius); background-color: var(--nm-surface-high); box-shadow: var(--nm-floating); .fc-popover-header { background: transparent; } }
+    }
+    .o_calendar_sidepanel, .o_calendar_filter { background-color: var(--nm-surface); border-radius: var(--nm-radius); @include nm-well; margin: 4px 12px 4px 0; border: 0 !important; }
+    .o_calendar_header { .btn { min-width: 34px; } }
+
+    // ------------------------------------------------- 14. Graph, pivot, cohort…
+    .o_graph_renderer .o_graph_canvas_container { border-radius: var(--nm-radius); padding: 12px; margin: 8px 12px; background-color: var(--nm-surface); @include nm-well; }
+    .o_pivot_view .o_pivot, .o_pivot {
+        border-collapse: separate; border-spacing: 3px; margin: 8px;
+        th { border: 0 !important; border-radius: var(--nm-radius-sm); background-color: var(--nm-surface); @include nm-raised("-sm"); font-weight: 500; }
+        td { border: 0 !important; border-radius: var(--nm-radius-sm); @include nm-inset("-sm"); }
+        .o_pivot_header_cell_opened, .o_pivot_header_cell_closed { color: var(--nm-text); }
+    }
+    .o_cohort_view table td.o_cohort_value { border: 0; border-radius: 6px; box-shadow: inset 1px 1px 3px rgba(0, 0, 0, .08); }
+    // Enterprise gantt / grid
+    .o_gantt_view {
+        .o_gantt_row_headers, .o_gantt_header_cell, .o_gantt_cells { background: transparent; }
+        .o_gantt_cell { border-color: var(--nm-hairline) !important; }
+        .o_gantt_row_sidebar, .o_gantt_row_title { background-color: transparent; }
+        .o_gantt_pill { border: 0 !important; border-radius: 13px; box-shadow: 3px 3px 6px var(--nm-shadow-dark), inset 0 -2px 0 rgba(0, 0, 0, .15); &:hover { box-shadow: var(--nm-raised); } }
+        .o_gantt_today { background-color: var(--nm-active-tint) !important; }
+    }
+    .o_grid_view, .o_grid_renderer {
+        .o_grid_cell, .o_grid_row_total, .o_grid_column_total { border: 0 !important; border-radius: var(--nm-radius-sm); }
+        .o_grid_cell { @include nm-inset("-sm"); &.o_grid_cell_highlighted, &:focus-within { box-shadow: var(--nm-inset-sm), var(--nm-focus); } }
+        .o_grid_row_total, .o_grid_column_total, .o_grid_row_title { background-color: var(--nm-surface); @include nm-raised("-sm"); font-weight: 500; }
+        .o_grid_row_title { box-shadow: none; }
+    }
+    .o_hierarchy_view .o_hierarchy_node { border: 0 !important; border-radius: var(--nm-radius); background-color: var(--nm-surface); @include nm-raised; &.o_hierarchy_node_active { box-shadow: 0 0 0 2px var(--nm-action), var(--nm-raised); } }
+    .o_activity_view .o_activity_summary_cell, .o_activity_view td.o_activity_summary_cell { border: 0; border-radius: var(--nm-radius-sm); @include nm-inset("-sm"); }
+    .o_map_view .o_map_container, .o_map_view .o_map_renderer_container { border-radius: var(--nm-radius); overflow: hidden; @include nm-well; }
+    .o_map_view .o_pin_list_container .o_pin_list_details li { border-radius: var(--nm-radius-sm); &:hover, &.o_pin_list_active { background-color: var(--nm-surface); @include nm-inset("-sm"); } }
+
+    // ------------------------------------------------------- 14b. Apps kanban
+    // ir.module.module cards: Odoo's markup as-is (aside icon, title, code/summary, footer buttons,
+    // ⋮ menu) laid out as an app card — big icon key, name, tech-name chip, pill buttons.
+    .o_modules_kanban .o_kanban_record {
+        padding: 16px 16px 14px; border-radius: var(--nm-radius-lg); gap: 14px; align-items: flex-start !important;
+        // v3: key on the wrapper, colour filter on the image only (see the home menu note); the file carries its own margin (option E proportions)
+        aside { flex: none; .o_field_image_url { display: inline-block; border-radius: 18px; background-color: var(--nm-surface-high); @include nm-raised("-sm"); img { display: block; width: 64px !important; height: 64px !important; max-width: 64px !important; max-height: 64px !important; padding: 0; border-radius: 18px; background: transparent; box-shadow: none; } } .oe_module_flag { display: none; } }
+        main { margin: 0 !important; min-width: 0; padding-right: 22px;
+            > .fw-bold.fs-5 { display: block; font-size: 14.5px !important; line-height: 1.3; margin-bottom: 6px; }
+            > p { margin: 0 0 10px !important; font-size: 12.5px; line-height: 1.4; color: var(--nm-text-muted) !important;
+                code { display: inline-block; font-family: inherit; font-size: 11.5px; padding: 2px 10px; border-radius: var(--nm-radius-pill); background-color: var(--nm-surface); color: var(--nm-text-faint); @include nm-inset("-sm"); } }
+            footer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+                .btn { float: none !important; margin: 0 !important; height: 26px; padding: 0 12px; border-radius: var(--nm-radius-pill); font-size: 12px; font-weight: 500; line-height: 26px; }
+                .btn.text-muted { background-color: var(--nm-surface); color: var(--nm-success) !important; @include nm-inset("-sm"); padding-left: 8px;
+                    &::before { content: ""; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: var(--nm-success); box-shadow: 0 0 6px 1px var(--nm-success); } }
+                .btn-secondary, a.btn-secondary { margin-left: auto !important; }
+                .btn-primary { order: -1; }
+            }
+        }
+        .o_dropdown_kanban { top: 8px !important; right: 8px !important; .btn { width: 28px; height: 28px; padding: 0 !important; border-radius: 50% !important; box-shadow: none; color: var(--nm-text-faint); &:hover, &.show { color: var(--nm-text); @include nm-inset("-sm"); } } }
+    }
+    .o_modules_kanban.o_kanban_ungrouped { gap: 16px; padding: 6px 16px 16px 6px; }
+    .o_modules_kanban .o_kanban_record:not(.o_kanban_ghost) { margin: 0 !important; }
+
+    // ------------------------------------------------- 14c. App dashboards (list headers)
+    // Purchase's RFQ strip and Time Off's allocation strip: stat cards become keys on the clay,
+    // the figure is the legend (backlit in backlight.scss §5); semantic states keep their colour.
+    .o_purchase_dashboard {
+        border: 0 !important; padding: 12px var(--glass-gutter) 4px !important;
+        .purchase-dashboard-card {
+            border: 0 !important; border-radius: var(--nm-radius) !important; --btn-border-radius: var(--nm-radius);
+            background-color: var(--nm-surface) !important; color: var(--nm-text-muted) !important; @include nm-raised("-sm");
+            font-weight: 500; transition: box-shadow .15s, transform .15s;
+            .fs-2 { font-weight: 600; color: var(--nm-text); font-variant-numeric: tabular-nums; }
+            &:hover { text-decoration: none !important; transform: translateY(-1px); @include nm-raised; }
+            &:active { @include nm-inset("-sm"); transform: none; }
+            &.bg-warning-subtle .fs-2 { color: var(--nm-warning); } &.bg-danger-subtle .fs-2 { color: var(--nm-danger); }
+        }
+        .o_purchase_dashboard_card_top { border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important; }
+        .o_purchase_dashboard_card_bottom { border-top-left-radius: 0 !important; border-top-right-radius: 0 !important; box-shadow: var(--nm-inset-sm); }
+    }
+    .o_timeoff_dashboard { background-color: var(--nm-surface); padding: 12px var(--glass-gutter) 4px;
+        .o_timeoff_card { border: 0 !important; border-radius: var(--nm-radius); margin: 0 6px; padding: 12px 8px !important; background-color: var(--nm-surface); @include nm-raised("-sm");
+            .o_timeoff_duration { font-weight: 600; font-variant-numeric: tabular-nums; } .o_timeoff_name { color: var(--nm-text-muted); } }
+    }
+
+    // --------------------------------------------- 14d. Per-app fixes (walkthrough of all apps)
+    // Everything Odoo paints white on its own view background, brought onto the clay.
+    --knowledge-view-bg: var(--nm-surface);                                       // Knowledge article editor
+    .o_knowledge_form_view, .o_knowledge_form_view .o_form_renderer, .o_knowledge_form_view .o_knowledge_body { background-color: var(--nm-surface) !important; }
+    .o_calendar_renderer, .o_calendar_widget { background-color: var(--nm-surface) !important; --fc-page-bg-color: var(--nm-surface);
+        .fc-timegrid-body, .fc-timegrid-col, .fc-timegrid-slots, .fc-scrollgrid-sync-inner { background-color: transparent; }
+        .fc-timegrid-col.fc-day-today { background-color: var(--nm-active-tint) !important; }
+        .fc-timegrid-slot-lane { border-color: var(--nm-hairline) !important; }
+        // week / day agenda: Odoo 20 paints the all-day strip with the view background (white)
+        .fc-scrollgrid-section-body:not(.fc-scrollgrid-section-liquid) .fc-scroller-harness { background-color: transparent !important; } }
+    .o_calendar_container .o_calendar_sidepanel, .o_calendar_sidepanel_container { background-color: var(--nm-surface) !important; }
+    .o_calendar_sidepanel_container .o_datetime_picker { background-color: var(--nm-surface); box-shadow: var(--nm-raised-sm); border-radius: var(--nm-radius); }
+    .pos-scenario-card.card { border: 0 !important; background-color: var(--nm-surface) !important; @include nm-raised("-sm"); border-radius: var(--nm-radius) !important; }   // POS "choose your store"
+    .pos-scenario-card .img-container { background-color: var(--nm-surface) !important; border-radius: var(--nm-radius-sm); @include nm-inset("-sm"); }   // its white icon square → seated clay
+    // Grid view (Timesheets / Planning grids): alternate rows use Bootstrap `bg-100` (near white) → same low tint as list rows
+    .o_grid_renderer { .bg-100, .text-bg-100 { background-color: color-mix(in srgb, var(--nm-surface-high) 45%, var(--nm-surface)) !important; } .bg-200, .text-bg-200 { background-color: var(--nm-surface) !important; } }
+    // Gantt view (Appointments "Staff Bookings", Planning, MRP schedule…): day cells are
+    // painted white via CSS vars, and headers/sidebar use bg-view — bring them to clay.
+    .o_gantt_renderer {
+        --Gantt__Day-background-color: var(--nm-surface);
+        --Gantt__DayOff-background-color: #{"color-mix(in srgb, var(--nm-shadow-dark) 22%, var(--nm-surface))"};
+        --Gantt__DayOffToday-background-color: #{"color-mix(in srgb, var(--nm-warning) 8%, var(--nm-surface))"};
+        background-color: var(--nm-surface);
+        .o_gantt_header_cell, .o_gantt_header_title, .o_gantt_header_groups, .o_gantt_row_headers,
+        .o_gantt_row_sidebar, .o_gantt_row_header, .o_gantt_row_title, .bg-view, .bg-100 {
+            background-color: var(--nm-surface) !important;
+        }
+        .o_gantt_row_total { background-color: var(--nm-surface-high) !important; }
+        // the pills (bookings) become seated clay chips carrying their status colour on the edge
+        .o_gantt_pill { border-radius: var(--nm-radius-sm); box-shadow: var(--nm-raised-sm); }
+    }
+    .o_documents_kanban_view .o_kanban_record { background-color: var(--nm-surface) !important; }          // Documents folder / file cards
+    .o-mail-DiscussSearch-inputContainer { background-color: var(--nm-surface) !important; input, .form-control { background: transparent !important; } }
+    // Odoo pads short main lists with empty <tr>s that only read as blank banded rows
+    .o_list_renderer .o_list_table tbody > tr:not(.o_data_row):not(.o_group_header):not(:has(a)):not(:has(button)):not(:has(input)) { display: none; }   // (libsass splits a selector list inside :has())
+    // kanban row actions (Surveys, Approvals…) must not wrap
+    .o_kanban_record .btn { white-space: nowrap; }
+    .o_kanban_record .btn-sm { height: 28px; padding: 0 10px; line-height: 28px; }
+    // Helpdesk team dashboard: flat tiles become keys, the figure is the legend (backlight.scss §5)
+    .o_helpdesk_banner { background-color: var(--nm-surface) !important; border: 0 !important;
+        .btn.bg-100, .btn.btn-light, .btn.btn-primary { background-color: var(--nm-surface) !important; color: var(--nm-text) !important; border: 0 !important; border-radius: var(--nm-radius-sm); @include nm-raised("-sm"); transform: none; }
+        .btn.btn-primary .fs-2, .btn.btn-primary .h2, .btn.btn-primary .fs-1 { font-weight: 600; }
+        .bg-success, .bg-warning, .bg-danger, .text-bg-success, .text-bg-warning, .text-bg-danger { border-radius: var(--nm-radius-sm); }
+        td, th { border: 0 !important; padding: 4px !important; }
+    }
+
+    // ----------------------------------------------------- 15. Settings, misc
+    .o_base_settings_view, .o_setting_container { background-color: transparent; }
+    // settings page: the white tab rail becomes a clay well; the selected tab is the one raised key
+    .o_base_settings_view .settings_tab, .o_setting_container .settings_tab { background-color: var(--gl-well) !important; border: 0 !important; padding: 10px 8px; margin: 6px 0 12px var(--glass-gutter); border-radius: var(--nm-radius); @include nm-well; }
+    // section titles (Users, Languages…) are labels on the clay, not grey bands (a lighter grey in dark)
+    .o_base_settings_view, .o_setting_container { --settings__title-bg: transparent; }
+    // Odoo 20 frames the settings column (`border rounded-4`): on the clay it is part of the page
+    .o_base_settings_view .settings, .o_setting_container .settings { background-color: transparent !important; border: 0 !important; }
+    .settings_tab .tab { border-radius: var(--nm-radius-sm); margin: 2px 0; color: var(--nm-text-muted); &:hover { color: var(--nm-text); background: transparent; }
+        &.selected { background-color: var(--nm-surface) !important; color: var(--nm-action) !important; font-weight: 500; @include nm-raised("-sm"); border: 0 !important; } }
+    .o_settings_container .o_setting_box, .app_settings_block .o_setting_box { border-radius: var(--nm-radius); padding: 14px 16px; margin-bottom: 12px; background-color: var(--nm-surface); @include nm-raised("-sm"); }
+    // Settings inputs have fixed widths in Odoo (a 24px box for a single digit, a 200px box for a
+    // selection): the theme's 10px side padding was clipping their value (QA BUG-0005) — slimmer
+    // padding there, and let the selection widget grow with its text
+    .o_setting_box .o_input, .o_setting_box .form-select { padding-left: 6px; padding-right: 6px; }
+    .o_setting_box .o_field_widget:has(> .o_select_menu), .o_setting_box .o_select_menu { min-width: 0; width: 100%; }
+    .o_setting_box .o_select_menu_input { width: 100%; min-width: 0; text-overflow: ellipsis; }
+    .o_view_nocontent .o_nocontent_help { color: var(--nm-text-muted); .o_view_nocontent_smiling_face { color: var(--nm-action); } }
+    .o_field_binary .o_download_file_button, .o_field_binary .o_select_file_button { color: var(--nm-action); }
+    .o_field_image .o_select_file_button, .o_field_image .o_clear_file_button { background-color: var(--nm-surface); @include nm-raised("-sm"); }
+    .o_field_properties .o_property_field:hover, .o_field_property_definition { border-radius: var(--nm-radius-sm); }
+    .o_field_copy .o_clipboard_button { border-radius: 0 var(--nm-radius-sm) var(--nm-radius-sm) 0; box-shadow: none; background-color: var(--nm-surface-high); }
+    .o_field_relative_date, .o_field_widget.o_field_relative_date > div { border-radius: var(--nm-radius-pill); }
+    .o_file_viewer .o_file_viewer_toolbar, .o-FileViewer-header, .o-FileViewer-navigation { border-radius: var(--nm-radius-pill); }
+    .o_dialog .o_form_view .o_form_sheet { box-shadow: none; }               // form inside modal: modal already floats
+    .o_dialog .o_form_view .o_form_sheet_bg { padding: 0; }
+    .o_dialog .o_form_view .o_form_statusbar { margin: 0 0 8px; }
+
+    @media (max-width: 767.98px) {
+        --glass-gutter: 12px;
+        .o_form_view .o_form_sheet { border-radius: var(--nm-radius-lg) !important; }
+        .o_form_view .o_form_sheet_bg { padding-top: 0; }
+    }
+
+    // ------------------------------------------------------ 15b. Small helper texts
+    // From the 2026-09-18 Community contrast audit. Odoo 20 Enterprise moved to the same light
+    // grey scale as Community, so these now hold for both editions. The 11–12px helper texts
+    // that were drawn in the faint ink: the mini pane's app names, the calendar's day names and
+    // numbers, the search panel's section headers, the labels of Discuss's tab rail (Chats ·
+    // Channels · Meetings …, 75% opacity in Odoo)
+    .o_glass_pane .o_glass_pane_label,
+    .o_calendar_widget .o_cw_day_name,
+    .o_calendar_widget .fc-day:not(.fc-day-today) .o_cw_day_number,   // today keeps its white on the brand disc
+    .o_search_panel .o_search_panel_section_header,
+    .o_search_panel .o_search_panel_section_header b,
+    .o-mail-MessagingMenu-tab > span.opacity-75 { color: var(--nm-text-muted) !important; opacity: 1 !important; }
+    // Odoo's own half-transparent notes on forms ("Today", dates next to a field): less faded
+    .o_form_view .text-muted.opacity-50 { opacity: .85 !important; }
+    // the mobile shell's sub-lines ("Signed in", row hints, the empty drawer message)
+    .o_glass_m_prole, .o_glass_m_row_sub, .o_glass_m_empty { color: var(--nm-text-muted); }
+
+    // ------------------------------------------------------------ 16. Motion
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { transition: none !important; animation: none !important; }
+    }
+    // Print: drop shadows entirely
+    @media print { * { box-shadow: none !important; } }
+}
+
+// ---------------------------------------------------------------- Scrollbars (v3, 2026-09-27)
+// One treatment for every scroll area in the client: thin, no track, and the thumb is transparent
+// until the pointer is inside the area (the container is an ancestor of whatever is hovered, so
+// `*:hover` lights exactly the bar of the area the pointer is in). Wheel, keyboard and touch
+// scrolling are untouched. Chrome ≥ 121 and Firefox use the standard properties; the WebKit
+// pseudo-elements below are the Safari fallback and are ignored wherever the standard ones apply.
+.o_theme_glass {
+    &, * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+    &:hover, *:hover { scrollbar-color: var(--nm-scroll-thumb) transparent; }
+    @supports not (scrollbar-color: auto) {
+        &::-webkit-scrollbar, *::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+        &::-webkit-scrollbar-thumb, *::-webkit-scrollbar-thumb { border-radius: 999px; background: transparent; border: 2px solid transparent; background-clip: padding-box; }
+        &:hover::-webkit-scrollbar-thumb, *:hover::-webkit-scrollbar-thumb { background-color: var(--nm-scroll-thumb); }
+    }
+}

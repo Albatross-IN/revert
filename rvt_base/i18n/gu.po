@@ -1,0 +1,156 @@
+# Translation of the master lists read by agencies and clients.
+# Gujarati and Hindi wording needs a native check before release.
+msgid ""
+msgstr ""
+"Project-Id-Version: rvt_base 20.0\n"
+"Language: gu\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_civ
+msgid "Civil"
+msgstr "સિવિલ"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_tile
+msgid "Tiles and flooring"
+msgstr "ટાઇલ્સ"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_stone
+msgid "Stone (Salat)"
+msgstr "સલાટ"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_elec
+msgid "Electrical"
+msgstr "ઇલેક્ટ્રિક"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_plmb
+msgid "Plumbing"
+msgstr "પ્લમ્બિંગ"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_pop
+msgid "POP / false ceiling"
+msgstr "પીઓપી"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_carp
+msgid "Carpenter"
+msgstr "સુથાર"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_col
+msgid "Colour / polish"
+msgstr "કલર"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_alu
+msgid "Aluminium and glass"
+msgstr "એલ્યુમિનિયમ-કાચ"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_fab
+msgid "Fabrication"
+msgstr "ફેબ્રિકેશન"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_ac
+#: model:rvt.trade,short_name:rvt_base.trade_ac
+msgid "AC"
+msgstr "એસી"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_av
+msgid "AV, network and intercom"
+msgstr "એવી-નેટવર્ક"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_sf
+msgid "Supplied furniture"
+msgstr "ફર્નિચર સપ્લાય"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_soft
+msgid "Soft furnishing"
+msgstr "પડદા-ફેબ્રિક"
+
+#. module: rvt_base
+#: model:rvt.trade,name:rvt_base.trade_land
+msgid "Landscape"
+msgstr "ગાર્ડન"
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_civ
+msgid "Civ"
+msgstr "સિવિલ"
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_tile
+msgid "Tile"
+msgstr "ટાઇલ્સ"
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_stone
+msgid "Stone"
+msgstr "સલાટ"
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_elec
+msgid "Elec"
+msgstr "ઇલે."
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_plmb
+msgid "Plmb"
+msgstr "પ્લમ્બ."
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_pop
+msgid "POP"
+msgstr "પીઓપી"
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_carp
+msgid "Carp"
+msgstr "સુથાર"
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_col
+msgid "Col"
+msgstr "કલર"
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_alu
+msgid "Glass"
+msgstr "કાચ"
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_fab
+msgid "Fab"
+msgstr "ફેબ્રિ."
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_av
+msgid "AV"
+msgstr "એવી"
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_sf
+msgid "Furn"
+msgstr "ફર્નિ."
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_soft
+msgid "Soft"
+msgstr "પડદા"
+
+#. module: rvt_base
+#: model:rvt.trade,short_name:rvt_base.trade_land
+msgid "Land"
+msgstr "ગાર્ડન"
+

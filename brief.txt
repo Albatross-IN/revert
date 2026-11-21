@@ -1,0 +1,76 @@
+Revert architect is Ahmedabad based architecture and Interior designing consulting firm.
+Where they execute projects from requirement gathering, planning, agency execution to handlover to customer.
+they do projects for Corporate offices, Residentials, hospitals, design studio and Manufacturing, hospital unit architecture.
+
+We are planning to use odoo enterprise v20 as an backend engine, and want to keep everyone updated and aligned (Office drafts man, all agencies- i.e. carpenter-plumbing, customer) using gamification instead of static dashboard and infirmation. for instance corresponding agencies and customer stays upto date via mobile app, even office staff.
+
+I want you to become an expert Business analyst and solution architect to solve this problem statement via odoo20 with customization.
+where odoo modules business complexity remains within those module, respective stake holder come to the dashboard, perform the action and corresponsing business background operations goes automated. everything is on action driven and clear clarity for everyone.
+
+To explain the real business cycle, are you already aware in indian context how interior project and architect projects get executed? I want you to refer these. apart from that whatever brief I got from owner I will brief it here:
+
+The initial stage is Lead:
+wher the prospect gives initial brief about their vision and we need to document this against the lead.
+if the Lead is via refferal of old client then the seriousness is higher.
+While lead is qualified they do the site documentation (measurement - individual room wise celling height - clear height, BIM GRID, DOOR WINDOW)-- GET template from pratik, photography, videography, site analysis 
+Site analysis: North, vastu (paragraph) by pricincipal design consultant
+
+Then it have Client brief: Get from client or Internal person write manually 
+then Finalization of layout - object layout , then prepare room wise concept preparation , client needs to OKAY the concept then Revert team prepares working drawing, it may have revisions.
+
+Then it will follow with agency/ vendor finalization
+then it will follow site execution - and we need to derive effective agency co-ordination part.
+
+-- GET QUOTATION FOMRAT
+agencies:
+1. civil
+electrician
+plumber
+pop
+color
+carpenter
+window
+Salat work 
+
+before working drawing they have the clarity which agencies will be required to work on this project and it may follow the changes addition later
+
+If the agency is un decided it should highlight to respective team member internal, client as well as owner 
+
+
+At the time of site measurement we need to spec out the property i.e. add room, add kitchen, add living room > then add specificaions of that entity this way via mobile app 
+
+When it create the project it should have clear visibility of site specificaion i.e. 3 BHK. and each entity will go through with agencies work. and we need to have clear cut visibility of execution / also in form of gantt chat depcting as per plan and actual execution while tracking agencies work real time.
+
+where agencies people may operate app in Hindi and Gujarati. we need multiple language support for this
+agency people may ask question while execution we may take help of odoo chatter smartly here, they can post photo to ask ques as well to share the execution update. we need to encourage them via gamification, i.e. total work assigned, excuted, pending and track against the payment. they request the payment, add expenses. so that they keep engagged with the app like work given, work completed by them, payment request, and pending payment somewhat in this context but we need smart and professional approach here.
+
+Office staff can also put reminders to the agency person, and automated notification to guide them and give reminder of their next visit and take confiramtion they have arrived as per schedule, execution started if they forgot to mark execution started system reminds them this way. they can easily track the number of site assigned to them on what date and what is the location. office person can schedule these agencies. there might be more then one person under one agency and we need to do KYC while onboarding them. we need to invite them but with minimal complexity to onboard them easily.
+
+We need to keep on reminding about their pending task, and we need to get it documented when they update to the system that "work is done" with help of photo or video
+
+When a task is assigned we only bother about the end date they commit or mutually decided.
+
+the principal consultant and office staff does a site visit and they prepare MOM - we need to articulate this in Mobile app.
+Initially they create a quick agenda, like they will be creating TODOs and they can seggregate them later and allocate against teh room or kitchen etc. Or while they are standing at kitchen they willbe adding next few agendas only related to kitchen, when they click change location it can ask for other entities and further entrie can go accordingly
+
+I would also like to explore possibility of voice to text Gujarati, hindi or english to type the agenda
+
+site visits are pre scheduled and pre decided as per the need so we need to accomodate this planning as well 
+
+
+Internal team:
+they follow up with agencies, they clear the doubts of agencies against the drawing as well 
+
+they can release the drawing from this platform and pending drawings are highlighted. internal staff gets to derive the queries raised aaginst those drawing dashboard easily. each project need to have own gamification based dashboard to identify what is stuck, what is as per expectation and what is not going as per planning. we need to guide the client user journey always in positive terms even if back end sitation is not good. so app design language shiuld be accordingly 
+
+the dashboard should get clear cut visibility for internal team as well to have the idea what infomration was required to feed from revert complany and still pending. i.e. electrician drawing is pending, agency inalization is pending, query is not responded
+
+Do you have any reference or knoweldge existing ERP book on this subject? We need to design a master class UX for this problem statement ..
+before execution theres another stage called Site marking and approval. in most of the cases site marking is done by carpentaer and approval is done from the office .
+
+We also need clear visibility against the project that (owner only) agency finalized price, paid or not, paid by whom, total expenses, expenses paid by company and take from the client later, total proable invoice value, compilation of all expenses etc 
+
+We have got initial brief in very unorganised way, first of all I would like to process this brief, do initial study, think as business analyst - find gaps and prepare questionaire needs to be asked to pricnipal consultant for the further clarity and best digital execution. then think as an odoo solution architect and try to map the busines flow and derive the required customization version1. then we will refine this again before the execution .
+
+I want you to prepare required md files
+api_design.md  architecture.md  deployment.md  deployment_plan.md  design.md  memory.md  mobile_app_plan.md  prd.md  rules.md  system_design.md  tasks.md  

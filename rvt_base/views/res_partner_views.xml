@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_partner_view_form_rvt" model="ir.ui.view">
+        <field name="name">res.partner.form.rvt</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Revert" name="rvt" groups="rvt_base.group_rvt_staff">
+                    <group>
+                        <group>
+                            <field name="rvt_is_agency"/>
+                            <field name="rvt_trade_ids" widget="many2many_tags" invisible="not rvt_is_agency"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="res_partner_view_search_rvt" model="ir.ui.view">
+        <field name="name">res.partner.search.rvt</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="rvt_trade_ids" groups="rvt_base.group_rvt_staff"/>
+                <filter name="rvt_agencies" string="Agencies" domain="[('rvt_is_agency', '=', True)]" groups="rvt_base.group_rvt_staff"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="rvt_agency_action" model="ir.actions.act_window">
+        <field name="name">Agencies</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('rvt_is_agency', '=', True)]</field>
+        <field name="context">{'default_rvt_is_agency': True}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Add an agency</p>
+            <p>An agency is a firm that does a trade's work on site. Add its people as contacts, each with a mobile number.</p>
+        </field>
+    </record>
+</odoo>

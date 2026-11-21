@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_glass" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.web_theme_glass</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='integration']" position="before">
+                <block title="Glass Theme" name="theme_glass_block">
+                    <setting id="glass_theme_setting" string="Glass Theme"
+                             help="Frosted-glass restyling of the whole backend. Uses the standard Odoo colours and follows dark mode. Reload the page after changing.">
+                        <field name="glass_theme_enabled"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,20 @@
+// =============================================================================
+// Glass — Point of Sale UI, dark palette. Loaded ONLY in
+// `point_of_sale.assets_prod_dark`, which the POS serves when its own
+// `pos_color_scheme` cookie is "dark" — so light POS stays light.
+// =============================================================================
+// Odoo 20's dark grey scale (web_enterprise primary_variables.dark.scss): 100 #1F1F23, 200 #2C2E35
+// (the clay), 300 #3E3F47, 400 #56575E, 600 #88898F, 900 #EBEBEB — mixed as tokens.scss does
+.pos {
+    --nm-surface: #2C2E35;
+    --nm-surface-high: #34363D;
+    --nm-shadow-dark: rgba(31, 31, 35, .9);
+    --nm-shadow-light: rgba(62, 63, 71, .45);
+    --nm-inset-dark: rgba(31, 31, 35, .9);
+    --nm-inset-light: rgba(62, 63, 71, .55);
+    --nm-hairline: rgba(86, 87, 94, .5);
+    --nm-text: #EBEBEB;
+    --nm-text-muted: #88898F;
+    --nm-brand: #6F84D9;
+    --nm-action: #1FB3AB;
+}

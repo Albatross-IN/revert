@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_rvt_desk" model="ir.actions.act_url">
+        <field name="name">Revert Desk</field>
+        <field name="url">/rvt/desk</field>
+        <field name="target">self</field>
+    </record>
+    <menuitem id="menu_rvt_desk" name="Desk" parent="rvt_base.menu_rvt_root" action="action_rvt_desk" sequence="1"/>
+    <!-- the Revert application opens on the desk -->
+    <record id="rvt_base.menu_rvt_root" model="ir.ui.menu">
+        <field name="action" ref="action_rvt_desk"/>
+    </record>
+</odoo>

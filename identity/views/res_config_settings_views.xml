@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="res_config_settings_view_form" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.identity</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="5"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Identity" string="Identity" name="identity"
+                     logo="/identity/static/description/icon.png" groups="base.group_system">
+
+                    <block title="Brand" name="identity_brand_container">
+                        <setting id="identity_name_setting" string="Brand name" company_dependent="1"
+                                 help="Replaces the platform name in page titles, dialogs, footers and texts. Defaults to the company name.">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="identity_name" class="col-lg-4 o_light_label">Name</label>
+                                    <field name="identity_name" placeholder="Your brand"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="identity_url" class="col-lg-4 o_light_label">Website</label>
+                                    <field name="identity_url" placeholder="https://www.example.com"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="identity_theme_color" class="col-lg-4 o_light_label">Theme colour</label>
+                                    <field name="identity_theme_color" widget="color"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="identity_bot_name" class="col-lg-4 o_light_label">Bot name</label>
+                                    <field name="identity_bot_name" placeholder="Assistant"/>
+                                </div>
+                            </div>
+                        </setting>
+                        <setting id="identity_images_setting" string="Logo and icon" company_dependent="1"
+                                 help="The logo replaces the vendor wordmark in footers and on the login page when the company has no logo. The square icon is used as favicon, mobile home-screen icon and web-app icon.">
+                            <div class="content-group">
+                                <div class="row mt8">
+                                    <label for="identity_logo" class="col-lg-4 o_light_label">Logo</label>
+                                    <field name="identity_logo" widget="image" class="oe_avatar" options="{'size': [180, 60]}"/>
+                                </div>
+                                <div class="row mt8">
+                                    <label for="identity_icon" class="col-lg-4 o_light_label">Icon (square)</label>
+                                    <field name="identity_icon" widget="image" class="oe_avatar" options="{'size': [90, 90]}"/>
+                                </div>
+                            </div>
+                        </setting>
+                    </block>
+
+                    <block title="Links" name="identity_links_container">
+                        <setting id="identity_support_setting" string="Support" company_dependent="1"
+                                 help="Shown as 'Help' in the user menu. Leave empty to hide the entry.">
+                            <field name="identity_support_url" placeholder="https://support.example.com"/>
+                        </setting>
+                        <setting id="identity_docs_setting" string="Documentation" company_dependent="1"
+                                 help="Base URL of your documentation. Leave empty to hide the documentation links in Settings.">
+                            <field name="identity_documentation_url" placeholder="https://docs.example.com"/>
+                        </setting>
+                        <setting id="identity_powered_by_setting" string="'Powered by' mention" company_dependent="1"
+                                 help="Keep a 'Powered by &lt;brand&gt;' line on the login page, portal footers and e-mails.">
+                            <field name="identity_powered_by"/>
+                        </setting>
+                    </block>
+
+                    <block title="Behaviour" name="identity_behaviour_container">
+                        <setting id="identity_replace_text_setting"
+                                 help="Rewrites the platform name in client texts, rendered pages, e-mails and view labels. Case-sensitive: technical identifiers and vendor URLs are left intact.">
+                            <field name="identity_replace_text"/>
+                        </setting>
+                        <setting id="identity_custom_icons_setting"
+                                 help="Use the Identity icon set for every application (home menu, navbar, Apps, Settings sidebar, web-app shortcuts).">
+                            <field name="identity_custom_icons"/>
+                            <div class="mt8">
+                                <button name="action_identity_refresh_icons" type="object" string="Refresh app icons"
+                                        class="btn-link" icon="refresh"/>
+                            </div>
+                        </setting>
+                        <setting id="identity_web_prefix_setting" string="Web client URL prefix"
+                                 help="Backend URLs use this prefix instead of /odoo (old links are redirected). Set identity_web_prefix in the server configuration file and restart to change it.">
+                            <field name="identity_web_prefix" readonly="1" class="fw-bold"/>
+                        </setting>
+                        <setting id="identity_hide_links_setting"
+                                 help="Removes the vendor account entry, enterprise upgrade prompts and documentation links unless your own URLs are configured.">
+                            <field name="identity_hide_external_links"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+            <!-- the "About" block renders the Odoo edition widget: swap it for ours -->
+            <xpath expr="//widget[@name='res_config_edition']" position="replace">
+                <widget name="identity_edition"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

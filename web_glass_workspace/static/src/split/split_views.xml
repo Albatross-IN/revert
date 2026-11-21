@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <!-- Every view renders through Layout; inject the panel here so list/kanban subclasses
+         (CRM, Project, …) are covered too. The panel and its classes only activate when a
+         controller has put `env.glassSplit` in scope AND a record is selected. -->
+    <t t-name="web_glass_workspace.Layout" t-inherit="web.Layout" t-inherit-mode="extension">
+        <xpath expr="//main[hasclass('o_content')]" position="attributes">
+            <attribute name="t-att-class">{
+                'o_component_with_search_panel': this.props.display.searchPanel,
+                'o_glass_split_open': this.env.glassSplit and this.env.glassSplit.open,
+                'o_glass_split_bottom': this.env.glassSplit and this.env.glassSplit.open and this.env.glassSplit.bottom,
+                'o_glass_split_right': this.env.glassSplit and this.env.glassSplit.open and !this.env.glassSplit.bottom,
+                'o_glass_split_collapsed': this.env.glassSplit and this.env.glassSplit.open and this.env.glassSplit.collapsed,
+            }</attribute>
+            <attribute name="t-attf-style">{{ this.env.glassSplit and this.env.glassSplit.open ? this.env.glassSplit.style : '' }}</attribute>
+        </xpath>
+        <xpath expr="//t[@t-call-slot='default']" position="after">
+            <t t-if="this.env.glassSplit and this.env.glassSplit.open" t-component="this.glassSplitPanel" t-props="this.env.glassSplit.props"/>
+        </xpath>
+    </t>
+
+</templates>

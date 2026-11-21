@@ -1,0 +1,298 @@
+// =============================================================================
+// Glass — Discuss, chat windows, messaging menu
+//
+// Design brief: docs/neumorphic/discuss_ux.md. Depth is semantic:
+//   raised  = arrives / actionable   (incoming messages, send, calls, attachments)
+//   seated  = selected / typed-into (active row, search, composer); own messages are solid teal, right-aligned
+//   flat    = everything else (labels, member rows, secondary icons)
+// Colour: teal (--nm-action) = action & "you"; amber (--nm-warning) = attention;
+// red only on unread counters. No bubble tints, no tails.
+// CSS only — Odoo's DOM and JS are untouched.
+//
+// Odoo 20 rebuilt the Discuss sidebar: it IS the messaging menu (a tab rail + a panel with a
+// search row, filter pills and the conversation rows), the same component as the systray
+// dropdown; the thread header and the side panel are rounded cards laid out with gaps.
+// =============================================================================
+
+@mixin nm-raised($lvl: "") { box-shadow: var(--nm-raised#{$lvl}); }
+@mixin nm-inset($lvl: "")  { box-shadow: var(--nm-inset#{$lvl}); }
+@mixin glass-flat-icon-btn($size: 36px) {
+    width: $size; height: $size; padding: 0 !important;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 0 !important; border-radius: 50% !important;
+    background: transparent !important; box-shadow: none !important; transform: none !important;
+    color: var(--nm-text-muted); opacity: 1 !important;
+    transition: box-shadow .15s var(--nm-ease-enter), background-color .15s, color .15s;
+    &:hover, &:focus-visible { background-color: var(--nm-surface) !important; @include nm-raised("-sm"); color: var(--nm-text); }
+    &:active, &.active, &.show, &.o-showingActions { background-color: var(--nm-surface) !important; box-shadow: var(--nm-inset-sm) !important; color: var(--nm-action); }
+}
+
+.o_theme_glass {
+    // Message card shadows: tighter than the generic tokens so a dense stream doesn't smear.
+    --glass-msg-raised: 3px 3px 7px var(--nm-shadow-dark), -2px -2px 5px var(--nm-shadow-light);
+    --glass-cast-down:  0 10px 18px -12px var(--nm-shadow-dark);
+    --glass-cast-up:    0 -10px 18px -12px var(--nm-shadow-dark);
+    --glass-cast-right: 8px 0 18px -12px var(--nm-shadow-dark);
+    --glass-cast-left:  -8px 0 18px -12px var(--nm-shadow-dark);
+    --glass-attention-tint: #{rgba($o-warning, .16)};
+
+    // ------------------------------------------------------------ 1. One surface
+    .o-mail-Discuss { border: 0 !important; background-color: var(--nm-surface); }
+    .o-mail-DiscussApp-sidebarBgColor { background-color: var(--nm-surface) !important; }
+
+    // ------------------------------------------------------ 2. Messaging menu
+    // Discuss sidebar and systray dropdown alike: Odoo paints the panel and the rows through
+    // `--mail-MessagingMenu-bg`; the panel is clay (the popover keeps its putty surface).
+    .o-mail-DiscussApp-sidebar { --mail-MessagingMenu-bg: var(--nm-surface); }
+    .o-mail-MessagingMenuInDropdown { --mail-MessagingMenu-bg: transparent; background-color: transparent !important; }
+    .o-mail-MessagingMenu {
+        background-color: var(--mail-MessagingMenu-bg, var(--nm-surface)) !important;
+        // in Discuss (and on phones) the panel is a card beside the tab rail…
+        &.rounded-4 { border: 0 !important; border-radius: var(--nm-radius-lg) !important; box-shadow: var(--nm-raised); }
+        // …in the dropdown it is the popover's right-hand part, a hairline from the rail
+        &.border-start { border-left: 1px solid var(--nm-hairline) !important; box-shadow: none; }
+    }
+    // the tab rail (Notifications · Chats · Channels · Meetings · Live Chats): flat labels, the
+    // open tab's icon is seated with the teal legend; counters stay red pills (Odoo's convention)
+    .o-mail-MessagingMenu-navbar { background: transparent !important; border: 0 !important; }
+    .o-mail-MessagingMenu-tab {
+        box-shadow: none !important; background: transparent !important; transform: none !important; color: var(--nm-text-muted);
+        .o-mail-MessagingMenu-tabIcon { background: transparent !important; box-shadow: none; outline: 0 !important; transition: box-shadow .15s var(--nm-ease-enter), color .15s; }
+        &:hover { color: var(--nm-text); .o-mail-MessagingMenu-tabIcon { background-color: var(--nm-surface) !important; @include nm-raised("-sm"); } }
+        &.active, &.active:hover {
+            color: var(--nm-action);
+            .o-mail-MessagingMenu-tabIcon { background-color: var(--nm-surface) !important; box-shadow: var(--nm-inset-sm); color: var(--nm-action); }
+        }
+        &:focus-visible { outline: 0 !important; .o-mail-MessagingMenu-tabIcon { box-shadow: var(--nm-inset-sm), var(--nm-focus); } }
+    }
+    .o-mail-MessagingMenu-tabCounter { box-shadow: none !important; }
+    // search row: the action keys (＋ Chat, New Meeting…) stay brand keys; the search is a well
+    .o-mail-MessagingMenu-searchContainer { background: transparent !important; }
+    .o-mail-DiscussSearch-inputContainer {
+        border: 0 !important; min-height: 36px; border-radius: var(--nm-radius) !important;
+        background-color: var(--nm-surface) !important; @include nm-inset; transition: box-shadow .15s;
+        &:focus-within { box-shadow: var(--nm-inset), 0 0 0 1px var(--nm-action-shadow); }
+        .oi[data-icon="search"] { color: var(--nm-text-faint); }
+        input, .form-control, .o_input { box-shadow: none !important; background: transparent !important; border: 0 !important; font-size: 13.5px; }
+    }
+    // filter pills (All · Unread · Group …): a seated segmented control
+    .o-mail-MessagingMenu-filter {
+        border: 0 !important; background: transparent !important; box-shadow: none !important; transform: none !important;
+        color: var(--nm-text-muted) !important; font-weight: 500;
+        &:hover { color: var(--nm-text) !important; }
+        &.o-active { color: var(--nm-action) !important; background-color: var(--nm-surface) !important; box-shadow: var(--nm-inset-sm) !important; }
+    }
+    // conversation rows: flat → hover / open → seated
+    .o-mail-MessagingMenu-tabContent { gap: 2px; }
+    .o-mail-NotificationItem {
+        border: 0 !important; background: transparent !important; box-shadow: none !important; border-radius: var(--nm-radius-sm) !important; margin: 0 !important; outline: 0 !important;
+        backdrop-filter: none !important;
+        transition: background-color .12s, box-shadow .15s var(--nm-ease-enter);
+        .bg-view { background: transparent !important; }
+        &:hover, &.o-active { background-color: var(--nm-surface) !important; box-shadow: var(--nm-inset-sm) !important; }
+        .o-mail-NotificationItem-name { color: var(--nm-text); }
+        .o-mail-NotificationItem-text, .o-mail-MessagingMenuItem-body { color: var(--nm-text-muted); }
+        .o-mail-NotificationItem-date { color: var(--nm-text-faint); }
+        .o-mail-NotificationItem-counter, .o-mail-NotificationItem-markAsRead { box-shadow: none !important; }
+        .o-mail-NotificationItem-markAsRead { background-color: var(--nm-surface) !important; color: var(--nm-text-muted) !important; }
+        .o-mail-MessagingMenuItem-avatarContainer img, img.o_avatar { border-radius: 9px !important; box-shadow: none; }
+        .o-mail-ImStatus { background: transparent !important; }
+        // "Enable" (push notifications) and the other inline keys: seated tint pills
+        .btn.btn-sm, .btn-secondary { box-shadow: none !important; transform: none !important; background-color: var(--nm-active-tint) !important; color: var(--nm-action) !important; border: 0 !important; border-radius: var(--nm-radius-pill) !important; }
+    }
+    .o-mail-MessagingMenuItem { border-radius: var(--nm-radius-sm) !important; }
+    .o-mail-MessagingMenu .o-discuss-ellipsisButton { background: transparent !important; box-shadow: none !important; }
+    // counters: flat solid pill, red = Odoo's unread convention
+    .o-discuss-badge, .o-discuss-badge .o-innerBadge { --o-discuss-badge-bg: var(--nm-danger); box-shadow: none !important; font-size: 11px; &.o-muted { --o-discuss-badge-bg: var(--nm-text-faint); } }
+
+    // --------------------------------------------------------------- 3. Header
+    // Odoo 20: a rounded, bordered box holding avatar · name · description, then the actions
+    .o-mail-DiscussContent-header {
+        border-bottom: 0 !important; background: transparent !important;
+        .o-mail-DiscussContent-threadAvatar img { border-radius: 10px; }
+        // the name is an AutoresizeInput: Odoo sizes the box from a copy of the text, the input
+        // inherits the box's font — style the box, or the name is cut ("Odo…")
+        .o-mail-DiscussContent-threadNameBox { font-weight: 600 !important; }
+        .o-mail-DiscussContent-threadName { color: var(--nm-text); }
+        .o-mail-DiscussContent-threadDescription { color: var(--nm-text-muted); }
+        .border-start { border-color: var(--nm-hairline) !important; }
+        .o-mail-ActionList-button { @include glass-flat-icon-btn(36px);
+            &.btn-success { background-color: var(--nm-success) !important; color: #fff !important; @include nm-raised("-sm"); &:hover { filter: brightness(1.06); } }
+        }
+        .o-mail-ActionList-group { gap: 2px; background: transparent !important; box-shadow: none !important; }
+    }
+    .o-mail-DiscussContent-headerBox { border: 0 !important; border-radius: var(--nm-radius-lg) !important; background-color: var(--nm-surface) !important; box-shadow: var(--nm-raised-sm); min-height: 52px; }
+
+    // ------------------------------------------------------------ 4. The stream
+    .o-mail-DiscussContent-main { background-color: var(--nm-surface); }
+    .o-mail-DiscussContent-core, .o-mail-Discuss .o-mail-Thread, .o-mail-Discuss .o-mail-Thread-content { background: transparent !important; }   // relief shows through
+    .o-mail-DiscussContent-main { position: relative; isolation: isolate; --nm-relief-opacity: 0;   // v2: off, as in tokens.scss (the arcs read as banding on the wide canvas)
+        &::before { content: ""; position: absolute; inset: 0; background-image: var(--nm-relief); background-size: var(--nm-relief-size); background-position: var(--nm-relief-pos); background-repeat: var(--nm-relief-repeat); opacity: var(--nm-relief-opacity); pointer-events: none; z-index: 0; }
+        > * { position: relative; z-index: 1; } }
+    .o-mail-Discuss .o-mail-Thread { padding: 8px 24px 0 !important; }
+    .o-mail-Message-contentContainer { max-width: 80ch; }
+    // unread banner: attention tint, seated in the gutter
+    .o-mail-Thread-banner {
+        border: 0 !important; box-shadow: none !important; margin: 10px 24px 0; border-radius: var(--nm-radius-sm); overflow: hidden; flex-shrink: 0;
+        .alert { background-color: var(--glass-attention-tint) !important; color: var(--nm-text) !important; border: 0 !important; box-shadow: none; font-weight: 500; padding: 6px 12px !important; }
+    }
+    // date sections: caps in a seated pill
+    .o-mail-DateSection {
+        hr { border-color: var(--nm-hairline); opacity: 1; margin: 0; }
+        > span { font-size: 10.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--nm-text-faint) !important; opacity: 1 !important;
+                 padding: 4px 12px !important; margin: 0 10px; border-radius: var(--nm-radius-pill); background-color: var(--nm-surface); box-shadow: var(--nm-inset-sm); }
+    }
+    .o-mail-Thread-newMessage {
+        .o-mail-Thread-newMessageLine { border: 0 !important; border-top: 1px solid var(--nm-danger) !important; box-shadow: none !important; opacity: .55; border-radius: 0; }
+        > span { box-shadow: none !important; border-radius: 4px; font-size: 9px; letter-spacing: .08em; padding: 1px 6px; }
+    }
+    .o-mail-Thread-jumpPresent { border: 0 !important; border-radius: 50% !important; background-color: var(--nm-surface-high) !important; box-shadow: var(--nm-floating) !important; i { color: var(--nm-text-muted); } }
+    .o-discuss-separator { border-color: var(--nm-hairline); opacity: 1; }
+
+    // --------------------------------------------------------------- 5. Message
+    // Scoped to Discuss and chat windows; the form-view chatter keeps form_view.scss.
+    .o-mail-Discuss .o-mail-Message, .o-mail-ChatWindow .o-mail-Message {
+        background: transparent;
+        &.o-actionMenuMobileOpen { background-color: var(--nm-active-tint); outline: 0; }
+        // author / date
+        .o-mail-Message-author strong { font-weight: 600; color: var(--nm-text); }
+        .o-mail-Message-date { color: var(--nm-text-faint); font-size: 11px; }
+        // seated avatar squircle
+        .o-mail-Message-avatarContainer { border-radius: 11px !important; padding: 2px; background-color: var(--nm-surface); box-shadow: var(--nm-inset-sm); }
+        .o-mail-Message-avatar { border-radius: 9px !important; }
+        // bubbles: no tint, no tail
+        .o-mail-Message-bubble:not(.o-mail-MessageInReply-core), .o-mail-Message-bubbleTail { display: none !important; }
+        .o-mail-Message-textContent > .o-discuss-text-body {
+            border-radius: 4px 14px 14px 14px !important;
+            background-color: var(--nm-surface-high); box-shadow: var(--glass-msg-raised);
+            transition: box-shadow .15s;
+            .o-mail-Message-body:not(.o-note) { padding: 9px 13px !important; }
+            .o-mail-Message-body.o-note { padding: 8px 12px !important; }
+            &:has(.o-mail-Message-bubble.o-orange) { box-shadow: var(--glass-msg-raised), inset 3px 0 0 var(--nm-warning); }
+        }
+        &.o-squashed .o-mail-Message-textContent > .o-discuss-text-body { border-radius: 14px !important; }
+        // own message: solid teal, white text, tight corner toward the (right-hand) avatar
+        &.o-selfAuthored .o-mail-Message-textContent > .o-discuss-text-body {
+            background-color: var(--nm-action); color: var(--nm-action-contrast) !important; border-radius: 14px 4px 14px 14px !important;
+            box-shadow: 3px 3px 8px var(--nm-action-shadow), -2px -2px 6px var(--nm-shadow-light);
+            .o-mail-Message-body, .o-mail-Message-body p, a, .text-muted { color: var(--nm-action-contrast) !important; }
+            .o_mail_redirect, .o_channel_redirect { background-color: rgba(255, 255, 255, .18); color: var(--nm-action-contrast) !important; }
+            .o-mail-MessageInReply-core { background-color: rgba(255, 255, 255, .14) !important; border-left-color: rgba(255, 255, 255, .6) !important; box-shadow: none; color: var(--nm-action-contrast); }
+        }
+        &.o-selfAuthored.o-squashed .o-mail-Message-textContent > .o-discuss-text-body { border-radius: 14px !important; }
+        &.o-editing .o-mail-Message-textContent > .o-discuss-text-body { background: transparent; box-shadow: none; }
+        // quoted reply: a well with a grey rail inside the card
+        .o-mail-MessageInReply { margin: 9px 13px 0 !important; padding: 0 !important; }
+        .o-mail-MessageInReply-core {
+            border: 0 !important; border-left: 3px solid var(--nm-text-faint) !important; border-radius: 0 8px 8px 0 !important;
+            background-color: var(--nm-surface) !important; box-shadow: var(--nm-inset-sm); padding: 5px 10px !important;
+            .o-mail-MessageInReply-avatar { border-radius: 5px; }
+        }
+        // hover actions: one floating pill
+        .o-mail-Message-actions {
+            .o-mail-ActionList-group { background-color: var(--nm-surface-high) !important; border-radius: var(--nm-radius-pill) !important; @include nm-raised("-sm"); padding: 2px; gap: 0; }
+            .o-mail-ActionList-button { @include glass-flat-icon-btn(28px); color: var(--nm-text-muted); i { font-size: .95rem; }
+                &:hover { color: var(--nm-action); }
+            }
+        }
+        // reactions
+        .o-mail-MessageReactions { margin-left: 4px !important; margin-top: 4px !important; gap: 4px; }
+        .o-mail-MessageReaction {
+            border: 1px solid var(--nm-hairline) !important; border-radius: var(--nm-radius-pill) !important; background-color: var(--nm-surface) !important;
+            box-shadow: none !important; padding: 0 9px !important; font-size: 14px !important; line-height: 1.7; transform: none !important; color: var(--nm-text-muted);
+            &:hover { border-color: var(--nm-action) !important; color: var(--nm-text); }
+            &.o-selfReacted { background-color: var(--nm-active-tint) !important; color: var(--nm-action) !important; border-color: transparent !important; box-shadow: var(--nm-inset-sm) !important; }
+        }
+        .o-mail-QuickReactionMenu button { background: transparent !important; box-shadow: none !important; transform: none !important; }
+        // attachments: actionable → raised
+        .o-mail-AttachmentContainer { border: 0 !important; border-radius: var(--nm-radius) !important; background-color: var(--nm-surface-high); @include nm-raised("-sm"); overflow: hidden; }
+        .o-mail-AttachmentCard-info { background: transparent !important; }
+        .o-mail-AttachmentButtons .btn { box-shadow: none !important; transform: none !important; }
+    }
+    .o-mail-NotificationMessage { color: var(--nm-text-muted); }
+    // Discuss app: put your own messages on the right. Odoo only does this in chat windows
+    // (JS `isAlignedRight`); the mirroring is the same CSS Odoo uses there.
+    .o-mail-Discuss .o-mail-Message.o-selfAuthored {
+        .o-mail-Message-core, .o-mail-Message-textContent, .o-mail-Message-contentContainer { flex-direction: row-reverse; }
+        .o-mail-Message-sidebar { align-items: center; }
+        .o-mail-Message-header { justify-content: flex-end; }
+        .o-mail-Message-author { display: none; }
+        .o-mail-Message-contentContainer { margin-left: auto; }
+        .o-mail-Message-content { display: flex; flex-direction: column; align-items: flex-end; }
+        .o-mail-MessageReactions { justify-content: flex-end; margin-left: 0 !important; margin-right: 4px; }
+        .o-mail-AttachmentList { align-items: flex-end; }
+        .o-mail-Message-actions { margin: 4px 6px 0 0 !important; }
+        .o-mail-MessageInReply { margin-left: 13px !important; margin-right: 13px !important; }
+        .o-mail-Message-body:not(.o-note) { text-align: left; }
+    }
+
+    // --------------------------------------------------------------- 6. Composer
+    .o-mail-Composer.o-discussApp {
+        padding: 10px 24px 14px !important; background-color: var(--nm-surface); position: relative;
+        &.o-hasSelfAvatar { grid-template-columns: 0 1fr; }
+        .o-mail-Composer-sidebarMain { display: none; }
+    }
+    .o-mail-Composer.o-discussApp, .o-mail-Composer.o-chatWindow {
+        .o-mail-Composer-bg { background: transparent !important; }
+        .o-mail-Composer-inputContainer {
+            border: 0 !important; border-radius: 24px !important; min-height: 48px; align-items: center; padding: 3px 5px 3px 4px;
+            background-color: var(--nm-surface) !important; @include nm-inset; transition: box-shadow .15s;
+            &:has(textarea:focus), &:has(.o-mail-Composer-html:focus) { box-shadow: var(--nm-inset), 0 0 0 1px var(--nm-action-shadow); }
+        }
+        .o-mail-Composer-input, .o-mail-Composer-html, textarea.form-control {
+            box-shadow: none !important; background: transparent !important; border: 0 !important;
+            padding: 12px 8px !important; font-size: 14.5px; color: var(--nm-text);
+            &::placeholder { color: var(--nm-text-faint); opacity: 1 !important; }
+        }
+        // "+" / GIF / emoji: flat, quiet until focus
+        .o-mail-Composer-actions .btn, .o-mail-Composer-quickActions .o-mail-ActionList-button:not(.o-mail-Composer-send) {
+            @include glass-flat-icon-btn(36px); color: var(--nm-text-faint); font-size: 13px; font-weight: 600;
+            &:hover { color: var(--nm-text); }
+        }
+        .o-mail-Composer-actions, .o-mail-Composer-actions .btn-group, .o-mail-Composer-quickActions, .o-mail-Composer-quickActions .btn-group { background: transparent !important; box-shadow: none !important; border-radius: 0; padding: 0; gap: 0; }
+        &:not(.o-focused) .o-mail-Composer-actions .btn, &:not(.o-focused) .o-mail-Composer-quickActions .o-mail-ActionList-button:not(.o-mail-Composer-send) { opacity: .6 !important; }
+        // send: the hero key
+        .o-mail-Composer-send {
+            outline: 0 !important;
+            width: 38px; height: 38px; padding: 0 !important; margin: 0 0 0 4px !important; border: 0 !important; border-radius: 50% !important;
+            display: inline-flex; align-items: center; justify-content: center; opacity: 1 !important; transform: none;
+            background-color: var(--nm-action) !important; color: var(--nm-action-contrast) !important;
+            box-shadow: 3px 3px 8px var(--nm-action-shadow), -2px -2px 6px var(--nm-shadow-light) !important;
+            transition: box-shadow .15s var(--nm-ease-enter), background-color .15s, transform .15s;
+            i { color: var(--nm-action-contrast) !important; font-size: 17px; }
+            &:hover:not(:disabled) { background-color: var(--nm-action-hover) !important; transform: translateY(-1px); }
+            &:active:not(:disabled) { transform: none; box-shadow: inset 3px 3px 6px rgba(0, 0, 0, .3) !important; }
+            &:disabled { background-color: transparent !important; box-shadow: none !important; color: var(--nm-text-faint) !important; opacity: .5 !important; i { color: var(--nm-text-faint) !important; } }
+        }
+        // an extended composer (full editor) says "Send": keep it a text key, not a disc
+        &.o-extended .o-mail-Composer-send { width: auto; height: 32px; padding: 0 14px !important; border-radius: var(--nm-radius-sm) !important; }
+        .o-mail-Composer-coreHeader > div { font-size: 12.5px; color: var(--nm-text-muted); padding: 4px 12px 6px !important; .oi[data-icon="cancel"] { color: var(--nm-text-faint); } }
+    }
+    .o-mail-Composer.o-chatWindow .o-mail-Composer-inputContainer { min-height: 42px; border-radius: 21px !important; }
+    .o-mail-Composer.o-chatWindow .o-mail-Composer-send { width: 32px; height: 32px; i { font-size: 14px; } }
+
+    // --------------------------------------------------------- 7. Right panel
+    // Odoo 20: a rounded, bordered card (members, pinned messages, attachments, threads…)
+    .o-mail-DiscussContent-panelContainer {
+        border: 0 !important; border-radius: var(--nm-radius-lg) !important; box-shadow: var(--nm-raised-sm); background-color: var(--nm-surface) !important; padding: 0 10px;
+        .o-mail-ActionPanel-header { p { font-size: 11px; letter-spacing: .08em; color: var(--nm-text-faint); } i { color: var(--nm-text-faint); } .btn { @include glass-flat-icon-btn(28px); } }
+        .o-mail-ActionPanel-content > .btn.btn-secondary, .o-mail-ActionPanel-content .btn.btn-sm.btn-secondary { color: var(--nm-action); border-radius: var(--nm-radius-sm) !important; }
+        .text-uppercase.o-xsmaller { letter-spacing: .08em; color: var(--nm-text-faint); opacity: 1; }
+        .o-discuss-ChannelMember { border-radius: var(--nm-radius-sm); padding: 5px 6px !important; &:hover { background-color: var(--nm-glow-brand); }
+            .text-muted.fw-bold { color: var(--nm-text) !important; font-weight: 500 !important; } }
+    }
+
+    // --------------------------------------------------------- 8. Chat windows
+    .o-mail-ChatWindow {
+        border: 0 !important; background-color: var(--nm-surface) !important; box-shadow: var(--nm-floating) !important;
+        @media (min-width: 768px) { border-radius: var(--nm-radius-lg) var(--nm-radius-lg) 0 0 !important; }
+        .o-mail-ChatWindow-header { background-color: var(--nm-surface) !important; border-bottom: 0 !important; position: relative; z-index: 2; box-shadow: var(--glass-cast-down); padding: 4px 6px;
+            .btn-group, .o-mail-ActionList-group { background: transparent !important; box-shadow: none !important; border-radius: 0; padding: 0; }
+            .btn { @include glass-flat-icon-btn(30px); &.o-mail-ChatWindow-moreActions { width: auto; border-radius: var(--nm-radius-sm) !important; padding: 0 6px !important; } }
+            .o-mail-ActionList-button.btn-success { background-color: var(--nm-success) !important; color: #fff !important; }
+        }
+        .o-mail-Thread { padding: 6px 10px 0 !important; }
+        .o-mail-Message-contentContainer { max-width: none; }
+        .o-mail-ChatWindow-counter { box-shadow: none !important; }
+    }
+}

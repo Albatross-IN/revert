@@ -1,0 +1,21 @@
+// =============================================================================
+// Glass — Odoo COMMUNITY dark scheme: Bootstrap colour functions for a dark ground
+//
+// Bootstrap 5.3 derives its "emphasis" inks (.text-info, .text-danger …), the "subtle"
+// grounds and borders, table variants and alerts by SHADING a colour towards black and
+// TINTING it towards white. On a dark ground that is the wrong way round: the inks end up
+// dark on dark (text-info measured 3.4:1 on the Community dark clay). The two functions are
+// redefined here with the directions swapped — the same approach Odoo Enterprise takes for
+// its own dark mode. Loaded right after Bootstrap's _functions.scss, only in Community
+// (an `ir.asset` record managed by ir_http.py, never on an Enterprise database).
+// =============================================================================
+
+// Tint a colour: mix it with black (dark ground: "lighter" emphasis comes from shade-color)
+@function tint-color($color, $weight) {
+    @return mix(#000, $color, $weight);
+}
+
+// Shade a colour: mix it with white
+@function shade-color($color, $weight) {
+    @return mix(#FFF, $color, $weight);
+}

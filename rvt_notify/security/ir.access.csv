@@ -1,0 +1,6 @@
+id,name,model_id,group_id/id,operation,domain
+access_rvt_notify_template_staff,rvt.notify.template staff,rvt.notify.template,rvt_base.group_rvt_staff,r,
+access_rvt_notify_template_owner,rvt.notify.template owner,rvt.notify.template,rvt_base.group_rvt_owner,crud,
+access_rvt_notify_template_system,rvt.notify.template system,rvt.notify.template,base.group_system,crud,
+access_rvt_notify_log_staff,rvt.notify.log staff: messages of the projects they may see,rvt.notify.log,rvt_base.group_rvt_staff,r,"['|', ('project_id', '=', False), ('project_id', 'access', 'read')]"
+access_rvt_notify_log_system,rvt.notify.log system,rvt.notify.log,base.group_system,crud,
