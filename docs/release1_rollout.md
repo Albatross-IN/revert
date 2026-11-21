@@ -29,6 +29,13 @@ keeps working the earlier way until each person is trained and given a Revert ro
 - **The app:** built for `https://erp.revert.co.in` (`docs/Revert_app_production.apk` on the development
   machine, debug-signed until a release key exists). Staff sign in with their office login; agencies and
   clients cannot sign in until the WhatsApp number is paired and sending is on (their code comes on WhatsApp).
+- **WhatsApp helper, set up the same day (afternoon):** Node.js 22 from Ubuntu's packages; the helper built in
+  `/opt/erp/sidecar/revert-whatsapp` (outside the add-ons folder, so a release does not touch it), run by the
+  system service `erp-revert-whatsapp` as `erp` on 127.0.0.1:3100 only, sessions in `/opt/erp/data/whatsapp/revert`,
+  log `/var/log/erp/revert-whatsapp.log`, key in `/etc/erp/revert-whatsapp.env` (the same key is the connector's
+  default API key). Auto-start in the connector's settings stays off: the service starts it. **Still to do by hand:**
+  pair the dedicated number (WhatsApp → Configuration → Accounts → new account → Connect, scan the code with the
+  phone), send one test message, and only then switch sending on in Setup.
 - **The way back:** the backup taken before the release is `/opt/erp/releases/revert/release1/backup-20261121T074811Z`
   on the server (database and files, `SHA256SUMS` checked). See §6.
 
