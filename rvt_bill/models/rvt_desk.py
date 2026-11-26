@@ -42,6 +42,10 @@ class RvtDesk(models.AbstractModel):
     def _snapshot_extra(self, data, projects, off, today):
         super()._snapshot_extra(data, projects, off, today)
         owner = self.env["rvt.bill"]._rvt_is_owner()
+        # bills are for the people ticked "Bills" or "Bill amounts and payments"
+        if not ({"bills", "money"} & self.env.user.rvt_access()) and not self.env.user.has_group("base.group_system"):
+            data["bills"] = []
+            return
         bills = self.env["rvt.bill"].search([("project_id", "in", projects.ids)], order="asked_on desc, id desc")
         data["bills"] = [self._bill_row(b, off, money=owner, payments=owner) for b in bills]
 
@@ -54,6 +58,11 @@ class RvtDesk(models.AbstractModel):
             raise UserError(self.env._("That bill is not there any more."))
         bill.check_access("read")
         return bill
+
+    @api.model
+    def _access_needed_by_op(self):
+        return dict(super()._access_needed_by_op(), ask_bill="bills", upload_bill="bills", review_bill="bills", bill_to="bills",
+                    pay_bill="money")
 
     def _op_ask_bill(self, a):
         bill = self.env["rvt.bill"].rvt_ask(

@@ -197,6 +197,7 @@ wrapA('setting',v=>sync('setting',{key:v,value:DB.set[v]}));
 wrapA('limit',v=>{const k=v.split('|')[0];sync('limit',{key:k,value:DB.set.lim[k]})});
 wrapA('ettoggle',v=>{const [n,t]=v.split('|');sync('etype_trade',{type:n,trade:t})});
 wrapA('dtflag',v=>{const [i,k]=v.split('|');sync('dtype_flag',{id:DTYPES[+i].id,flag:k})});
+wrapOP('access',(r,u,k,on)=>sync('access',{user:u.id,key:k,on:!!on}));
 const roletog0=A.roletog;A.roletog=function(v){const [s,r]=v.split('|'),u=stf(s),had=u.roles.includes(r);roletog0.apply(A,arguments);if(u.roles.includes(r)!==had)sync('role',{user:s,role:r})};
 const addtrade0=A.doaddtrade;A.doaddtrade=function(v,el,dev){const f=dev.f,a={name:(f.nt_n||'').trim(),gu:f.nt_gu||'',hi:f.nt_hi||''},n=TRADES.length;addtrade0.apply(A,arguments);if(TRADES.length>n)sync('add_trade',a,TRADES[TRADES.length-1].id)};
 const addagency0=A.doaddagency;A.doaddagency=function(v,el,dev){const f=dev.f,a={name:(f.na_n||'').trim(),trades:f.na_t?[f.na_t]:[],lang:f.na_l||'gu',person:f.na_p||'',phone:f.na_ph||''},n=DB.agencies.length;addagency0.apply(A,arguments);

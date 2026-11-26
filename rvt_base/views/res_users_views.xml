@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_users_view_form_rvt_access" model="ir.ui.view">
+        <field name="name">res.users.form.rvt.access</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Revert access" name="rvt_access" groups="base.group_erp_manager">
+                    <p class="text-muted">What this person may do in the Revert desk and app. Giving a Revert role ticks
+                        its usual ones; change them here. A person sees only the functions they are ticked for.</p>
+                    <field name="rvt_access_ids" widget="many2many_checkboxes" nolabel="1"/>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -29,7 +29,7 @@ const pickBtn=(dev,src,key,pid,label,icon,vendor)=>`<button type="button" class=
 const ptBA=(x,L)=>!x.photo&&!x.cphoto?'':`<div class="ba ${x.photo&&x.cphoto?'pair':''}">${x.photo?`<figure><figcaption>${x.cphoto?tr('before',L):tr('pt_photo',L)}${x.on!=null?' · '+fd(x.on):''}</figcaption>${ptPhoto(x,0)}</figure>`:''}${x.cphoto?`<figure><figcaption>${tr('after',L)}${x.doneOn!=null?' · '+fd(x.doneOn):x.closedOn!=null?' · '+fd(x.closedOn):''}</figcaption>${ptPhoto(x,1)}</figure>`:''}</div>`;
 const sitePts=p=>DB.points.filter(x=>x.pid===p.id&&x.st==='open'&&!x.e);
 const pbar=(a,b,c)=>`<div class="bar ${c||''}"><i style="width:${b?Math.round(a/b*100):0}%"></i></div>`;
-const money=(n,cls)=>isOwner()?`<b class="num ${cls||''}">${inr(n)}</b>`:`<span class="lockd" title="Amounts are visible to the owner only">${ic('lock')}owner only</span>`;
+const money=(n,cls)=>can('money')?`<b class="num ${cls||''}">${inr(n)}</b>`:`<span class="lockd" title="Amounts are shown to the people given access to them">${ic('lock')}hidden</span>`;
 const stPill=p=>{const s=STATUS[picture(p).status];return pill(s[0],s[1])};
 const LI={ns:'',wait:'pause',work:'play',done:'check'};
 const kpi=(label,val,cls)=>`<div class="kpi ${cls?'k-'+cls:''}"><div class="lbl">${label}</div><b class="num ${cls||''}" data-cu="${val}">${val}</b></div>`;
@@ -109,7 +109,7 @@ function dwgDetail(d,dev){const p=pOf(d.pid),r=cur(d),s=DS[d.st],w=p.lines.filte
  let act='';
  if(d.st==='to_draw')act=Bt('Start drawing','dstart',d.id,'','edit')+Bt(DB.set.approval?'Upload PDF and send for approval':'Upload PDF and release','sheet','sendappr|'+d.id,'gold','send');
  if(d.st==='in_progress')act=Bt(DB.set.approval?'Upload PDF and send for approval':'Upload PDF and release','sheet','sendappr|'+d.id,'gold','send');
- if(d.st==='awaiting')act=isPrincipal()?Bt('View PDF','view',d.id,'','eye')+Bt('Approve','approve',d.id,'gold','check'):Bt('View PDF','view',d.id,'','eye')+`<span class="note wait in">${ic('clock')}Waiting for ${esc(stf(p.principal).n)} to approve</span>`;
+ if(d.st==='awaiting')act=can('approve')?Bt('View PDF','view',d.id,'','eye')+Bt('Approve','approve',d.id,'gold','check'):Bt('View PDF','view',d.id,'','eye')+`<span class="note wait in">${ic('clock')}Waiting for ${esc(stf(p.principal).n)} to approve</span>`;
  if(d.st==='approved')act=Bt('View PDF','view',d.id,'','eye')+Bt('Release','release',d.id,'gold','send');
  if(d.st==='released')act=Bt('View PDF','view',d.id,'','eye')+Bt('New revision','newrev',d.id,'','plus');
  const rc=d.st==='released'?r.rc.map(x=>{const cl=x.to==='client',nm=cl?p.client.n:agN(x.to);return `<div class="rw"><div class="m"><div class="t1">${av(nm,'sm')}<span>${esc(nm)}</span>${cl?pill('client','gold'):''}</div><div class="t2">sent ${fd(x.sent)} on WhatsApp and in the app</div></div><div class="r">${x.opened!=null?`<span class="c-ok f12 b">${ic('check')}opened ${fd(x.opened)}</span>`:`<span class="c-bad f12 b">not opened</span>${Bt('Remind','remind',(cl?'client':x.to)+'|'+p.id+'|Please open '+sheetNo(d)+' '+d.title+'.','sm wa','wa')}`}</div></div>`}).join(''):'';

@@ -51,6 +51,13 @@ const me=()=>stf(UI.user);
 const has=(u,r)=>u.roles.includes(r);
 const isOwner=()=>has(me(),'owner');
 const isPrincipal=()=>has(me(),'principal')||has(me(),'owner');
+/* Access: what a person may do, one tick each (the office ticks them per person; a role brings its usual ones).
+   The server sends each person's ticks as acc; the preview's invented staff take their roles' usual ones. */
+const ACCK=[['allprojects','Every project'],['projects','Set up projects'],['grid','Work grid'],['drawings','Drawings'],['approve','Approve drawings'],['mom','MOM and points'],['agencies','Agencies'],['bills','Bills'],['money','Amounts and payments'],['setup','Setup'],['whatsapp','WhatsApp']];
+const ACCROLE={owner:ACCK.map(x=>x[0]),principal:['allprojects','projects','grid','drawings','approve','mom','agencies','bills','money','setup'],designer:['grid','drawings','mom'],coordinator:['grid','drawings','mom','agencies']};
+const accOf=u=>u&&u.acc?u.acc:[...new Set(((u&&u.roles)||[]).flatMap(r=>ACCROLE[r]||[]))];
+const can=k=>accOf(me()).includes(k);
+const canSec=s=>s==='bills'?can('bills')||can('money'):s==='setup'?can('setup')||can('agencies'):true;
 const planOf=(p,t)=>p.plan.find(x=>x.t===t);
 const lineAg=(p,l)=>l.ag||(planOf(p,l.t)||{}).ag||null;
 const entN=(p,id)=>(p.ents.find(e=>e.id===id)||{n:''}).n;
@@ -241,6 +248,7 @@ const OP={
  pay(b,o){const p=pOf(b.pid);b.pay.push(Object.assign({on:0,proof:false},o));b.st=paid(b)>=b.amount?'paid':'part_paid';notify('bill_paid',b.ag,{site:p.name,what:b.what,state:BS[b.st][0]})},
  remind(to,pid,text){const p=pOf(pid);notify('remind',to==='client'?'client:'+pid:to,{site:p.name,text})},
  seenNotes(){(DB.notes||[]).forEach(n=>{n.seen=true})},
+ access(u,k,on){},
 };
 
 /* ---------- words the agency and the client read (en · gu · hi). Gujarati and Hindi need a native check before release. ---------- */

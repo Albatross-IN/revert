@@ -12,7 +12,7 @@ STATES = [
 BILLED_TO = [("client", "The client"), ("revert", "Revert")]
 MODES = [("bank", "Bank transfer"), ("upi", "UPI"), ("cheque", "Cheque"), ("cash", "Cash")]
 # amounts are the owner's: no other group reads or writes these fields
-MONEY = "rvt_base.group_rvt_owner,base.group_system"
+MONEY = "rvt_base.group_rvt_acc_money,base.group_system"
 DOCUMENTS = ("application/pdf", "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif")
 MAX_DOCUMENT = 15 * 1024 * 1024
 CENT = 0.005
@@ -80,7 +80,7 @@ class RvtBill(models.Model):
     # ------------------------------------------------------------------
     def _rvt_is_owner(self):
         user = self.env.user
-        return self.env.su or user.has_group("rvt_base.group_rvt_owner") or user.has_group("base.group_system")
+        return self.env.su or user.has_group("rvt_base.group_rvt_acc_money") or user.has_group("base.group_system")
 
     def _rvt_staff(self):
         """Staff act on a bill of a project they may see."""

@@ -100,6 +100,11 @@ class RvtDesk(models.AbstractModel):
             raise UserError(self.env._("That point is not there any more. Reload the page."))
         return point
 
+    @api.model
+    def _access_needed_by_op(self):
+        return dict(super()._access_needed_by_op(), start_visit="mom", finish_visit="mom", add_point="mom", close_point="mom",
+                    confirm_point="mom", reopen_point="mom", solve_point="mom", change_point="mom", send_party="mom")
+
     def _op_start_visit(self, a):
         return {"id": "v%s" % self.env["rvt.visit"].rvt_start(_num(a.get("project")))}
 

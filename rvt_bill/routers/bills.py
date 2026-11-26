@@ -9,7 +9,7 @@ from odoo.tools.mimetypes import guess_mimetype
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 
-from odoo.addons.rvt_api.deps import Caller, agency, caller, owner, staff
+from odoo.addons.rvt_api.deps import Caller, agency, caller, needs, owner, staff
 from odoo.addons.rvt_api.errors import not_found
 
 router = APIRouter(tags=["bills"])
@@ -78,7 +78,7 @@ def _row(who, bill):
 
 # ---- staff ---------------------------------------------------------------------------------
 @router.get("/bills", summary="The bills of the projects the caller may see")
-def bills(who: Annotated[Caller, Depends(staff)], project_id: int | None = None, state: str | None = None):
+def bills(who: Annotated[Caller, Depends(needs("bills"))], project_id: int | None = None, state: str | None = None):
     domain = []
     if project_id:
         domain.append(("project_id", "=", project_id))
@@ -88,28 +88,28 @@ def bills(who: Annotated[Caller, Depends(staff)], project_id: int | None = None,
 
 
 @router.post("/bills", summary="Ask an agency of the project for a bill")
-def ask(data: Ask, who: Annotated[Caller, Depends(staff)]):
+def ask(data: Ask, who: Annotated[Caller, Depends(needs("bills"))]):
     bill = who.env["rvt.bill"].rvt_ask(
         data.project_id, data.agency_id, data.what, trade_code=data.trade, up_to=data.up_to, billed_to=data.billed_to)
     return _row(who, bill)
 
 
 @router.post("/bills/{bill_id}/upload", summary="Upload the bill on the agency's behalf")
-def upload(bill_id: int, data: Upload, who: Annotated[Caller, Depends(staff)]):
+def upload(bill_id: int, data: Upload, who: Annotated[Caller, Depends(needs("bills"))]):
     bill = _bill(who, bill_id)
     bill.rvt_upload(data.no, data.amount, _file(who, data), data.name)
     return _row(who, bill)
 
 
 @router.post("/bills/{bill_id}/review", summary="Accept a submitted bill, or return it with the reason")
-def review(bill_id: int, data: Review, who: Annotated[Caller, Depends(staff)]):
+def review(bill_id: int, data: Review, who: Annotated[Caller, Depends(needs("bills"))]):
     bill = _bill(who, bill_id)
     bill.rvt_review(data.ok, data.reason)
     return _row(who, bill)
 
 
 @router.put("/bills/{bill_id}/billed-to", summary="Billed to the client, or to Revert")
-def billed_to(bill_id: int, data: BilledTo, who: Annotated[Caller, Depends(staff)]):
+def billed_to(bill_id: int, data: BilledTo, who: Annotated[Caller, Depends(needs("bills"))]):
     bill = _bill(who, bill_id)
     bill.rvt_set_billed_to(data.to)
     return _row(who, bill)

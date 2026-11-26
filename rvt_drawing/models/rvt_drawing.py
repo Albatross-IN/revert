@@ -130,7 +130,7 @@ class RvtDrawing(models.Model):
 
     def _rvt_may_approve(self):
         user = self.env.user
-        return self.env.su or user.has_group("rvt_base.group_rvt_principal")
+        return self.env.su or user.has_group("rvt_base.group_rvt_acc_approve") or user.has_group("base.group_system")
 
     # ------------------------------------------------------------------
     # the flow
