@@ -21,6 +21,10 @@ class RvtCommon(TransactionCase):
         cls.designer = user("t_designer", "rvt_base.group_rvt_designer", "Riya Trivedi")
         cls.designer2 = user("t_designer2", "rvt_base.group_rvt_designer", "Amit Parmar")
         cls.outsider = user("t_outsider", "rvt_base.group_rvt_designer", "Kiran Dave")
+        # The suites' coordinator also sets projects up, handles bills and sees every project: ticked by hand, as an
+        # owner may do for a coordinator. The roles' own ticks are tested on people of their own (test_access_ticks).
+        ref = env.ref
+        cls.coordinator.write({"group_ids": [(4, ref("rvt_base.group_rvt_acc_%s" % key).id) for key in ("projects", "bills", "allprojects")]})
 
         cls.trade = {t.code: t for t in env["rvt.trade"].search([])}
         Partner = env["res.partner"]

@@ -64,6 +64,13 @@ const me=()=>stf(UI.user);
 const has=(u,r)=>u.roles.includes(r);
 const isOwner=()=>has(me(),'owner');
 const isPrincipal=()=>has(me(),'principal')||has(me(),'owner');
+/* Access: what a person may do, one tick each (the office ticks them per person; a role brings its usual ones).
+   The server sends each person's ticks as acc; the preview's invented staff take their roles' usual ones. */
+const ACCK=[['allprojects','Every project'],['projects','Set up projects'],['grid','Work grid'],['drawings','Drawings'],['approve','Approve drawings'],['mom','MOM and points'],['agencies','Agencies'],['bills','Bills'],['money','Amounts and payments'],['setup','Setup'],['whatsapp','WhatsApp']];
+const ACCROLE={owner:ACCK.map(x=>x[0]),principal:['allprojects','projects','grid','drawings','approve','mom','agencies','bills','money','setup'],designer:['grid','drawings','mom'],coordinator:['grid','drawings','mom','agencies']};
+const accOf=u=>u&&u.acc?u.acc:[...new Set(((u&&u.roles)||[]).flatMap(r=>ACCROLE[r]||[]))];
+const can=k=>accOf(me()).includes(k);
+const canSec=s=>s==='bills'?can('bills')||can('money'):s==='setup'?can('setup')||can('agencies'):true;
 const planOf=(p,t)=>p.plan.find(x=>x.t===t);
 const lineAg=(p,l)=>l.ag||(planOf(p,l.t)||{}).ag||null;
 const entN=(p,id)=>(p.ents.find(e=>e.id===id)||{n:''}).n;
@@ -254,6 +261,7 @@ const OP={
  pay(b,o){const p=pOf(b.pid);b.pay.push(Object.assign({on:0,proof:false},o));b.st=paid(b)>=b.amount?'paid':'part_paid';notify('bill_paid',b.ag,{site:p.name,what:b.what,state:BS[b.st][0]})},
  remind(to,pid,text){const p=pOf(pid);notify('remind',to==='client'?'client:'+pid:to,{site:p.name,text})},
  seenNotes(){(DB.notes||[]).forEach(n=>{n.seen=true})},
+ access(u,k,on){},
 };
 
 /* ---------- words the agency and the client read (en · gu · hi). Gujarati and Hindi need a native check before release. ---------- */
@@ -384,7 +392,7 @@ const pickBtn=(dev,src,key,pid,label,icon,vendor)=>`<button type="button" class=
 const ptBA=(x,L)=>!x.photo&&!x.cphoto?'':`<div class="ba ${x.photo&&x.cphoto?'pair':''}">${x.photo?`<figure><figcaption>${x.cphoto?tr('before',L):tr('pt_photo',L)}${x.on!=null?' · '+fd(x.on):''}</figcaption>${ptPhoto(x,0)}</figure>`:''}${x.cphoto?`<figure><figcaption>${tr('after',L)}${x.doneOn!=null?' · '+fd(x.doneOn):x.closedOn!=null?' · '+fd(x.closedOn):''}</figcaption>${ptPhoto(x,1)}</figure>`:''}</div>`;
 const sitePts=p=>DB.points.filter(x=>x.pid===p.id&&x.st==='open'&&!x.e);
 const pbar=(a,b,c)=>`<div class="bar ${c||''}"><i style="width:${b?Math.round(a/b*100):0}%"></i></div>`;
-const money=(n,cls)=>isOwner()?`<b class="num ${cls||''}">${inr(n)}</b>`:`<span class="lockd" title="Amounts are visible to the owner only">${ic('lock')}owner only</span>`;
+const money=(n,cls)=>can('money')?`<b class="num ${cls||''}">${inr(n)}</b>`:`<span class="lockd" title="Amounts are shown to the people given access to them">${ic('lock')}hidden</span>`;
 const stPill=p=>{const s=STATUS[picture(p).status];return pill(s[0],s[1])};
 const LI={ns:'',wait:'pause',work:'play',done:'check'};
 const kpi=(label,val,cls)=>`<div class="kpi ${cls?'k-'+cls:''}"><div class="lbl">${label}</div><b class="num ${cls||''}" data-cu="${val}">${val}</b></div>`;
@@ -464,7 +472,7 @@ function dwgDetail(d,dev){const p=pOf(d.pid),r=cur(d),s=DS[d.st],w=p.lines.filte
  let act='';
  if(d.st==='to_draw')act=Bt('Start drawing','dstart',d.id,'','edit')+Bt(DB.set.approval?'Upload PDF and send for approval':'Upload PDF and release','sheet','sendappr|'+d.id,'gold','send');
  if(d.st==='in_progress')act=Bt(DB.set.approval?'Upload PDF and send for approval':'Upload PDF and release','sheet','sendappr|'+d.id,'gold','send');
- if(d.st==='awaiting')act=isPrincipal()?Bt('View PDF','view',d.id,'','eye')+Bt('Approve','approve',d.id,'gold','check'):Bt('View PDF','view',d.id,'','eye')+`<span class="note wait in">${ic('clock')}Waiting for ${esc(stf(p.principal).n)} to approve</span>`;
+ if(d.st==='awaiting')act=can('approve')?Bt('View PDF','view',d.id,'','eye')+Bt('Approve','approve',d.id,'gold','check'):Bt('View PDF','view',d.id,'','eye')+`<span class="note wait in">${ic('clock')}Waiting for ${esc(stf(p.principal).n)} to approve</span>`;
  if(d.st==='approved')act=Bt('View PDF','view',d.id,'','eye')+Bt('Release','release',d.id,'gold','send');
  if(d.st==='released')act=Bt('View PDF','view',d.id,'','eye')+Bt('New revision','newrev',d.id,'','plus');
  const rc=d.st==='released'?r.rc.map(x=>{const cl=x.to==='client',nm=cl?p.client.n:agN(x.to);return `<div class="rw"><div class="m"><div class="t1">${av(nm,'sm')}<span>${esc(nm)}</span>${cl?pill('client','gold'):''}</div><div class="t2">sent ${fd(x.sent)} on WhatsApp and in the app</div></div><div class="r">${x.opened!=null?`<span class="c-ok f12 b">${ic('check')}opened ${fd(x.opened)}</span>`:`<span class="c-bad f12 b">not opened</span>${Bt('Remind','remind',(cl?'client':x.to)+'|'+p.id+'|Please open '+sheetNo(d)+' '+d.title+'.','sm wa','wa')}`}</div></div>`}).join(''):'';
@@ -698,13 +706,13 @@ SHEETS.askbill=(dev,s)=>{const f=dev.f,p=pOf(f.ab_pid||s.pid),ags=p?[...new Set(
   +fld('Agency',fsel(dev,'ab_ag',ags.map(a=>[a,agN(a)+' · '+p.plan.filter(x=>x.ag===a).map(x=>TX[x.t].n).join(', ')]),'Choose'))+fld('What is the bill for',fin(dev,'ab_what','e.g. Carpentry, stage 1'))+fld('Up to what amount (optional)',fin(dev,'ab_upto','₹',1))
   +fld('Billed to',chips(dev,'ab_to',[['client','The client'],['revert','Revert']]),p?'Default of this project: '+(p.billedTo==='client'?'the client':'Revert')+'. Change it for this bill if needed.':''),foot:cancelB()+Bt('Ask on WhatsApp','doaskbill',s.pid||'','gold','wa')}};
 
-SHEETS.bill=(dev,s)=>{const b=billOf(s.id),p=pOf(b.pid),f=dev.f,st=BS[b.st],own=isOwner(),pd=paid(b);
+SHEETS.bill=(dev,s)=>{const b=billOf(s.id),p=pOf(b.pid),f=dev.f,st=BS[b.st],own=can('money'),pd=paid(b);
  let act='',foot='';
  if(b.st==='asked'||b.st==='returned'){act=(b.st==='returned'?`<div class="note bad">${ic('alert')}Returned: ${esc(b.reason)}</div>`:`<div class="note wait">${ic('clock')}Asked ${fd(b.askedOn)}. Waiting for ${esc(agN(b.ag))} to upload.</div>`)
    +`<div class="lbl mt">Upload on the agency’s behalf</div>`+fld('Bill number',fin(dev,'ub_no','e.g. MF/118'))+fld('Amount',fin(dev,'ub_amt','₹',1))+`<div class="chips">${tog(dev,'ub_doc','Photo or PDF of the bill','cam')}</div>`;foot=Bt('Submit bill','doupload',b.id+'|staff','gold','check')}
  if(b.st==='submitted'){act=fld('If it must go back, say why',fin(dev,'rb_reason','e.g. GST number missing'));foot=Bt('Return','doreview',b.id+'|0','bad ghost')+Bt('Accept','doreview',b.id+'|1','gold','check')}
  if((b.st==='accepted'||b.st==='part_paid')){act=own?`<div class="lbl mt">Record a payment · balance ${inr(b.amount-pd)}</div>`+fld('Amount',fin(dev,'py_amt','₹',1))+fld('Paid by',chips(dev,'py_by',[['client','The client'],['revert','Revert']]))+fld('Mode',chips(dev,'py_mode',[['Bank transfer','Bank transfer'],['UPI','UPI'],['Cheque','Cheque'],['Cash','Cash']]))+`<div class="chips">${tog(dev,'py_proof','Attach proof','file')}</div>`
-   :`<div class="note">${ic('lock')}Payments are recorded by the owner.</div>`;foot=own?Bt('Record payment','dopay',b.id,'gold','rupee'):''}
+   :`<div class="note">${ic('lock')}Payments are recorded by the people given access to amounts.</div>`;foot=own?Bt('Record payment','dopay',b.id,'gold','rupee'):''}
  return {title:agN(b.ag)+' · '+TX[b.t].n,sub:p.name+' · '+b.what,body:`<div class="kv"><div><span>Status</span>${pill(st[0],st[1])}</div><div><span>Amount</span>${b.amount!=null?money(b.amount):'<span class="mu">not uploaded</span>'}</div>${b.upto?`<div><span>Asked up to</span>${money(b.upto)}</div>`:''}<div><span>Bill</span><b>${b.no?esc(b.no)+' · '+fd(b.date):'—'}</b></div><div><span>Asked by</span><b>${esc(stf(b.askedBy).n)} · ${fd(b.askedOn)}</b></div></div>
   ${fld('Billed to',`<div class="chips">${[['client','The client'],['revert','Revert']].map(o=>`<button type="button" class="chip" data-a="billto" data-v="${b.id}|${o[0]}" aria-pressed="${b.billedTo===o[0]}" ${b.st==='paid'?'disabled':''}>${o[1]}</button>`).join('')}</div>`)}
   ${b.no?`<div class="docrow">${ic('file')}<span><b>${esc(b.no)}.jpg</b> · photographed bill</span></div>`:''}
@@ -803,7 +811,7 @@ function deskHTML(dev){if(!dev.signed)return deskLogin(dev);const u=me(),c=deskC
  const body={today:deskToday,projects:deskProjects,drawings:deskDrawings,questions:deskQuestions,mom:deskMom,bills:deskBills,review:deskReview,setup:deskSetup,onboard:d=>`<div class="pad">${obWizard(d)}</div>`}[dev.sec](dev);
  return `<div class="bw"><div class="bw-bar"><i></i><i></i><i></i><div class="url">${ic('lock')}erp.revert.co.in/office</div></div>
  <div class="scr"><div class="desk"><header class="gnav"><button type="button" class="gn-home" data-a="nav" data-v="today" aria-label="Home">${ic('home')}</button><div class="gn-app">${LOGO}</div>
-  <nav class="gn-menu" aria-label="Revert Desk">${DNAV.map(n=>`<button type="button" data-a="nav" data-v="${n[0]}" ${sec===n[0]?'aria-current="page"':''}>${ic(n[2])}<span>${n[1]}</span>${c[n[0]]?`<b ${n[0]==='questions'?`class="q" title="${plural(c.q,'question')} waiting for an answer"`:''}>${c[n[0]]}</b>`:''}</button>`).join('')}</nav>
+  <nav class="gn-menu" aria-label="Revert Desk">${DNAV.filter(n=>canSec(n[0])).map(n=>`<button type="button" data-a="nav" data-v="${n[0]}" ${sec===n[0]?'aria-current="page"':''}>${ic(n[2])}<span>${n[1]}</span>${c[n[0]]?`<b ${n[0]==='questions'?`class="q" title="${plural(c.q,'question')} waiting for an answer"`:''}>${c[n[0]]}</b>`:''}</button>`).join('')}</nav>
   <div class="gn-r"><span class="gn-co"><i></i>Revert Architects</span><div class="gn-u">${av(u.n)}<div><b>${esc(u.full)}</b><small>${roleLabel(u)}</small></div></div><button type="button" class="ib gn-bell" data-a="notes" aria-label="Notifications" title="Notifications">${ic('bell')}${newNotes()?'<i class="ndot"></i>':''}</button><button type="button" class="ib gn-out" data-a="signout" aria-label="Log out" title="Log out">${ic('out')}</button></div></header>
   <main class="dmain${fresh?' enter':''}" data-sc="dmain_${dev.sec}">${body}</main></div>${sheetHTML(dev)}</div></div>`}
 const dhead=(title,sub,right)=>`<header class="dh"><div><h1 class="serif">${title}</h1>${sub?`<p>${sub}</p>`:''}</div><div class="dhr">${right||''}</div></header>`;
@@ -841,7 +849,7 @@ function projTab(p,dev){const t=dev.ptab||'picture',pic=picture(p),dws=DB.drawin
     <div class="note">${ic('eye')}The client sees two things only: the drawings marked for the client, and what Revert needs from them.</div>`)}
    ${card('Waiting for the client',Bt('Raise item','raiseclient',p.id,'sm','plus'),`<div class="rows">${nextRows(p,pic,{nt:'client'})}${un.map(x=>ptRow(x,dev)).join('')}</div>`)}</div>
    ${card('Drawings for the client','',`<div class="rows">${cd.map(d=>dwgRow(d,dev)).join('')||empty('No drawing is marked for the client.','dwg')}</div>`)}</div>`}
- if(t==='bills')return `<div class="stack">${card('Bills',Bt('Ask for bill','askbill',p.id,'sm gold','plus'),`<div class="rows">${bills.map(b=>billRow(b,dev)).join('')||empty('No bill asked yet.','bill')}</div>`)}${isOwner()?card('Money on this project',pill('owner only','gold','lock'),moneyView(bills)):`<div class="note">${ic('lock')}Amounts and totals are visible to the owner only.</div>`}</div>`;
+ if(t==='bills')return `<div class="stack">${card('Bills',Bt('Ask for bill','askbill',p.id,'sm gold','plus'),`<div class="rows">${bills.map(b=>billRow(b,dev)).join('')||empty('No bill asked yet.','bill')}</div>`)}${can('money')?card('Money on this project',pill('amounts','gold','lock'),moneyView(bills)):`<div class="note">${ic('lock')}Amounts and totals are shown to the people given access to them.</div>`}</div>`;
  return card('Earlier tasks','<span class="mu f12">made by hand · they keep working as before</span>',`<div class="rows">${p.tasks.map(x=>`<div class="rw"><div class="m"><div class="t1">${esc(x.n)}</div><div class="t2">${esc(x.stage)} · ${x.subs} sub-tasks · ${x.mom} MOM ${x.mom===1?'entry':'entries'}${x.moved?' moved to the new MOM':''}</div></div><div class="r">${/^\d|MOM/i.test(x.n)?'<span class="mu f12">date task · no longer needed for MOM</span>':Bt('Use as a room','taskent',p.id+'|'+x.id,'sm')}</div></div>`).join('')||empty('No hand-made task on this project.','list')}</div>
    <div class="note">${ic('info')}Staff can keep creating tasks by hand. “Use as a room” marks an earlier room task as an entity instead of creating a second one.</div>`)}
 function deskProjects(dev){const ps=myProjects(),p=ps.find(x=>x.id===dev.pid)||ps[0];if(!p)return dhead('Projects','')+empty('No project is visible to you yet.','folder');
@@ -878,7 +886,7 @@ function deskQuestions(dev){const all=qThreads(myPids()),nOpen=all.filter(t=>t.o
 function deskBills(dev){const ps=myProjects().map(p=>p.id),all=DB.bills.filter(b=>ps.includes(b.pid)),G={review:all.filter(b=>b.st==='submitted'),asked:all.filter(b=>b.st==='asked'||b.st==='returned'),unpaid:all.filter(b=>b.st==='accepted'||b.st==='part_paid'),paid:all.filter(b=>b.st==='paid'),all};
  const t=dev.btab||'review';return dhead('Bills','Revert asks, the agency uploads, Revert records what is paid and by whom. No advances.',Bt('Ask for a bill','askbill','','gold','plus'))
   +tabsH(dev,'btab',[['review','To review',G.review.length],['asked','Asked',G.asked.length],['unpaid','Unpaid',G.unpaid.length],['paid','Paid',G.paid.length],['all','All',all.length]])
-  +`<div class="stack">${card('Bills','',`<div class="rows">${G[t].map(b=>billRow(b,dev,true)).join('')||empty('Nothing in this list.')}</div>`)}${isOwner()?card('Money, all projects',pill('owner only','gold','lock'),moneyView(all)):`<div class="note">${ic('lock')}Amounts and totals are visible to the owner only. You see the document and the status.</div>`}</div>`}
+  +`<div class="stack">${card('Bills','',`<div class="rows">${G[t].map(b=>billRow(b,dev,true)).join('')||empty('Nothing in this list.')}</div>`)}${can('money')?card('Money, all projects',pill('amounts','gold','lock'),moneyView(all)):`<div class="note">${ic('lock')}Amounts and totals are shown to the people given access to them. You see the document and the status.</div>`}</div>`}
 
 function deskReview(dev){const ps=myProjects(),rows=ps.map(p=>[p,picture(p)]),n=k=>rows.filter(r=>r[0].onb&&r[1].status===k).length;
  const cellp=(a,b,c,w)=>`<td><div class="num"><b>${a}</b><span class="mu"> / ${b}</span></div>${ticks(a,b,c,w)}</td>`;
@@ -888,7 +896,7 @@ function deskReview(dev){const ps=myProjects(),rows=ps.map(p=>[p,picture(p)]),n=
    return p.onb?`<tr class="lk" data-a="proj" data-v="${p.id}"><td><b>${esc(p.name)}</b><div class="t2">${esc(p.label)}</div></td><td>${stPill(p)}</td>${cellp(g.ag[0],g.ag[1],'brz')}${cellp(g.dr[0],g.dr[1],'brz')}${cellp(g.wk[0],g.wk[1],'ok',g.wk[2])}${cellp(g.pt[0],g.pt[1],'ok')}<td>${pic.blockers.length?`<b class="c-bad num">${pic.blockers.length}</b><div class="t2">${esc(old.text)} · ${old.age} d</div>`:'<span class="c-ok b">none</span>'}</td><td>${ic('chev','mu')}</td></tr>`
     :`<tr class="lk" data-a="proj" data-v="${p.id}"><td><b>${esc(p.name)}</b><div class="t2">${esc(p.label)}</div></td><td>${pill('to configure','gold')}</td><td colspan="5" class="mu">Runs the earlier way: ${p.tasks.length} hand-made tasks. Configure it to see its picture.</td><td>${ic('chev','mu')}</td></tr>`}).join('')}</tbody></table></div>`)}`}
 
-function deskSetup(dev){const t=dev.stab||'settings',s=DB.set,own=isOwner();let b='';
+function deskSetup(dev){const own=can('setup'),t=own?(dev.stab||'settings'):'agencies',s=DB.set;let b='';
  const sw=(k,on,label,hint)=>`<button type="button" class="sw-row" data-a="setting" data-v="${k}" aria-pressed="${on}"><i class="switch"></i><div><b>${label}</b><small>${hint}</small></div></button>`;
  const stp=(k,label,hint)=>`<div class="sw-row"><div class="stepper"><button type="button" class="ib" data-a="limit" data-v="${k}|-1" aria-label="Less">−</button><b class="num">${s.lim[k]}</b><button type="button" class="ib" data-a="limit" data-v="${k}|1" aria-label="More">+</button></div><div><b>${label}</b><small>${hint}</small></div></div>`;
  if(t==='settings')b=`<div class="two">${card('Rules','',sw('approval',s.approval,'Release needs the principal’s approval','On: a designer sends for approval and the principal approves. Off: the designer releases directly.')+sw('clientConfirm',s.clientConfirm,'Client points need the office to confirm','On: a point for the client appears to them only after the office confirms it.'))}
@@ -900,14 +908,15 @@ function deskSetup(dev){const t=dev.stab||'settings',s=DB.set,own=isOwner();let 
  if(t==='sets')b=card('Standard drawing sets','<span class="mu f12">proposed at onboarding for every ticked trade</span>',`<div class="tw"><table class="tb"><thead><tr><th>Code</th><th>Drawing</th><th>Trade</th><th>For client</th><th>Client approves</th><th class="ar">Due after</th></tr></thead><tbody>${DTYPES.map((x,i)=>`<tr><td><span class="sheet">${x.code}</span></td><td><b>${esc(x.n)}</b></td><td>${x.t?esc(TX[x.t].n):'<span class="c-gold b">General set</span>'}</td>
    <td><button type="button" class="tk" data-a="dtflag" data-v="${i}|client" aria-pressed="${x.client}" aria-label="for client">${ic('check')}</button></td><td><button type="button" class="tk" data-a="dtflag" data-v="${i}|appr" aria-pressed="${x.appr}" aria-label="client approves">${ic('check')}</button></td><td class="ar num">${x.off} d</td></tr>`).join('')}</tbody></table></div>`);
  if(t==='agencies')b=card('Agencies and their people',Bt('Add an agency','sheet','addagency','sm gold','plus'),`<div class="rows">${DB.agencies.map(a=>`<div class="rw"><div class="m"><div class="t1">${av(a.n,'sm')}<span>${esc(a.n)}</span><span class="mu f12"> · ${esc(a.tr.map(x=>TX[x].n).join(', '))}</span></div><div class="t2">${a.people.map(p=>esc(p.n)+' · <span class="mono">'+esc(p.ph)+'</span>').join(' &nbsp;|&nbsp; ')}</div></div><div class="r">${pill(({gu:'ગુજરાતી',hi:'हिंदी',en:'English'})[a.lang],'plain','globe')}${pill(plural(agProjects(a.id).length,'site'),'gold')}</div></div>`).join('')}</div>`);
- if(t==='staff')b=card('Staff and roles',own?'':pill('owner only','gold','lock'),`<div class="rows">${DB.staff.map(u=>`<div class="rw"><div class="m"><div class="t1">${av(u.n,'sm')}<span>${esc(u.full)}</span></div><div class="t2">login <span class="mono">${u.login}</span> · a person can hold both designer and coordinator</div></div><div class="r"><div class="chips">${['owner','principal','designer','coordinator'].map(r=>`<button type="button" class="chip tg sm" data-a="roletog" data-v="${u.id}|${r}" aria-pressed="${u.roles.includes(r)}" ${own?'':'disabled'}>${ic('check')}${r}</button>`).join('')}</div></div></div>`).join('')}</div>`);
+ if(t==='staff')b=card('Staff, roles and access','<span class="mu f12">a role ticks its usual access · change the ticks per person</span>',`<div class="rows">${DB.staff.map(u=>{const acc=accOf(u);return `<div class="rw staffacc"><div class="m"><div class="t1">${av(u.n,'sm')}<span>${esc(u.full)}</span></div><div class="t2">login <span class="mono">${u.login}</span></div>
+   <div class="chips acc">${ACCK.map(k=>`<button type="button" class="chip tg sm" data-a="acctog" data-v="${u.id}|${k[0]}" aria-pressed="${acc.includes(k[0])}">${ic('check')}${k[1]}</button>`).join('')}</div></div><div class="r"><div class="chips">${['owner','principal','designer','coordinator'].map(r=>`<button type="button" class="chip tg sm" data-a="roletog" data-v="${u.id}|${r}" aria-pressed="${u.roles.includes(r)}">${ic('check')}${r}</button>`).join('')}</div></div></div>`}).join('')}</div>`);
  if(t==='tpl')b=card('Message templates','<span class="mu f12">one text per event and language · only this service sends</span>',`<div class="tw"><table class="tb"><thead><tr><th>Event</th><th>English</th><th>ગુજરાતી</th><th>हिंदी</th></tr></thead><tbody>${Object.keys(TPL).map(k=>`<tr><td class="mono">${k}</td><td>${esc(TPL[k].en)}</td><td class="gu">${esc(TPL[k].gu)}</td><td class="gu">${esc(TPL[k].hi)}</td></tr>`).join('')}</tbody></table></div>`);
  if(t==='etl'){const R=[['Shah Residence',64,9,55,31,6],['Mehta Office',118,14,104,52,4],['Patel Bungalow',58,21,37,24,11],['Desai Dental Clinic',22,3,19,9,2],['Vora Residence',141,26,115,66,13],['Sanghvi Hospital, OPD',203,38,165,97,17],['13 more projects',319,40,279,148,41]],T=R.reduce((a,r)=>a.map((v,i)=>v+r[i+1]),[0,0,0,0,0]);
   b=`<div class="kpis">${kpi('Entries moved',T[0])}${kpi('Open',T[1],'c-wait')}${kpi('Closed',T[2],'c-ok')}${kpi('Photos, by checksum',T[3])}${kpi('Visits',T[4])}</div>${card('Verification report','<span class="pill ok">'+ic('check')+'before = after, every project</span>',`<div class="tw"><table class="tb"><thead><tr><th>Project</th><th class="ar">Entries</th><th class="ar">Open</th><th class="ar">Closed</th><th class="ar">Photos</th><th class="ar">Visits</th><th>Check</th></tr></thead><tbody>${R.map(r=>`<tr><td><b>${r[0]}</b></td>${r.slice(1).map(v=>`<td class="ar num">${v} <span class="mu">= ${v}</span></td>`).join('')}<td>${pill('equal','ok','check')}</td></tr>`).join('')}</tbody></table></div>
    <div class="note">${ic('info')}<span>Every earlier MOM entry became a point with its text, person, photo, visit date and number, serial number, due date, state, closing note and author. A second run creates nothing. The earlier screens are switched off only after the owner compares three projects and signs off.</span></div>`)}
    ${card('People to match','<span class="mu f12">from the sheet Revert fills in</span>',`<div class="kv"><div><span>People named in earlier entries</span><b>40</b></div><div><span>Matched to an agency and trade</span><b class="c-ok">31</b></div><div><span>Kept as vendors, listed for review</span><b class="c-wait">9</b></div><div><span>Duplicate spellings merged through the sheet</span><b>4</b></div></div>`)}`}
  if(t==='log')b=card('Messages','<span class="mu f12">every send is logged</span>',`<div class="tw"><table class="tb"><thead><tr><th>When</th><th>To</th><th>Event</th><th>Message</th><th>State</th></tr></thead><tbody>${DB.wa.map(m=>`<tr><td class="mono">${m.on===0?'today':fd(m.on)} ${m.at}</td><td><b>${esc(m.name)}</b><div class="t2 mono">${esc(m.ph)}</div></td><td class="mono">${m.ev}</td><td class="gu">${esc(m.text)}${m.doc?`<div class="t2">${ic('file')}${esc(m.doc.label)}</div>`:''}</td><td>${m.held?pill('held','wait'):pill('sent','ok')}</td></tr>`).join('')}</tbody></table></div>`);
- return dhead('Setup','Master lists and rules. They are data, so they improve with every project.','')+tabsH(dev,'stab',[['settings','Settings'],['trades','Trades'],['rooms','Room types'],['presets','Site presets'],['sets','Drawing sets'],['agencies','Agencies'],['staff','Staff'],['tpl','Templates'],['log','Messages'],['etl','Earlier MOM']])+`<div class="stack">${b}</div>`}
+ return dhead('Setup','Master lists and rules. They are data, so they improve with every project.','')+tabsH(Object.assign({},dev,{stab:t}),'stab',own?[['settings','Settings'],['trades','Trades'],['rooms','Room types'],['presets','Site presets'],['sets','Drawing sets'],['agencies','Agencies'],['staff','Staff'],['tpl','Templates'],['log','Messages'],['etl','Earlier MOM']]:[['agencies','Agencies']])+`<div class="stack">${b}</div>`}
 
 /* ---- apps.js ---- */
 /* The phone apps: staff (every desk function), agency (gu / hi / en), client (two blocks only), and what arrives on WhatsApp. */
@@ -953,7 +962,7 @@ function staffHTML(dev){const u=me();
  if(t.s==='dwg'){const d=dOf(t.id);hideNav=true;bar=abar(sheetNo(d),esc(pOf(d.pid).name),{back:1});body=dwgDetail(d,dev)}
  if(t.s==='drawings'){const ps=myProjects().map(p=>p.id),all=DB.drawings.filter(d=>ps.includes(d.pid)),G={draw:all.filter(d=>d.st==='to_draw'||d.st==='in_progress'),awaiting:all.filter(d=>d.st==='awaiting'),release:all.filter(d=>d.st==='approved'),released:all.filter(d=>d.st==='released'),unopened:all.filter(d=>d.st==='released'&&cur(d).rc.some(r=>r.opened==null)),q:all.filter(d=>d.q.some(q=>!q.ans))};
   /* questions waiting for an answer come first, and the screen opens on them */
-  const k=dev.dtab&&G[dev.dtab]&&(dev.dtab!=='q'||G.q.length)?dev.dtab:(G.q.length?'q':isPrincipal()&&G.awaiting.length?'awaiting':'draw');dev.dtab=k;key+=k;
+  const k=dev.dtab&&G[dev.dtab]&&(dev.dtab!=='q'||G.q.length)?dev.dtab:(G.q.length?'q':can('approve')&&G.awaiting.length?'awaiting':'draw');dev.dtab=k;key+=k;
   bar=abar('Drawings',nq?plural(nq,'question')+' waiting for an answer':'released only through the system',{serif:1})+tabsH(dev,'dtab',[...(G.q.length?[['q','Questions',nq]]:[]),['draw','To draw',G.draw.length],['awaiting','To approve',G.awaiting.length],['release','To release',G.release.length],['released','Released',G.released.length],['unopened','Not opened',G.unopened.length]]);
   body=`<div class="card flush"><div class="rows">${G[k].slice().sort((a,b)=>a.due-b.due).map(d=>dwgRow(d,dev,true)).join('')||empty('Nothing in this list.')}</div></div>`}
  if(t.s==='mom'){const ps=myProjects(),ids=ps.map(p=>p.id),open=DB.points.filter(x=>ids.includes(x.pid)&&x.st==='open'),ov=DB.visits.filter(v=>ids.includes(v.pid)&&v.st==='open');
@@ -968,14 +977,14 @@ function staffHTML(dev){const u=me();
   body=`<div class="card flush"><div class="rows">${list.map(x=>qRow(x,dev)).join('')||empty(f==='all'?'No question has been asked yet.':'No question waits for an answer.','chat')}</div></div>`}
  if(t.s==='qchat'){const th=thOf(t.id);hideNav=true;if(!th){bar=abar('Questions','',{back:1});body=`<div class="card">${empty('This conversation is not there any more.','chat')}</div>`}
   else{bodyCls='momb';bar=abar(esc(thName(th)),sheetNo(th.d)+' · '+esc(pOf(th.d.pid).name),{back:1});body=thView(th,dev)}}
- if(t.s==='more'){hideNav=true;bar=abar(esc(u.full),roleLabel(u),{back:1,serif:1});const it=[['bills','Bills','bill','Ask, review, record payments'],['review','Review','review','The weekly board, one row per project'],['setup','Setup','setup','Rules, day limits, WhatsApp']];
+ if(t.s==='more'){hideNav=true;bar=abar(esc(u.full),roleLabel(u),{back:1,serif:1});const it=[['bills','Bills','bill','Ask, review, record payments'],['review','Review','review','The weekly board, one row per project'],['setup','Setup','setup','Rules, day limits, WhatsApp']].filter(x=>canSec(x[0]));
   body=`<div class="card flush"><div class="rows">${it.map(x=>`<button type="button" class="rw lk" data-a="go" data-v="${x[0]}"><i class="mi">${ic(x[2])}</i><div class="m"><div class="t1">${x[1]}</div><div class="t2">${x[3]}</div></div><div class="r">${ic('chev','mu')}</div></button>`).join('')}
    <button type="button" class="rw lk" data-a="onb" data-v=""><i class="mi">${ic('plus')}</i><div class="m"><div class="t1">New project</div><div class="t2">Onboard in six steps, from the phone</div></div><div class="r">${ic('chev','mu')}</div></button>
    <button type="button" class="rw lk" data-a="offline"><i class="mi">${ic('off')}</i><div class="m"><div class="t1">Flight mode (preview)</div><div class="t2">${UI.offline?'Offline: points are saved on the phone':'Online. Switch off the network to try the outbox'}</div></div><div class="r"><i class="switch ${UI.offline?'on':''}"></i></div></button>
    <button type="button" class="rw lk" data-a="signout"><i class="mi">${ic('out')}</i><div class="m"><div class="t1">Sign out</div></div></button></div></div>`}
  if(t.s==='bills'){hideNav=true;const ids=myProjects().map(p=>p.id),all=DB.bills.filter(b=>ids.includes(b.pid)),G={review:all.filter(b=>b.st==='submitted'),asked:all.filter(b=>b.st==='asked'||b.st==='returned'),unpaid:all.filter(b=>b.st==='accepted'||b.st==='part_paid'),paid:all.filter(b=>b.st==='paid')},k=dev.btab&&G[dev.btab]?dev.btab:'review';key+=k;
   bar=abar('Bills','ask · review · record',{back:1,serif:1,right:Bt('Ask','askbill','','sm gold','plus')})+tabsH(dev,'btab',[['review','To review',G.review.length],['asked','Asked',G.asked.length],['unpaid','Unpaid',G.unpaid.length],['paid','Paid',G.paid.length]]);
-  body=`<div class="card flush"><div class="rows">${G[k].map(b=>billRow(b,dev,true)).join('')||empty('Nothing in this list.')}</div></div>${isOwner()?card('Money, all projects',pill('owner only','gold','lock'),moneyView(all)):`<div class="note">${ic('lock')}Amounts and totals are visible to the owner only.</div>`}`}
+  body=`<div class="card flush"><div class="rows">${G[k].map(b=>billRow(b,dev,true)).join('')||empty('Nothing in this list.')}</div></div>${can('money')?card('Money, all projects',pill('amounts','gold','lock'),moneyView(all)):`<div class="note">${ic('lock')}Amounts and totals are shown to the people given access to them.</div>`}`}
  if(t.s==='review'){hideNav=true;bar=abar('Review','the weekly board',{back:1,serif:1});body=`<div class="stack">${myProjects().map(p=>siteCard(p,null,'wide')).join('')}</div>`}
  if(t.s==='setup'){hideNav=true;const s=DB.set,sw=(k,on,l,h)=>`<button type="button" class="sw-row" data-a="setting" data-v="${k}" aria-pressed="${on}"><i class="switch"></i><div><b>${l}</b><small>${h}</small></div></button>`;
   bar=abar('Setup','rules and messages',{back:1,serif:1});body=card('Rules','',sw('approval',s.approval,'Release needs the principal’s approval','Off: the designer releases directly.')+sw('clientConfirm',s.clientConfirm,'Client points need the office to confirm','Off: the client sees a point at once.')+sw('sending',s.sending,'WhatsApp sending is on','Off: messages are logged as “held”.'))+`<div class="note">${ic('info')}Master lists (trades, room types, drawing sets, agencies, staff) are edited on the desk.</div>`}
@@ -1120,6 +1129,9 @@ const A={
   if(open.length){const ts=Math.floor(Date.now()/1000);open.forEach(q=>{OP.answer(t.d,q.id,text);q.ansTs=ts})}else OP.say(t.d,t.by,text);dev.f[k]='';dev.toEnd=true;UI.focus=dev.id+'_'+k;toast(`${open.length?'Answered':'Sent'}. ${nm} sees it in the app.`)},
  agdone(v,el,dev){const x=ptOf(v),a=agOf(UI.agency),L=UI.lang.agency;if(!x)return;if(!dev.f.ad_photo)return toast(tr('pt_proof',L),'wait');
   OP.agencyDone(x,(dev.f.ad_note||'').trim(),true,a.people[0].n);dev.f.ad_note='';dev.f.ad_photo=false;if(dev.stack.length>1)dev.stack.pop();flash(dev,'✓');pushStaff(a.n+' marked point '+x.n+' done',[x.by,...pOf(x.pid).coords]);toast(tr('pt_sent',L))},
+ /* a person's access ticks (Setup › Staff) */
+ acctog(v,el,dev){if(!can('setup'))return toast('Only people with Setup change access.','wait');const [sid,k]=v.split('|'),u=stf(sid);if(!u||!u.roles)return;const acc=accOf(u),on=!acc.includes(k);
+  if(!on&&k==='setup'&&sid===UI.user)return toast('You cannot take Setup away from yourself.','wait');u.acc=on?[...acc,k]:acc.filter(x=>x!==k);OP.access(u,k,on)},
  /* notifications */
  notes(v,el,dev){const fresh=(DB.notes||[]).filter(n=>!n.seen).map(n=>n.id);openSheet(dev,'notes',{fresh});if(fresh.length)OP.seenNotes()},
  noteopen(v,el,dev){const n=(DB.notes||[]).find(x=>String(x.id)===String(v)),r=n&&n.ref;if(!r)return;const [k,id]=r;dev.sheet=null;
@@ -1166,7 +1178,7 @@ const A={
  dwg(v,el,dev){openDwg(dev,v)},dstart(v){dOf(v).st='in_progress';toast('Marked in progress.')},view(v,el,dev){openSheet(dev,'view',{id:v})},
  dosend(v,el,dev){const d=dOf(v);if(!dev.f.sa_file)return toast('Choose the PDF first.','wait');OP.sendForApproval(d,dev.f.sa_note);dev.f.sa_file=false;dev.f.sa_note='';
   if(DB.set.approval){dev.sheet=null;flash(dev,'Sent','send');toast(`${sheetNo(d)} sent to ${stf(pOf(d.pid).principal).n} for approval.`)}else relPrefill(dev,d)},
- approve(v,el,dev){if(!isPrincipal())return toast('Only the principal approves a release.','wait');dev.f.ap_note='';openSheet(dev,'approve',{id:v})},
+ approve(v,el,dev){if(!can('approve'))return toast('Only the principal approves a release.','wait');dev.f.ap_note='';openSheet(dev,'approve',{id:v})},
  doapprove(v,el,dev){const [id,rel]=v.split('|'),d=dOf(id);OP.approve(d);if(rel)relPrefill(dev,d);else{dev.sheet=null;flash(dev,'APPROVED','stamp');toast(`${sheetNo(d)} approved. ${stf(d.ds).n} can release it now.`)}},
  sendback(v,el,dev){const d=dOf(v);if(!(dev.f.ap_note||'').trim())return toast('Say why it goes back.','wait');OP.sendBack(d,dev.f.ap_note.trim());dev.sheet=null;toast(`${sheetNo(d)} sent back to ${stf(d.ds).n}.`)},
  release(v,el,dev){relPrefill(dev,dOf(v))},
@@ -1218,7 +1230,9 @@ const A={
  setting(v){DB.set[v]=!DB.set[v];toast({approval:DB.set.approval?'Releases need the principal’s approval.':'Designers now release directly.',clientConfirm:DB.set.clientConfirm?'Client points wait for the office to confirm.':'Client points now show to the client at once.',sending:DB.set.sending?'WhatsApp sending is on.':'Sending is off. Messages are logged as “held”.'}[v])},
  limit(v){const [k,n]=v.split('|');DB.set.lim[k]=Math.max(1,DB.set.lim[k]+ +n)},
  ettoggle(v){const [n,t]=v.split('|'),e=ETX[n],i=e.tr.indexOf(t);i<0?e.tr.push(t):e.tr.splice(i,1)},dtflag(v){const [i,k]=v.split('|');DTYPES[+i][k]=!DTYPES[+i][k]},
- roletog(v){const [s,r]=v.split('|'),u=stf(s),i=u.roles.indexOf(r);i<0?u.roles.push(r):u.roles.length>1&&u.roles.splice(i,1)},
+ roletog(v){if(!can('setup'))return toast('Only people with Setup change roles.','wait');const [s,r]=v.split('|'),u=stf(s),i=u.roles.indexOf(r),before=[...u.roles];i<0?u.roles.push(r):u.roles.length>1&&u.roles.splice(i,1);
+  /* a role given brings its usual access; a role taken away takes what only it brought (the server does the same) */
+  if(u.acc){const of=rs=>new Set(rs.flatMap(x=>ACCROLE[x]||[])),keep=of(u.roles),gone=[...of(before.filter(x=>!u.roles.includes(x)))].filter(k=>!keep.has(k)),add=[...of(u.roles.filter(x=>!before.includes(x)))];u.acc=[...new Set([...u.acc,...add])].filter(k=>!gone.includes(k))}},
  doaddtrade(v,el,dev){const f=dev.f,n=(f.nt_n||'').trim();if(!n)return toast('Type the trade’s name.','wait');const t={id:'t'+TRADES.length,n,s:n.slice(0,5),gu:f.nt_gu||n,hi:f.nt_hi||n};TRADES.push(t);TX[t.id]=t;f.nt_n=f.nt_gu=f.nt_hi='';dev.sheet=null;toast(`Trade “${n}” added. It is offered at the next onboarding.`)},
  doaddagency(v,el,dev){const f=dev.f;if(!(f.na_n||'').trim()||!f.na_t)return toast('Give the firm’s name and its trade.','wait');const g={id:'a'+(DB.agencies.length+1),n:f.na_n.trim(),tr:[f.na_t],lang:f.na_l||'gu',people:[{n:f.na_p||'Owner',ph:f.na_ph||'—'}]},back=dev.sheet&&dev.sheet.back;DB.agencies.push(g);f.na_n=f.na_p=f.na_ph='';dev.sheet=back||null;if(back&&back.k==='assign')f.a_ag=g.id;toast(back?'Agency added. Save to give it this trade.':'Agency added.')},
  /* agency and client apps */
@@ -1335,7 +1349,9 @@ function afterRender(root){sliders(root);countUp(root);tapRing();
   if(d.splash&&d.spT){const el=root.querySelector('.dv-'+d.id+' .splash'),dt=performance.now()-d.spT;if(el&&dt>80&&el.getAnimations)el.getAnimations({subtree:true}).forEach(a=>{try{a.currentTime=(a.currentTime||0)+dt}catch(e){}})}
   if(d.party){d.party=false;if(box)confetti(box.getBoundingClientRect())}});
  queueSave()}
-function render(){({staff:['staff'],agency:['agency'],client:['client'],all:['staff','agency','client']}[UI.view]||[]).forEach(k=>{const d=UI.devs[k];if(!d.seen){d.seen=true;splash(d,UI.restored&&(d.signed||(k==='client'&&UI.linkMode)))}});
+/* what this person may not do: the buttons of those functions are hidden (styles.css, html[data-nacc]) */
+function accMark(){let n='';try{n=ACCK.map(x=>x[0]).filter(k=>!can(k)).join(' ')}catch(e){}if(document.documentElement.dataset.nacc!==n)document.documentElement.dataset.nacc=n}
+function render(){accMark();({staff:['staff'],agency:['agency'],client:['client'],all:['staff','agency','client']}[UI.view]||[]).forEach(k=>{const d=UI.devs[k];if(!d.seen){d.seen=true;splash(d,UI.restored&&(d.signed||(k==='client'&&UI.linkMode)))}});
  const root=document.getElementById('app'),sc={},key=el=>{const d=el.closest('[data-dev]');return (d?d.dataset.dev:'')+':'+el.dataset.sc};
  root.querySelectorAll('[data-sc]').forEach(el=>{sc[key(el)]=[el.scrollTop,el.scrollLeft]});const ae=document.activeElement,fid=ae&&ae.id,ss=ae&&ae.selectionStart;
  root.style.setProperty('--t',tNow());
@@ -1536,6 +1552,7 @@ wrapOP('answer',(r,d,qid,text)=>sync('answer',{question:qid,text}));
 wrapOP('remind',(r,to,pid,text)=>sync('remind',{to,project:pid,text}));
 wrapOP('confirmPoint',(r,x)=>sync('confirm_point',{point:x.id}));
 wrapOP('reopenPoint',(r,x)=>sync('reopen_point',{point:x.id}));
+wrapOP('access',(r,u,k,on)=>sync('access',{user:u.id,key:k,on:!!on}));
 /* the check of a point an agency marked done, and a line of the office in a thread about a drawing */
 wrapOP('solvePoint',(r,x)=>sync('solve_point',{point:x.id}));
 wrapOP('changePoint',(r,x,note)=>sync('change_point',{point:x.id,note:note||''}));

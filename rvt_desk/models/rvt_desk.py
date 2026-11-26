@@ -56,9 +56,8 @@ class RvtDesk(models.AbstractModel):
 
     @api.model
     def _check_owner(self):
-        user = self.env.user
-        if not (user.has_group("rvt_base.group_rvt_owner") or user.has_group("base.group_system")):
-            raise AccessError(self.env._("Only an owner can change this."))
+        """Setup: the rules and master lists. For people ticked "Setup" (and system administrators)."""
+        self.env.user.rvt_check_access("setup")
 
     @api.model
     def _staff_users(self):
@@ -67,7 +66,8 @@ class RvtDesk(models.AbstractModel):
 
     def _staff_row(self, user):
         roles = [r for r in user.rvt_roles() if r in ("owner", "principal", "designer", "coordinator")]
-        return {"id": "s%s" % user.id, "n": short_name(user.name), "full": user.name, "roles": roles, "login": user.login}
+        return {"id": "s%s" % user.id, "n": short_name(user.name), "full": user.name, "roles": roles, "login": user.login,
+                "acc": sorted(user.rvt_access())}
 
     def _agency_row(self, agency):
         people = self.env["res.partner"].sudo().search([("parent_id", "=", agency.id)], order="id")
@@ -268,7 +268,7 @@ class RvtDesk(models.AbstractModel):
         agencies = self.env["res.partner"].sudo().search([("rvt_is_agency", "=", True)], order="name")
         agency_rows = [self._agency_row(a) for a in agencies]
         agency_people = {_num(a["id"]): [p["id"] for p in a["people"]] for a in agency_rows}
-        projects = Project.search([], order="rvt_onboarded desc, id")
+        projects = self._visible_projects(Project.search([], order="rvt_onboarded desc, id"))
         tasks_of = self._hand_made_tasks(projects)
         project_rows = [self._project_row(p, tasks_of, off, today, agency_people) for p in projects]
         pictures = {}
@@ -278,6 +278,7 @@ class RvtDesk(models.AbstractModel):
             "today_date": fields.Date.to_string(today),
             "me": "s%s" % user.id,
             "admin": user.has_group("base.group_system"),
+            "acc": sorted(user.rvt_access()),
             "prefix": self._web_prefix(),
             "company": user.company_id.name,
             "features": self._features(),
@@ -304,6 +305,25 @@ class RvtDesk(models.AbstractModel):
         """Hook: later phases add drawings, visits, points and bills."""
         return
 
+    @api.model
+    def _access_needed_by_op(self):
+        """Which access tick each button needs (the screens hide the button too). Later phases add theirs."""
+        return {
+            "onboard": "projects", "task_entity": "projects", "invite": "projects",
+            "set_line": "grid",
+            "assign": "agencies", "add_agency": "agencies",
+            "setting": "setup", "limit": "setup", "etype_trade": "setup", "dtype_flag": "setup", "add_trade": "setup",
+            "role": "setup", "access": "setup",
+        }
+
+    @api.model
+    def _visible_projects(self, projects):
+        """Without "See every project", a person sees only the projects whose team they are on."""
+        user = self.env.user
+        if "allprojects" in user.rvt_access() or not user.has_group("rvt_base.group_rvt_staff"):
+            return projects
+        return projects.filtered(lambda p: user in (p.sudo().rvt_principal_id | p.sudo().rvt_designer_ids | p.sudo().rvt_coordinator_ids))
+
     # ------------------------------------------------------------------
     # operations: one method per button, each a thin layer over a model method
     # ------------------------------------------------------------------
@@ -313,6 +333,9 @@ class RvtDesk(models.AbstractModel):
         method = getattr(self, "_op_%s" % name, None)
         if not method or not re.match(r"^[a-z_]+$", name or ""):
             raise UserError(self.env._("Unknown action."))
+        need = self._access_needed_by_op().get(name)
+        if need:
+            self.env.user.rvt_check_access(need)
         result = method(args or {}) or {}
         # every button changes what some screen shows: the open screens read again
         self.env["rvt.live"].touch()
@@ -511,5 +534,21 @@ class RvtDesk(models.AbstractModel):
         roles ^= {role}
         if role == "owner" and "owner" not in roles and user == self.env.user:
             raise UserError(self.env._("You cannot take the owner role away from yourself."))
+        if role == "owner" and not (self.env.user.has_group("rvt_base.group_rvt_owner") or self.env.user.has_group("base.group_system")):
+            raise AccessError(self.env._("Only an owner gives or takes the owner role."))
         user.rvt_set_roles(sorted(roles))
         return {}
+
+    def _op_access(self, a):
+        """One tick of a person's Revert access, from Setup > Staff."""
+        self._check_owner()
+        user = self.env["res.users"].browse(_num(a.get("user"))).exists()
+        groups = user._rvt_access_groups() if user else {}
+        key = a.get("key")
+        if not user or key not in groups:
+            raise UserError(self.env._("Choose a person and an access."))
+        on = bool(a.get("on"))
+        if not on and key == "setup" and user == self.env.user:
+            raise UserError(self.env._("You cannot take Setup away from yourself."))
+        user.sudo().with_context(rvt_access_by_hand=True).write({"group_ids": [(4 if on else 3, groups[key].id)]})
+        return {"acc": sorted(user.rvt_access())}

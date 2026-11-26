@@ -58,6 +58,9 @@ const A={
   if(open.length){const ts=Math.floor(Date.now()/1000);open.forEach(q=>{OP.answer(t.d,q.id,text);q.ansTs=ts})}else OP.say(t.d,t.by,text);dev.f[k]='';dev.toEnd=true;UI.focus=dev.id+'_'+k;toast(`${open.length?'Answered':'Sent'}. ${nm} sees it in the app.`)},
  agdone(v,el,dev){const x=ptOf(v),a=agOf(UI.agency),L=UI.lang.agency;if(!x)return;if(!dev.f.ad_photo)return toast(tr('pt_proof',L),'wait');
   OP.agencyDone(x,(dev.f.ad_note||'').trim(),true,a.people[0].n);dev.f.ad_note='';dev.f.ad_photo=false;if(dev.stack.length>1)dev.stack.pop();flash(dev,'✓');pushStaff(a.n+' marked point '+x.n+' done',[x.by,...pOf(x.pid).coords]);toast(tr('pt_sent',L))},
+ /* a person's access ticks (Setup › Staff) */
+ acctog(v,el,dev){if(!can('setup'))return toast('Only people with Setup change access.','wait');const [sid,k]=v.split('|'),u=stf(sid);if(!u||!u.roles)return;const acc=accOf(u),on=!acc.includes(k);
+  if(!on&&k==='setup'&&sid===UI.user)return toast('You cannot take Setup away from yourself.','wait');u.acc=on?[...acc,k]:acc.filter(x=>x!==k);OP.access(u,k,on)},
  /* notifications */
  notes(v,el,dev){const fresh=(DB.notes||[]).filter(n=>!n.seen).map(n=>n.id);openSheet(dev,'notes',{fresh});if(fresh.length)OP.seenNotes()},
  noteopen(v,el,dev){const n=(DB.notes||[]).find(x=>String(x.id)===String(v)),r=n&&n.ref;if(!r)return;const [k,id]=r;dev.sheet=null;
@@ -104,7 +107,7 @@ const A={
  dwg(v,el,dev){openDwg(dev,v)},dstart(v){dOf(v).st='in_progress';toast('Marked in progress.')},view(v,el,dev){openSheet(dev,'view',{id:v})},
  dosend(v,el,dev){const d=dOf(v);if(!dev.f.sa_file)return toast('Choose the PDF first.','wait');OP.sendForApproval(d,dev.f.sa_note);dev.f.sa_file=false;dev.f.sa_note='';
   if(DB.set.approval){dev.sheet=null;flash(dev,'Sent','send');toast(`${sheetNo(d)} sent to ${stf(pOf(d.pid).principal).n} for approval.`)}else relPrefill(dev,d)},
- approve(v,el,dev){if(!isPrincipal())return toast('Only the principal approves a release.','wait');dev.f.ap_note='';openSheet(dev,'approve',{id:v})},
+ approve(v,el,dev){if(!can('approve'))return toast('Only the principal approves a release.','wait');dev.f.ap_note='';openSheet(dev,'approve',{id:v})},
  doapprove(v,el,dev){const [id,rel]=v.split('|'),d=dOf(id);OP.approve(d);if(rel)relPrefill(dev,d);else{dev.sheet=null;flash(dev,'APPROVED','stamp');toast(`${sheetNo(d)} approved. ${stf(d.ds).n} can release it now.`)}},
  sendback(v,el,dev){const d=dOf(v);if(!(dev.f.ap_note||'').trim())return toast('Say why it goes back.','wait');OP.sendBack(d,dev.f.ap_note.trim());dev.sheet=null;toast(`${sheetNo(d)} sent back to ${stf(d.ds).n}.`)},
  release(v,el,dev){relPrefill(dev,dOf(v))},
@@ -156,7 +159,9 @@ const A={
  setting(v){DB.set[v]=!DB.set[v];toast({approval:DB.set.approval?'Releases need the principal’s approval.':'Designers now release directly.',clientConfirm:DB.set.clientConfirm?'Client points wait for the office to confirm.':'Client points now show to the client at once.',sending:DB.set.sending?'WhatsApp sending is on.':'Sending is off. Messages are logged as “held”.'}[v])},
  limit(v){const [k,n]=v.split('|');DB.set.lim[k]=Math.max(1,DB.set.lim[k]+ +n)},
  ettoggle(v){const [n,t]=v.split('|'),e=ETX[n],i=e.tr.indexOf(t);i<0?e.tr.push(t):e.tr.splice(i,1)},dtflag(v){const [i,k]=v.split('|');DTYPES[+i][k]=!DTYPES[+i][k]},
- roletog(v){const [s,r]=v.split('|'),u=stf(s),i=u.roles.indexOf(r);i<0?u.roles.push(r):u.roles.length>1&&u.roles.splice(i,1)},
+ roletog(v){if(!can('setup'))return toast('Only people with Setup change roles.','wait');const [s,r]=v.split('|'),u=stf(s),i=u.roles.indexOf(r),before=[...u.roles];i<0?u.roles.push(r):u.roles.length>1&&u.roles.splice(i,1);
+  /* a role given brings its usual access; a role taken away takes what only it brought (the server does the same) */
+  if(u.acc){const of=rs=>new Set(rs.flatMap(x=>ACCROLE[x]||[])),keep=of(u.roles),gone=[...of(before.filter(x=>!u.roles.includes(x)))].filter(k=>!keep.has(k)),add=[...of(u.roles.filter(x=>!before.includes(x)))];u.acc=[...new Set([...u.acc,...add])].filter(k=>!gone.includes(k))}},
  doaddtrade(v,el,dev){const f=dev.f,n=(f.nt_n||'').trim();if(!n)return toast('Type the trade’s name.','wait');const t={id:'t'+TRADES.length,n,s:n.slice(0,5),gu:f.nt_gu||n,hi:f.nt_hi||n};TRADES.push(t);TX[t.id]=t;f.nt_n=f.nt_gu=f.nt_hi='';dev.sheet=null;toast(`Trade “${n}” added. It is offered at the next onboarding.`)},
  doaddagency(v,el,dev){const f=dev.f;if(!(f.na_n||'').trim()||!f.na_t)return toast('Give the firm’s name and its trade.','wait');const g={id:'a'+(DB.agencies.length+1),n:f.na_n.trim(),tr:[f.na_t],lang:f.na_l||'gu',people:[{n:f.na_p||'Owner',ph:f.na_ph||'—'}]},back=dev.sheet&&dev.sheet.back;DB.agencies.push(g);f.na_n=f.na_p=f.na_ph='';dev.sheet=back||null;if(back&&back.k==='assign')f.a_ag=g.id;toast(back?'Agency added. Save to give it this trade.':'Agency added.')},
  /* agency and client apps */
@@ -273,7 +278,9 @@ function afterRender(root){sliders(root);countUp(root);tapRing();
   if(d.splash&&d.spT){const el=root.querySelector('.dv-'+d.id+' .splash'),dt=performance.now()-d.spT;if(el&&dt>80&&el.getAnimations)el.getAnimations({subtree:true}).forEach(a=>{try{a.currentTime=(a.currentTime||0)+dt}catch(e){}})}
   if(d.party){d.party=false;if(box)confetti(box.getBoundingClientRect())}});
  queueSave()}
-function render(){({staff:['staff'],agency:['agency'],client:['client'],all:['staff','agency','client']}[UI.view]||[]).forEach(k=>{const d=UI.devs[k];if(!d.seen){d.seen=true;splash(d,UI.restored&&(d.signed||(k==='client'&&UI.linkMode)))}});
+/* what this person may not do: the buttons of those functions are hidden (styles.css, html[data-nacc]) */
+function accMark(){let n='';try{n=ACCK.map(x=>x[0]).filter(k=>!can(k)).join(' ')}catch(e){}if(document.documentElement.dataset.nacc!==n)document.documentElement.dataset.nacc=n}
+function render(){accMark();({staff:['staff'],agency:['agency'],client:['client'],all:['staff','agency','client']}[UI.view]||[]).forEach(k=>{const d=UI.devs[k];if(!d.seen){d.seen=true;splash(d,UI.restored&&(d.signed||(k==='client'&&UI.linkMode)))}});
  const root=document.getElementById('app'),sc={},key=el=>{const d=el.closest('[data-dev]');return (d?d.dataset.dev:'')+':'+el.dataset.sc};
  root.querySelectorAll('[data-sc]').forEach(el=>{sc[key(el)]=[el.scrollTop,el.scrollLeft]});const ae=document.activeElement,fid=ae&&ae.id,ss=ae&&ae.selectionStart;
  root.style.setProperty('--t',tNow());

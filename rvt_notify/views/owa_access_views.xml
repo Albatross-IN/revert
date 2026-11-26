@@ -3,8 +3,14 @@
     <!-- The WhatsApp connector is here to carry Revert's messages. Its own application is for the owners
          (who pair the number), its buttons on a contact for the people given a Revert role; nobody else sees
          them, an administrator without a Revert role included: the office moves over one person at a time. -->
+    <!-- the access tick "WhatsApp connection": the connector's own application, and the right to pair the number -->
+    <record id="group_rvt_acc_whatsapp" model="res.groups">
+        <field name="name">WhatsApp connection</field>
+        <field name="implied_ids" eval="[(4, ref('open_whatsapp_connector.group_owa_admin'))]"/>
+        <field name="comment">The WhatsApp application: pair the number, see what was sent.</field>
+    </record>
     <record id="open_whatsapp_connector.menu_owa_root" model="ir.ui.menu">
-        <field name="group_ids" eval="[(6, 0, [ref('rvt_base.group_rvt_owner')])]"/>
+        <field name="group_ids" eval="[(6, 0, [ref('group_rvt_acc_whatsapp')])]"/>
     </record>
     <record id="res_partner_view_form_owa_for_revert" model="ir.ui.view">
         <field name="name">res.partner.form.owa.for.revert</field>

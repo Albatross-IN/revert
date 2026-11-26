@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Header, Response
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
 
-from ..deps import Caller, staff
+from ..deps import Caller, needs, staff
 from ..errors import invalid, not_found
 from ..snapshots import snapshot_response
 from .auth import client_link
@@ -153,12 +153,12 @@ def onboarding_state(project_id: int, who: Annotated[Caller, Depends(staff)]):
 
 
 @router.post("/onboarding", summary="Set a project up, or complete it")
-def onboard(vals: dict[str, Any], who: Annotated[Caller, Depends(staff)]):
+def onboard(vals: dict[str, Any], who: Annotated[Caller, Depends(needs("projects"))]):
     return who.env["project.project"].rvt_onboard(vals)
 
 
 @router.post("/work-lines/{line_id}/state", summary="Change a cell of the grid")
-def line_state(line_id: int, data: LineState, who: Annotated[Caller, Depends(staff)]):
+def line_state(line_id: int, data: LineState, who: Annotated[Caller, Depends(needs("grid"))]):
     line = _one(who, "project.task", line_id)
     extra = {k: v for k, v in (("drawing_id", data.drawing_id), ("point_id", data.point_id)) if v}
     kwargs = {"expected_finish": data.expected_finish} if data.expected_finish is not None else {}
@@ -178,23 +178,23 @@ def drawings(who: Annotated[Caller, Depends(staff)], project_id: int | None = No
 
 
 @router.post("/drawings/{drawing_id}/start")
-def drawing_start(drawing_id: int, who: Annotated[Caller, Depends(staff)]):
+def drawing_start(drawing_id: int, who: Annotated[Caller, Depends(needs("drawings"))]):
     return {"ok": _one(who, "rvt.drawing", drawing_id).action_start()}
 
 
 @router.post("/drawings/{drawing_id}/send-for-approval")
-def drawing_send(drawing_id: int, data: SendForApproval, who: Annotated[Caller, Depends(staff)]):
+def drawing_send(drawing_id: int, data: SendForApproval, who: Annotated[Caller, Depends(needs("drawings"))]):
     file = who.env["rvt.api.media"]._take(who.user, data.media_id) if data.media_id else data.file
     return {"ok": _one(who, "rvt.drawing", drawing_id).action_send_for_approval(file, data.file_name, data.note)}
 
 
 @router.post("/drawings/{drawing_id}/approve")
-def drawing_approve(drawing_id: int, who: Annotated[Caller, Depends(staff)]):
+def drawing_approve(drawing_id: int, who: Annotated[Caller, Depends(needs("approve"))]):
     return {"ok": _one(who, "rvt.drawing", drawing_id).action_approve()}
 
 
 @router.post("/drawings/{drawing_id}/send-back")
-def drawing_send_back(drawing_id: int, data: Note, who: Annotated[Caller, Depends(staff)]):
+def drawing_send_back(drawing_id: int, data: Note, who: Annotated[Caller, Depends(needs("approve"))]):
     return {"ok": _one(who, "rvt.drawing", drawing_id).action_send_back(data.note)}
 
 
@@ -204,17 +204,17 @@ def drawing_receivers(drawing_id: int, who: Annotated[Caller, Depends(staff)]):
 
 
 @router.post("/drawings/{drawing_id}/release")
-def drawing_release(drawing_id: int, data: Release, who: Annotated[Caller, Depends(staff)]):
+def drawing_release(drawing_id: int, data: Release, who: Annotated[Caller, Depends(needs("drawings"))]):
     return _one(who, "rvt.drawing", drawing_id).action_release(data.agency_ids, client=data.client)
 
 
 @router.post("/drawings/{drawing_id}/new-revision")
-def drawing_new_revision(drawing_id: int, data: Note, who: Annotated[Caller, Depends(staff)]):
+def drawing_new_revision(drawing_id: int, data: Note, who: Annotated[Caller, Depends(needs("drawings"))]):
     return {"revision_id": _one(who, "rvt.drawing", drawing_id).action_new_revision(data.note)}
 
 
 @router.post("/drawings/{drawing_id}/questions", summary="Log a question from a call")
-def drawing_question(drawing_id: int, data: Question, who: Annotated[Caller, Depends(staff)]):
+def drawing_question(drawing_id: int, data: Question, who: Annotated[Caller, Depends(needs("drawings"))]):
     drawing = _one(who, "rvt.drawing", drawing_id)
     drawing._rvt_staff()
     partner = who.env["res.partner"].sudo().browse(data.partner_id).exists()
@@ -224,27 +224,27 @@ def drawing_question(drawing_id: int, data: Question, who: Annotated[Caller, Dep
 
 
 @router.post("/questions/{question_id}/answer")
-def question_answer(question_id: int, data: Answer, who: Annotated[Caller, Depends(staff)]):
+def question_answer(question_id: int, data: Answer, who: Annotated[Caller, Depends(needs("drawings"))]):
     return {"ok": _one(who, "rvt.drawing.question", question_id).action_answer(data.text)}
 
 
 @router.post("/visits", summary="Start the MOM of a site visit")
-def visit_start(data: VisitStart, who: Annotated[Caller, Depends(staff)]):
+def visit_start(data: VisitStart, who: Annotated[Caller, Depends(needs("mom"))]):
     return {"id": who.env["rvt.visit"].rvt_start(data.project_id)}
 
 
 @router.post("/visits/{visit_id}/finish")
-def visit_finish(visit_id: int, who: Annotated[Caller, Depends(staff)]):
+def visit_finish(visit_id: int, who: Annotated[Caller, Depends(needs("mom"))]):
     return {"ok": _one(who, "rvt.visit", visit_id).action_finish()}
 
 
 @router.post("/visits/{visit_id}/send-party", summary="Send one party its points of the visit as a PDF")
-def visit_send(visit_id: int, data: Party, who: Annotated[Caller, Depends(staff)]):
+def visit_send(visit_id: int, data: Party, who: Annotated[Caller, Depends(needs("mom"))]):
     return _one(who, "rvt.visit", visit_id).rvt_send_party(data.partner_id)
 
 
 @router.post("/points", summary="Write points; a batch sent twice is created once")
-def points(data: Points, who: Annotated[Caller, Depends(staff)]):
+def points(data: Points, who: Annotated[Caller, Depends(needs("mom"))]):
     rows = []
     for row in data.points:
         row = dict(row)
@@ -257,7 +257,7 @@ def points(data: Points, who: Annotated[Caller, Depends(staff)]):
 
 
 @router.post("/points/{point_id}/close")
-def point_close(point_id: int, data: Close, who: Annotated[Caller, Depends(staff)]):
+def point_close(point_id: int, data: Close, who: Annotated[Caller, Depends(needs("mom"))]):
     photo = who.env["rvt.api.media"]._take(who.user, data.media_id) if data.media_id else data.photo
     point = _one(who, "rvt.point", point_id)
     point.action_close(data.note, photo)
@@ -265,7 +265,7 @@ def point_close(point_id: int, data: Close, who: Annotated[Caller, Depends(staff
 
 
 @router.post("/points/{point_id}/confirm")
-def point_confirm(point_id: int, who: Annotated[Caller, Depends(staff)]):
+def point_confirm(point_id: int, who: Annotated[Caller, Depends(needs("mom"))]):
     return {"ok": _one(who, "rvt.point", point_id).action_confirm()}
 
 
@@ -275,7 +275,7 @@ def remind(project_id: int, data: Remind, who: Annotated[Caller, Depends(staff)]
 
 
 @router.post("/projects/{project_id}/invite")
-def invite(project_id: int, data: Invite, who: Annotated[Caller, Depends(staff)]):
+def invite(project_id: int, data: Invite, who: Annotated[Caller, Depends(needs("projects"))]):
     return {"invited": _one(who, "project.project", project_id).rvt_invite(data.agency_ids, data.client_contact_ids)}
 
 

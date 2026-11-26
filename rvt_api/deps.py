@@ -82,6 +82,16 @@ def client(who: Annotated[Caller, Depends(caller)]) -> Caller:
 
 
 def owner(who: Annotated[Caller, Depends(staff)]) -> Caller:
-    if "owner" not in who.roles:
-        raise forbidden("This is for owners.")
+    """Bill amounts and payments: the access tick "Bill amounts and payments" (owners have it)."""
+    if not who.user.has_group("rvt_base.group_rvt_acc_money") and not who.user.has_group("base.group_system"):
+        raise forbidden("This is for those who see bill amounts and payments.")
     return who
+
+
+def needs(key):
+    """A staff route that needs one access tick (Settings > Users > Revert access)."""
+    def check(who: Annotated[Caller, Depends(staff)]) -> Caller:
+        if not (key in who.user.rvt_access() or who.user.has_group("base.group_system")):
+            raise forbidden("You do not have this access. Ask an owner to tick it in your Revert access.")
+        return who
+    return check

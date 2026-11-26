@@ -36,6 +36,11 @@ keeps working the earlier way until each person is trained and given a Revert ro
   default API key). Auto-start in the connector's settings stays off: the service starts it. **Still to do by hand:**
   pair the dedicated number (WhatsApp → Configuration → Accounts → new account → Connect, scan the code with the
   phone), send one test message, and only then switch sending on in Setup.
+- **Access per person (26 Nov 2026):** what someone may do is one tick each: Settings → Users → the person → **Revert access**
+  (or the desk's Setup → Staff). A role ticks its usual ones (Owner: all; Principal consultant: all but WhatsApp; Coordinator:
+  work grid, drawings, MOM, agencies; Designer: work grid, drawings, MOM); they can be changed per person. The desk and the app
+  show only the functions a person is ticked for, and the server refuses the others. Without "Every project" a person sees only
+  the projects whose team they are on. `rvt.desk_only` is off, so the earlier menus stay for everyone.
 - **The way back:** the backup taken before the release is `/opt/erp/releases/revert/release1/backup-20261121T074811Z`
   on the server (database and files, `SHA256SUMS` checked). See §6.
 

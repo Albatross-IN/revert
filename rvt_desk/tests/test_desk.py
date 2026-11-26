@@ -97,7 +97,11 @@ class TestDesk(RvtCommon):
         self.assertEqual(mine[0]["act"][0], "assign")
         outsider = self.snap(self.outsider)
         self.assertNotIn(self.project.id, [p["id"] for p in outsider["projects"]])
-        self.assertIn(self.plain.id, [p["id"] for p in outsider["projects"]])
+        self.assertNotIn(self.plain.id, [p["id"] for p in outsider["projects"]], "a designer sees only the projects of their team")
+        self.outsider.write({"group_ids": [(4, self.env.ref("rvt_base.group_rvt_acc_allprojects").id)]})
+        outsider = self.snap(self.outsider)
+        self.assertNotIn(self.project.id, [p["id"] for p in outsider["projects"]], "an onboarded project stays with its team")
+        self.assertIn(self.plain.id, [p["id"] for p in outsider["projects"]], "ticked: every project not onboarded yet too")
         with self.assertRaises(AccessError):
             self.snap(self.agency_user)
         with self.assertRaises(AccessError):

@@ -127,6 +127,12 @@ class RvtDesk(models.AbstractModel):
             raise UserError(self.env._("That drawing is not there any more. Reload the page."))
         return drawing
 
+    @api.model
+    def _access_needed_by_op(self):
+        return dict(super()._access_needed_by_op(), dstart="drawings", send_for_approval="drawings", release="drawings",
+                    new_revision="drawings", answer="drawings", ask="drawings", say="drawings",
+                    approve="approve", send_back="approve")
+
     def _op_dstart(self, a):
         self._drawing(a.get("drawing")).action_start()
 

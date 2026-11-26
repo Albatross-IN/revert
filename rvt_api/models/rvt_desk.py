@@ -1,9 +1,13 @@
-from odoo import models
+from odoo import api, models
 from odoo.exceptions import UserError
 
 
 class RvtDesk(models.AbstractModel):
     _inherit = "rvt.desk"
+
+    @api.model
+    def _access_needed_by_op(self):
+        return dict(super()._access_needed_by_op(), client_link="projects")
 
     def _op_client_link(self, a):
         """The address a client contact opens without installing the app or signing in ("Copy link")."""

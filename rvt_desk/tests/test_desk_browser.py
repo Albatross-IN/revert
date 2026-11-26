@@ -63,7 +63,7 @@ TOUR = """
         if (!q('.ovl .drop.pht')) throw new Error('no clear button for the photo of the issue');
         click(q('.ovl [data-a="cal"]')); await sleep(200);
         if (document.querySelectorAll('.calw .cd').length < 28 || !q('.calw .cd.now')) throw new Error('the calendar did not open on this month');
-        const pickDay = async n => {
+        const pickDay = async (n, mark) => {
             // the day is in the month shown, the one after, or the one before
             const find = () => q('.calw [data-a="calset"][data-v="' + n + '"]');
             for (const move of [0, 1, -2]) {
@@ -71,6 +71,7 @@ TOUR = """
                 if (move) await sleep(200);
                 if (find()) break;
             }
+            if (mark && !find().querySelector('i.d')) throw new Error('the calendar does not mark the day a point falls due');
             click(find()); await sleep(250);
         };
         await pickDay(9);
@@ -88,8 +89,7 @@ TOUR = """
         // visits are looked up by date: the day the point falls due shows it, another day does not
         if (!q('.card.visc [data-a="cal"]')) throw new Error('no date search on the visits');
         click(q('.card.visc [data-a="cal"]')); await sleep(200);
-        if (!q('.calw .cd i.d')) throw new Error('the calendar does not mark the day a point falls due');
-        await pickDay(9);
+        await pickDay(9, true);
         if (!/Tour point/.test(q('.card.visc').textContent)) throw new Error('the point is not listed on the day it falls due');
         click(q('.card.visc [data-a="cal"]')); await sleep(200);
         await pickDay(3);
@@ -115,6 +115,8 @@ class TestDeskBrowser(HttpCase):
         cls.coordinator = new_test_user(
             cls.env, "t_tour_coord", groups="rvt_base.group_rvt_coordinator", name="Meera Joshi")
         new_test_user(cls.env, "t_tour_owner", groups="rvt_base.group_rvt_owner,rvt_base.group_rvt_principal", name="Ar. Pranav Vora")
+        # the tour's coordinator sets the project up: ticked by hand, as an owner may do
+        cls.coordinator.write({"group_ids": [(4, cls.env.ref("rvt_base.group_rvt_acc_projects").id)]})
 
     def test_login_page_is_the_desks_own(self):
         page = self.url_open("/web/login").text

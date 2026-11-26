@@ -9,7 +9,7 @@ onboarding reads (trades, entity types with their usual trades, site
 presets, standard drawing sets); the agency mark on contacts; and the
 settings the project picture and the release flow depend on.
 """,
-    "version": "20.0.1.4.2",
+    "version": "20.0.1.5.0",
     "category": "Services/Project",
     "license": "LGPL-3",
     "author": "Albatross",
@@ -17,6 +17,7 @@ settings the project picture and the release flow depend on.
     "depends": ["base", "base_setup", "mail", "bus"],
     "data": [
         "security/rvt_groups.xml",
+        "security/rvt_access.xml",
         "security/ir.access.csv",
         "data/rvt_language_data.xml",
         "data/rvt_trade_data.xml",
@@ -26,6 +27,7 @@ settings the project picture and the release flow depend on.
         "data/rvt_drawing_type_data.xml",
         "views/rvt_master_views.xml",
         "views/res_partner_views.xml",
+        "views/res_users_views.xml",
         "views/res_config_settings_views.xml",
         "views/rvt_menus.xml",
     ],

@@ -270,14 +270,17 @@ class ProjectProject(models.Model):
         user = self.env.user
         is_owner = user.has_group("rvt_base.group_rvt_owner")
         out = []
+        from odoo.addons.rvt_base.models.res_users import SECTION_ACCESS
+        access = user.rvt_access()
+        allowed = lambda item: SECTION_ACCESS.get(item.get("section")) in (None, *access)
         projects = self.search([("rvt_onboarded", "=", True)], order="id")
         for project in projects:
             picture = (pictures or {}).get(project.id) or project.rvt_picture()
             for item in picture["next"]["revert"]:
-                if user.id in item["who"] or (item.get("office") and is_owner):
+                if (user.id in item["who"] or (item.get("office") and is_owner)) and allowed(item):
                     out.append(dict(item, project_id=project.id, project=project.name))
             p = project.sudo()
-            if user in p.rvt_coordinator_ids:
+            if user in p.rvt_coordinator_ids and "mom" in access:
                 client = p.rvt_client_id.name or self.env._("the client")
                 for item in picture["next"]["client"]:
                     if item.get("late"):
