@@ -106,7 +106,7 @@ const billOf=id=>DB.bills.find(b=>b.id===id);
 const visOf=id=>DB.visits.find(v=>v.id===id);
 const paid=b=>b.pay.reduce((s,x)=>s+x.amount,0);
 const roleLabel=u=>u.roles.map(r=>({owner:'Owner',principal:'Principal',designer:'Designer',coordinator:'Coordinator'}[r])).join(' · ');
-const partyName=(p,x)=>x.kind==='agency'?agN(x.party):x.kind==='client'?p.client.n:x.kind==='staff'?stf(x.party).n:x.party;
+const partyName=(p,x)=>x.kind==='agency'?agN(x.party):x.kind==='client'?p.client.n||'Client':x.kind==='staff'?stf(x.party).n:x.party;
 const partyKey=x=>x.kind==='agency'?x.party:x.kind==='client'?'client':x.kind==='staff'?x.party:'v:'+x.party;
 /* who may see a project: owners and the principal see all; others by team; a project not yet onboarded stays visible as today */
 let canSee=(u,p)=>has(u,'owner')||has(u,'principal')||!p.onb||p.designers.includes(u.id)||p.coords.includes(u.id);
@@ -138,8 +138,8 @@ function picture(p){
    actor:appr?stf(p.principal).n+' (approve)':stf(d.ds).n,who:[appr?p.principal:d.ds],age,act:appr?['approve',d.id,'Approve']:d.st==='approved'?['release',d.id,'Release']:['dwg',d.id,'Open']})});
  /* B4 a client item is open past its date */
  rel.forEach(d=>{const r=cur(d);if(r.client&&r.client.dec==='pending'&&-r.relOn>=2){const w=L.filter(l=>l.st==='wait'&&l.cause==='client'&&l.ref===d.id);
-  push({k:'B4',text:'Client: approve '+d.title+' rev '+r.n,holds:w.length?w.map(lineLabel).join(', '):'the drawings that follow it',actor:p.client.n,who:p.coords,age:-r.relOn,act:['remind','client|'+p.id+'|Please have a look at '+d.title+' and give your go-ahead.','Remind']})}});
- pts.filter(x=>x.kind==='client'&&x.st==='open'&&x.confirmed&&x.due<0).forEach(x=>push({k:'B4',text:'Client: '+x.text,holds:entN(p,x.e)||'the site',actor:p.client.n,who:p.coords,age:-x.due,act:['remind','client|'+p.id+'|'+x.text,'Remind']}));
+  push({k:'B4',text:'Client: approve '+d.title+' rev '+r.n,holds:w.length?w.map(lineLabel).join(', '):'the drawings that follow it',actor:p.client.n||'Client',who:p.coords,age:-r.relOn,act:['remind','client|'+p.id+'|Please have a look at '+d.title+' and give your go-ahead.','Remind']})}});
+ pts.filter(x=>x.kind==='client'&&x.st==='open'&&x.confirmed&&x.due<0).forEach(x=>push({k:'B4',text:'Client: '+x.text,holds:entN(p,x.e)||'the site',actor:p.client.n||'Client',who:p.coords,age:-x.due,act:['remind','client|'+p.id+'|'+x.text,'Remind']}));
  /* B5 waits for another trade · B6 waits for material or another cause */
  L.filter(l=>l.st==='wait'&&['trade','material','other'].includes(l.cause)).forEach(l=>{const tr=l.cause==='trade',ag=tr&&planOf(p,l.ref)&&planOf(p,l.ref).ag;
   push({k:tr?'B5':'B6',text:lineLabel(l)+' waits for '+waitText(p,l),holds:'this line',actor:tr?(ag?agN(ag):TX[l.ref].n):p.coords.map(s=>stf(s).n)[0]||'Coordinator',who:p.coords,age:l.since||0,act:tr&&ag?['remind',ag+'|'+p.id+'|'+entN(p,l.e)+': '+TX[l.t].n+' is waiting for your work.','Remind']:['cell',p.id+'|'+l.id,'Open']})});
@@ -185,7 +185,7 @@ function picture(p){
 /* Today: the same items, filtered to the signed-in person, across projects */
 function todayFor(u){const out=[];DB.projects.filter(p=>p.onb&&canSee(u,p)).forEach(p=>{const pic=picture(p);
   pic.next.revert.forEach(n=>{if(n.who.includes(u.id)||(n.whoN==='Office'&&has(u,'owner')))out.push(Object.assign({p},n))});
-  if(p.coords.includes(u.id))pic.next.client.filter(n=>n.late).forEach(n=>out.push({p,pid:p.id,sec:'client',text:'Chase '+p.client.n+': '+n.text,sub:n.sub,late:true,act:['remind','client|'+p.id+'|'+n.rem,'Remind']}))});
+  if(p.coords.includes(u.id))pic.next.client.filter(n=>n.late).forEach(n=>out.push({p,pid:p.id,sec:'client',text:'Chase '+(p.client.n||'the client')+': '+n.text,sub:n.sub,late:true,act:['remind','client|'+p.id+'|'+n.rem,'Remind']}))});
  return out}
 const SECC={approve:'brz',draw:'work',change:'wait',release:'ok',question:'work',decide:'bad',confirm:'wait',check:'brz',bill:'brz',chase:'ok',client:'work',point:'brz'};
 const SECS=[['approve','To approve','check'],['draw','To draw','dwg'],['change','Change asked','edit'],['release','To release','send'],['question','Questions','info'],['decide','Agencies to decide','users'],['confirm','Client points to confirm','eye'],['check','Points to check','cam'],['bill','Bills to review','bill'],['chase','To chase','wa'],['client','Waiting on a client','user'],['point','My open points','mom']];
@@ -475,7 +475,7 @@ function dwgDetail(d,dev){const p=pOf(d.pid),r=cur(d),s=DS[d.st],w=p.lines.filte
  if(d.st==='awaiting')act=can('approve')?Bt('View PDF','view',d.id,'','eye')+Bt('Approve','approve',d.id,'gold','check'):Bt('View PDF','view',d.id,'','eye')+`<span class="note wait in">${ic('clock')}Waiting for ${esc(stf(p.principal).n)} to approve</span>`;
  if(d.st==='approved')act=Bt('View PDF','view',d.id,'','eye')+Bt('Release','release',d.id,'gold','send');
  if(d.st==='released')act=Bt('View PDF','view',d.id,'','eye')+Bt('New revision','newrev',d.id,'','plus');
- const rc=d.st==='released'?r.rc.map(x=>{const cl=x.to==='client',nm=cl?p.client.n:agN(x.to);return `<div class="rw"><div class="m"><div class="t1">${av(nm,'sm')}<span>${esc(nm)}</span>${cl?pill('client','gold'):''}</div><div class="t2">sent ${fd(x.sent)} on WhatsApp and in the app</div></div><div class="r">${x.opened!=null?`<span class="c-ok f12 b">${ic('check')}opened ${fd(x.opened)}</span>`:`<span class="c-bad f12 b">not opened</span>${Bt('Remind','remind',(cl?'client':x.to)+'|'+p.id+'|Please open '+sheetNo(d)+' '+d.title+'.','sm wa','wa')}`}</div></div>`}).join(''):'';
+ const rc=d.st==='released'?r.rc.map(x=>{const cl=x.to==='client',nm=cl?p.client.n||'Client':agN(x.to);return `<div class="rw"><div class="m"><div class="t1">${av(nm,'sm')}<span>${esc(nm)}</span>${cl?pill('client','gold'):''}</div><div class="t2">sent ${fd(x.sent)} on WhatsApp and in the app</div></div><div class="r">${x.opened!=null?`<span class="c-ok f12 b">${ic('check')}opened ${fd(x.opened)}</span>`:`<span class="c-bad f12 b">not opened</span>${Bt('Remind','remind',(cl?'client':x.to)+'|'+p.id+'|Please open '+sheetNo(d)+' '+d.title+'.','sm wa','wa')}`}</div></div>`}).join(''):'';
  const cd=r.client?(r.client.dec==='pending'?`<div class="note wait">${ic('clock')}Client approval pending since ${fd(r.relOn)}.</div>`:r.client.dec==='approved'?`<div class="note ok">${ic('check')}<span>Approved by <b>${esc(r.client.by)}</b> on ${fdw(r.client.on)}, ${r.client.at}. The tap is the record; no signature.</span></div>`:''):'';
  const revs=d.revs.slice().reverse().map(x=>`<div class="tl ${x.st}"><i class="rev">${x.n}</i><div><div class="t1">Revision ${x.n} ${pill({draft:'Draft',awaiting:'Awaiting approval',approved:'Approved',released:'Released',superseded:'Superseded'}[x.st],{draft:'plain',awaiting:'wait',approved:'gold',released:'ok',superseded:'plain'}[x.st])}</div>
    <div class="t2">${x.note?esc(x.note)+'<br>':''}${x.back?'<span class="c-bad">Sent back: '+esc(x.back)+'</span><br>':''}${x.sentBy?'sent by '+esc(stf(x.sentBy).n)+' '+fd(x.sentOn):''}${x.apprBy&&x.apprOn!=null?' · approved by '+esc(stf(x.apprBy).n)+' '+fd(x.apprOn):''}${x.relOn!=null?' · released '+fd(x.relOn):''}</div>
@@ -634,13 +634,13 @@ SHEETS.approve=(dev,s)=>{const d=dOf(s.id),p=pOf(d.pid),r=cur(d),w=p.lines.filte
 
 SHEETS.release=(dev,s)=>{const d=dOf(s.id),p=pOf(d.pid),f=dev.f,own=d.t&&planOf(p,d.t)&&planOf(p,d.t).ag;
  const rows=[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))].sort((a,b)=>(b===own)-(a===own)).map(a=>[a,agN(a),p.plan.filter(x=>x.ag===a).map(x=>TX[x.t].n).join(', ')+' · '+agOf(a).people.map(x=>x.n).join(', '),a===own?'this drawing’s trade':'']);
- if(d.forClient)rows.push(['client',p.client.n,'Client'+(d.needsApproval?' · will be asked to approve':''),'marked for the client']);
+ if(d.forClient&&p.client.n)rows.push(['client',p.client.n,'Client'+(d.needsApproval?' · will be asked to approve':''),'marked for the client']);
  const n=rows.filter(r=>f['rc_'+r[0]]).length;
  return {title:'Release · '+sheetNo(d)+' '+d.title,sub:p.name+' · revision '+cur(d).n,body:`<div class="lbl">Receivers</div><div class="rows">${rows.map(r=>`<button type="button" class="rw lk ck" data-a="tog" data-v="rc_${r[0]}" aria-pressed="${!!f['rc_'+r[0]]}"><i class="box">${ic('check')}</i><div class="m"><div class="t1">${esc(r[1])}${r[3]?pill(r[3],'gold'):''}</div><div class="t2">${esc(r[2])}</div></div></button>`).join('')}</div>
   ${!d.forClient?`<div class="note">${ic('lock')}Not marked for the client, so the client does not receive it.</div>`:''}<div class="note ok">${ic('wa')}Each receiver gets a WhatsApp message with a secure link and a notification in the app. The first opening is recorded.</div>`,
   foot:cancelB()+`<button type="button" class="btn gold" data-a="dorelease" data-v="${d.id}" ${n?'':'disabled'}>${ic('send')}<span>Release to ${n}</span></button>`}};
 
-SHEETS.logq=(dev,s)=>{const d=dOf(s.id),p=pOf(d.pid);return {title:'Log a question from a call',sub:sheetNo(d)+' '+d.title,body:fld('Asked by',fsel(dev,'lq_by',[...[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))].map(a=>[a,agN(a)]),['client',p.client.n+' (client)']],'Choose'))+fld('Question',fin(dev,'lq_text','What did they ask')),foot:cancelB()+Bt('Save','dologq',d.id,'gold','check')}};
+SHEETS.logq=(dev,s)=>{const d=dOf(s.id),p=pOf(d.pid);return {title:'Log a question from a call',sub:sheetNo(d)+' '+d.title,body:fld('Asked by',fsel(dev,'lq_by',[...[...new Set(p.plan.filter(x=>x.ag).map(x=>x.ag))].map(a=>[a,agN(a)]),...(p.client.n?[['client',p.client.n+' (client)']]:[])],'Choose'))+fld('Question',fin(dev,'lq_text','What did they ask')),foot:cancelB()+Bt('Save','dologq',d.id,'gold','check')}};
 
 SHEETS.point=(dev,s)=>{const p=pOf(s.pid),f=dev.f;return {title:'Raise a point',sub:p.name+' · from the office, without a visit',body:`<div class="pickrow">${pickBtn(dev,'for','rp_for',p.id,forLabel(p,f.rp_for),'user')}${pickBtn(dev,'area','rp_area',p.id,areaLabel(p,f.rp_area),'pin')}</div>`
   +fld('What is needed',fin(dev,'rp_text','e.g. Choose the kitchen platform stone'))+fld('By',dueChips(dev,'rp_due',[[0,'Today'],[1,'Tomorrow'],[2,dueW(2)],[5,dueW(5)],[7,fd(7)]]))
@@ -743,12 +743,14 @@ function obDrawings(ob){const want=['',...obTrades(ob)],ds=ob.designers.length?o
   ob.dr.push({code:x.code,n:x.n,t:x.t,on:x.client||first,ds:svc&&ds[1]?ds[1]:ds[0],due:x.off,client:x.client,appr:x.appr})});
  ob.dr.sort((a,b)=>want.indexOf(a.t)-want.indexOf(b.t))}
 const OBSTEPS=['Project','Team','Site','Trades','Drawings','Review'];
+/* what stops the wizard: a name is needed; the client is optional, but a number needs the client's name with it */
+const obCheck=ob=>!ob.name.trim()?'Give the project a name first.':(ob.cphone||'').trim()&&!ob.client.trim()?'Type the client’s name with the number, or clear the number.':'';
 function obWizard(dev){const ob=dev.ob,s=ob.step,edit=!!ob.pid&&pOf(ob.pid).onb;let body='';
  const mo=(path,val,ph,cls)=>`<input class="inp ${cls||''}" id="ob_${dev.id}_${path.replace(/\W/g,'_')}" data-mo="${path}" value="${esc(val||'')}" placeholder="${esc(ph||'')}" autocomplete="off">`;
  const msel=(path,val,opts,ph)=>`<select class="inp" id="ob_${dev.id}_${path.replace(/\W/g,'_')}" data-mo="${path}" data-r="1">${ph!=null?`<option value="">${esc(ph)}</option>`:''}${opts.map(o=>`<option value="${esc(o[0])}" ${String(val)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
  const pick=(key,val,opts)=>`<div class="chips">${opts.map(o=>`<button type="button" class="chip" data-a="obset" data-v="${key}=${o[0]}" aria-pressed="${String(val)===String(o[0])}">${esc(o[1])}</button>`).join('')}</div>`;
  const multi=(key,arr,list)=>`<div class="chips">${list.map(u=>`<button type="button" class="chip tg" data-a="obmulti" data-v="${key}=${u.id}" aria-pressed="${arr.includes(u.id)}">${ic('check')}${esc(u.n)}</button>`).join('')}</div>`;
- if(s===1)body=`<div class="fgrid">${fld('Project name',mo('name',ob.name,'e.g. Shah Residence'))}${fld('Client',mo('client',ob.client,'e.g. Mr. Nirav Shah'))}${fld('Client’s WhatsApp number',mo('cphone',ob.cphone,'98xxx xxxxx'),'Used for the invitation and the sign-in code.')}${fld('Area',mo('area',ob.area,'e.g. Bopal'))}</div>
+ if(s===1)body=`<div class="fgrid">${fld('Project name',mo('name',ob.name,'e.g. Shah Residence'))}${fld('Client (optional)',mo('client',ob.client,'e.g. Mr. Nirav Shah'))}${fld('Client’s WhatsApp number (optional)',mo('cphone',ob.cphone,'98xxx xxxxx'),'For the invitation and the sign-in code. Both can be added later in Project configuration.')}${fld('Area',mo('area',ob.area,'e.g. Bopal'))}</div>
   ${fld('Site address',mo('address',ob.address,'Flat, building, road'))}${fld('Type of site',pick('kind',ob.kind,[['home','Home'],['office','Office'],['clinic','Clinic / hospital'],['other','Other']]))}
   ${fld('Bills are normally addressed to',pick('billedTo',ob.billedTo,[['client','The client'],['revert','Revert']]),'A default for this project. It can be changed bill by bill.')}`;
  if(s===2){const ds=DB.staff.filter(u=>has(u,'designer')),cs=DB.staff.filter(u=>has(u,'coordinator'));
@@ -776,16 +778,16 @@ function obWizard(dev){const ob=dev.ob,s=ob.step,edit=!!ob.pid&&pOf(ob.pid).onb;
    <div class="note">${ic('info')}Designer and due date are pre-filled from the standard set and the team, so most rows need only the tick. “client” = the client receives it; “approval” = the client must approve it.</div>`}
  if(s===6){const on=obTrades(ob),lines=ob.ents.reduce((n,e)=>n+on.filter(t=>obTick(ob,e,t)).length,0),und=on.filter(t=>!ob.tr[t].ag),ags=[...new Set(on.map(t=>ob.tr[t].ag).filter(Boolean))];
   body=`<div class="sumgrid"><div><b class="num">${ob.ents.length}</b><span>rooms and zones</span></div><div><b class="num">${on.length}</b><span>trades${und.length?` · <i class="c-bad">${und.length} undecided</i>`:''}</span></div><div><b class="num">${lines}</b><span>work lines</span></div><div><b class="num">${ob.dr.filter(d=>d.on).length}</b><span>drawings on the list</span></div></div>
-   <div class="kv"><div><span>Project</span><b>${esc(ob.name||'—')} · ${esc(ob.label||ob.kind)}</b></div><div><span>Client</span><b>${esc(ob.client||'—')}</b></div><div><span>Team</span><b>${esc([ob.principal,...ob.designers,...ob.coords].filter((v,i,a)=>a.indexOf(v)===i).map(x=>stf(x).n).join(', '))}</b></div><div><span>Bills addressed to</span><b>${ob.billedTo==='client'?'The client':'Revert'}</b></div></div>
-   <div class="lbl mt">Invite now on WhatsApp</div><div class="rows">${[...ags.map(a=>[a,agN(a),agOf(a).people[0].n+' · '+agOf(a).people[0].ph]),['client',ob.client||'Client',ob.cphone||'number missing']].map(r=>`<button type="button" class="rw lk ck" data-a="obinv" data-v="${r[0]}" aria-pressed="${!!ob.inv[r[0]]}"><i class="box">${ic('check')}</i><div class="m"><div class="t1">${esc(r[1])}</div><div class="t2">${esc(r[2])}</div></div></button>`).join('')}</div>
+   <div class="kv"><div><span>Project</span><b>${esc(ob.name||'—')} · ${esc(ob.label||ob.kind)}</b></div><div><span>Client</span><b>${esc(ob.client||'not added yet')}</b></div><div><span>Team</span><b>${esc([ob.principal,...ob.designers,...ob.coords].filter((v,i,a)=>a.indexOf(v)===i).map(x=>stf(x).n).join(', '))}</b></div><div><span>Bills addressed to</span><b>${ob.billedTo==='client'?'The client':'Revert'}</b></div></div>
+   <div class="lbl mt">Invite now on WhatsApp</div><div class="rows">${[...ags.map(a=>[a,agN(a),agOf(a).people[0].n+' · '+agOf(a).people[0].ph]),...(ob.client.trim()&&(ob.cphone||'').trim()?[['client',ob.client,ob.cphone]]:[])].map(r=>`<button type="button" class="rw lk ck" data-a="obinv" data-v="${r[0]}" aria-pressed="${!!ob.inv[r[0]]}"><i class="box">${ic('check')}</i><div class="m"><div class="t1">${esc(r[1])}</div><div class="t2">${esc(r[2])}</div></div></button>`).join('')}</div>
    <div class="note ok">${ic('wa')}Nobody has to be invited today. Agencies receive drawings and MOM points on WhatsApp even if they never open the app.</div>`}
  return `<div class="ob"><div class="obh"><div><div class="lbl">${edit?'Project configuration':ob.pid?'Configure an existing project':'New project'} · step ${s} of 6</div><h2>${esc(ob.name||'New project')}</h2></div><button type="button" class="xb" data-a="obclose" aria-label="Close">${ic('x')}</button></div>
   <ol class="steps">${OBSTEPS.map((n,i)=>`<li class="${i+1===s?'on':i+1<s?'past':''}"><button type="button" data-a="obgo" data-v="${i+1}"><i>${i+1<s?ic('check'):i+1}</i><span>${n}</span></button></li>`).join('')}</ol>
-  <div class="obb" data-sc="ob${s}">${body}</div><div class="obf">${s>1?Bt('Back','obgo',s-1,'ghost','back'):'<span></span>'}${s<6?Bt(s===5?'Review':'Next','obgo',s+1,'gold'):Bt(edit?'Save changes':'Start project','obfinish',null,'gold','check')}</div></div>`}
+  <div class="obb" data-sc="ob${s}">${body}</div><div class="obf">${s>1?Bt('Back','obgo',s-1,'ghost','back'):'<span></span>'}<span class="obr">${s<6?(edit&&s<=2?Bt('Save changes','obfinish',null,'','check'):'')+Bt(s===5?'Review':'Next','obgo',s+1,'gold'):Bt(edit?'Save changes':'Start project','obfinish',null,'gold','check')}</span></div></div>`}
 function obApply(ob){let p=ob.pid?pOf(ob.pid):null;const fresh=!p,was=p&&p.onb;
  if(!p){p={id:++DB.seq.pid,tasks:[],plan:[],ents:[],lines:[],visitNo:0,client:{n:'',contacts:[]}};DB.projects.push(p)}
  Object.assign(p,{name:ob.name,kind:ob.kind,label:ob.label||ob.kind,area:ob.area,address:ob.address,billedTo:ob.billedTo,principal:ob.principal,designers:[...ob.designers],coords:[...ob.coords],onb:true,onbOn:p.onbOn==null?0:p.onbOn});
- p.client.n=ob.client;if(!p.client.contacts.length)p.client.contacts.push({n:ob.client.replace(/^(Mr\.|Mrs\.|Dr\.)\s*/,''),ph:ob.cphone,inv:false});
+ p.client.n=ob.client;if(!p.client.contacts.length&&ob.client.trim())p.client.contacts.push({n:ob.client.replace(/^(Mr\.|Mrs\.|Dr\.)\s*/,''),ph:ob.cphone,inv:false});
  const on=obTrades(ob);on.forEach(t=>{const x=ob.tr[t];let pl=planOf(p,t);if(!pl){pl={t,ag:null,people:[],by:null};p.plan.push(pl)}pl.ag=x.ag||null;pl.by=x.ag?null:+x.by;pl.people=x.ag?[0]:[]});
  p.plan=p.plan.filter(pl=>on.includes(pl.t)||p.lines.some(l=>l.t===pl.t));let nl=0,nd=0;
  ob.ents.forEach((e,i)=>{let ent=e.id&&p.ents.find(x=>x.id===e.id);if(!ent){ent={id:'e'+p.id+'_n'+e.u,n:e.n,ty:e.ty};p.ents.push(ent)}else{ent.n=e.n;ent.ty=e.ty}
@@ -833,7 +835,7 @@ function deskToday(dev){const u=me(),it=todayFor(u),ps=myProjects(),on=ps.filter
    <div class="sech"><h3>To do</h3></div>${todoList(dev,it)}${weekLine(u)}</div>
   <aside class="stack"><div class="sech"><h3>${has(u,'coordinator')?'My sites':'Sites'}</h3>${Bt('New','onb','','sm','plus')}</div>${ps.map(p=>siteCard(p,null,'wide')).join('')}</aside></div>`}
 
-function projHeader(p){return `<div class="prjh"><div class="m"><div class="lbl">${esc(p.label)} · ${esc(p.area)}</div><h1 class="serif">${esc(p.name)}</h1><div class="team">${[p.principal,...p.designers,...p.coords].filter((v,i,a)=>a.indexOf(v)===i).map(s=>av(stf(s).n,'sm')).join('')}<span class="t2">client <b>${esc(p.client.n)}</b>${p.coords.length?' · coordinators '+esc(p.coords.map(s=>stf(s).n).join(', ')):''}</span></div></div>
+function projHeader(p){return `<div class="prjh"><div class="m"><div class="lbl">${esc(p.label)} · ${esc(p.area)}</div><h1 class="serif">${esc(p.name)}</h1><div class="team">${[p.principal,...p.designers,...p.coords].filter((v,i,a)=>a.indexOf(v)===i).map(s=>av(stf(s).n,'sm')).join('')}<span class="t2">${p.client.n?`client <b>${esc(p.client.n)}</b>`:'no client yet'}${p.coords.length?' · coordinators '+esc(p.coords.map(s=>stf(s).n).join(', ')):''}</span></div></div>
  <div class="phr">${p.onb?stPill(p):''}${Bt(p.onb?'Project configuration':'Configure this project','onb',p.id,p.onb?'sm':'gold','setup')}</div></div>`}
 function projTab(p,dev){const t=dev.ptab||'picture',pic=picture(p),dws=DB.drawings.filter(d=>d.pid===p.id),pts=DB.points.filter(x=>x.pid===p.id),bills=DB.bills.filter(b=>b.pid===p.id);
  if(t==='picture')return pictureBlock(p,dev);
@@ -845,7 +847,7 @@ function projTab(p,dev){const t=dev.ptab||'picture',pic=picture(p),dws=DB.drawin
   return `<div class="stack">${visitsCard(dev,p.id,Bt('Start MOM','startmom',p.id,'sm gold','plus'))}
    ${card('Points',`<div class="seg sm">${[['open','Open'],['check','To check'+(nck?' · '+nck:'')],['closed','Closed'],['all','All']].map(o=>`<button data-a="ui" data-v="mf=${o[0]}" aria-pressed="${f===o[0]}">${o[1]}</button>`).join('')}</div>${Bt('PDF','mompdf',p.id,'sm ghost','file')}${Bt('Raise point','raise',p.id,'sm','plus')}`,ptList(list,dev))}</div>`}
  if(t==='client'){const un=pts.filter(x=>x.kind==='client'&&x.st==='open'&&!x.confirmed),cd=dws.filter(d=>d.forClient);
-  return `<div class="stack"><div class="two">${card('Client access','',`<div class="rows">${p.client.contacts.map((c,i)=>`<div class="rw"><div class="m"><div class="t1">${av(c.n,'sm')}<span>${esc(c.n)}</span></div><div class="t2">${esc(c.ph)} · ${!c.inv?'not invited yet':c.invst&&c.invst!=='sent'?`<span class="c-wait">invitation ${esc(c.invst)}: it did not leave</span>`:'<span class="c-ok">invited · app or link</span>'}</div>${c.inv&&c.invwhy?`<div class="t2 c-wait">${esc(c.invwhy)}</div>`:''}</div><div class="r">${c.inv?Bt('Copy link','copylink',p.id,'sm ghost','link')+(c.invst&&c.invst!=='sent'?Bt('Invite again','invite',p.id+'|'+i,'sm wa','wa'):''):Bt('Invite','invite',p.id+'|'+i,'sm wa','wa')}</div></div>`).join('')}</div>
+  return `<div class="stack"><div class="two">${card('Client access','',`<div class="rows">${p.client.contacts.length?'':`<div class="rw"><div class="m"><div class="t1">${esc(p.client.n||'No client yet')}</div><div class="t2">${p.client.n?'No contact number yet.':'Add the client when you have the details.'} Nothing is sent to the client until then.</div></div><div class="r">${Bt(p.client.n?'Add contact':'Add client','onb',p.id,'sm','plus')}</div></div>`}${p.client.contacts.map((c,i)=>`<div class="rw"><div class="m"><div class="t1">${av(c.n,'sm')}<span>${esc(c.n)}</span></div><div class="t2">${!c.ph?'no number yet':esc(c.ph)+' · '+(!c.inv?'not invited yet':c.invst&&c.invst!=='sent'?`<span class="c-wait">invitation ${esc(c.invst)}: it did not leave</span>`:'<span class="c-ok">invited · app or link</span>')}</div>${c.inv&&c.invwhy?`<div class="t2 c-wait">${esc(c.invwhy)}</div>`:''}</div><div class="r">${!c.ph?Bt('Add number','onb',p.id,'sm','plus'):c.inv?Bt('Copy link','copylink',p.id,'sm ghost','link')+(c.invst&&c.invst!=='sent'?Bt('Invite again','invite',p.id+'|'+i,'sm wa','wa'):''):Bt('Invite','invite',p.id+'|'+i,'sm wa','wa')}</div></div>`).join('')}</div>
     <div class="note">${ic('eye')}The client sees two things only: the drawings marked for the client, and what Revert needs from them.</div>`)}
    ${card('Waiting for the client',Bt('Raise item','raiseclient',p.id,'sm','plus'),`<div class="rows">${nextRows(p,pic,{nt:'client'})}${un.map(x=>ptRow(x,dev)).join('')}</div>`)}</div>
    ${card('Drawings for the client','',`<div class="rows">${cd.map(d=>dwgRow(d,dev)).join('')||empty('No drawing is marked for the client.','dwg')}</div>`)}</div>`}
@@ -1150,7 +1152,7 @@ const A={
  onb(v,el,dev){obStart(dev,v?+v:null);if(dev.phone)dev.stack.push({s:'onboard'});else dev.sec='onboard'},
  onbstep(v,el,dev){const [pid,st]=v.split('|');const ob=obStart(dev,+pid);obDrawings(ob);ob.step=+st;if(dev.phone)dev.stack.push({s:'onboard'});else dev.sec='onboard'},
  obclose(v,el,dev){dev.ob=null;if(dev.phone)dev.stack.pop();else dev.sec='projects'},
- obgo(v,el,dev){const ob=dev.ob,n=+v;if(n>1&&(!ob.name.trim()||!ob.client.trim())){ob.step=1;return toast('Give the project a name and a client first.','wait')}
+ obgo(v,el,dev){const ob=dev.ob,n=+v;if(n>1&&obCheck(ob)){ob.step=1;return toast(obCheck(ob),'wait')}
   if(n>3&&!ob.ents.length){ob.step=3;return toast('Add at least one room or zone. Pick a preset to start.','wait')}if(n>=5)obDrawings(ob);ob.step=n},
  obset(v,el,dev){const i=v.indexOf('=');dev.ob[v.slice(0,i)]=v.slice(i+1)},obmulti(v,el,dev){const [k,id]=v.split('='),a=dev.ob[k],i=a.indexOf(id);i<0?a.push(id):a.splice(i,1)},
  obpreset(v,el,dev){obPreset(dev.ob,v)},obtask(v,el,dev){dev.ob.ents.unshift({u:++OBU,n:v,ty:guessType(v),task:v})},obdel(v,el,dev){dev.ob.ents.splice(+v,1)},
@@ -1160,7 +1162,7 @@ const A={
  obflag(v,el,dev){const [i,k]=v.split('|'),d=dev.ob.dr[+i];d[k]=!d[k];if(!d.client)d.appr=false},
  obadddraw(v,el,dev){const ob=dev.ob;if(!ob.nd.trim())return toast('Type the drawing’s name first.','wait');ob.dr.push({code:'AD',n:ob.nd.trim(),t:'',on:true,ds:ob.designers[0]||(DB.staff.find(u=>has(u,'designer'))||{id:''}).id,due:14,client:false,appr:false,custom:true});ob.nd=''},
  obinv(v,el,dev){dev.ob.inv[v]=!dev.ob.inv[v]},
- obfinish(v,el,dev){const ob=dev.ob;if(!ob.name.trim())return toast('Give the project a name first.','wait');const r=obApply(ob);dev.ob=null;if(dev.phone)dev.stack=[{s:'projects'}];openProj(dev,r.p.id,'picture');
+ obfinish(v,el,dev){const ob=dev.ob;if(obCheck(ob))return toast(obCheck(ob),'wait');const r=obApply(ob);dev.ob=null;if(dev.phone)dev.stack=[{s:'projects'}];openProj(dev,r.p.id,'picture');
   flash(dev,r.was?'Saved':'Project started','check',!r.was);toast(`${r.p.name}: ${plural(r.nl,'work line')} and ${plural(r.nd,'drawing')} added${r.inv?' · '+plural(r.inv,'invitation')+' '+sent():''}.`)},
  taskent(v,el,dev){const [pid,n]=v.split('|'),p=pOf(pid);p.ents.push({id:'e'+p.id+'_t'+p.ents.length,n,ty:guessType(n)});p.tasks=p.tasks.filter(t=>t.n!==n);toast(`“${n}” is now a room of ${p.name}. Tick its trades in Project configuration.`)},
  /* work grid */
@@ -1185,9 +1187,9 @@ const A={
  dorelease(v,el,dev){const d=dOf(v),to=Object.keys(dev.f).filter(k=>k.startsWith('rc_')&&dev.f[k]).map(k=>k.slice(3));const fr=OP.release(d,to);dev.sheet=null;flash(dev,'RELEASED','stamp');toast(`${sheetNo(d)} rev ${cur(d).n} released to ${to.length} · ${sent()}${fr?' · '+plural(fr,'line')+' no longer waiting':''}.`)},
  newrev(v){const d=dOf(v);d.revs.push({n:cur(d).n+1,st:'draft',note:'',rc:[]});d.st='in_progress';d.due=5;toast(`Revision ${cur(d).n} started. Receivers keep seeing the released one until the new one goes out.`)},
  answer(v,el,dev){const [id,q]=v.split('|'),t=(dev.f['ans_'+q]||'').trim();if(!t)return toast('Type the answer first.','wait');OP.answer(dOf(id),q,t);dev.f['ans_'+q]='';toast('Answered. The asker sees it in the app.')},
- dologq(v,el,dev){const d=dOf(v),f=dev.f,p=pOf(d.pid);if(!f.lq_by||!(f.lq_text||'').trim())return toast('Choose who asked and type the question.','wait');OP.ask(d,f.lq_by,f.lq_by==='client'?p.client.contacts[0].n:agOf(f.lq_by).people[0].n,f.lq_text.trim(),false,'office');f.lq_text='';dev.sheet=null;toast('Question logged on the drawing.')},
+ dologq(v,el,dev){const d=dOf(v),f=dev.f,p=pOf(d.pid);if(!f.lq_by||!(f.lq_text||'').trim())return toast('Choose who asked and type the question.','wait');OP.ask(d,f.lq_by,f.lq_by==='client'?(p.client.contacts[0]||{n:p.client.n}).n:agOf(f.lq_by).people[0].n,f.lq_text.trim(),false,'office');f.lq_text='';dev.sheet=null;toast('Question logged on the drawing.')},
  /* points and MOM */
- remind(v,el,dev){const [to,pid,...rest]=v.split('|'),p=pOf(pid);OP.remind(to,+pid,rest.join('|'));toast(`Reminder to ${to==='client'?p.client.n:agN(to)} · ${sent()}.`)},
+ remind(v,el,dev){const [to,pid,...rest]=v.split('|'),p=pOf(pid);OP.remind(to,+pid,rest.join('|'));toast(`Reminder to ${to==='client'?p.client.n||'the client':agN(to)} · ${sent()}.`)},
  confirmpt(v){const x=ptOf(v);OP.confirmPoint(x);toast(`Point ${x.n} confirmed. The client sees it now · ${sent()}.`)},
  closept(v,el,dev){dev.f.cp_note='';dev.f.cp_photo=false;openSheet(dev,'closept',{id:v})},
  doclose(v,el,dev){const x=ptOf(v),p=pOf(x.pid);OP.closePoint(x,dev.f.cp_note,dev.f.cp_photo);dev.sheet=null;flash(dev,'Closed');toast(`Point ${x.n} closed.`);
@@ -1610,11 +1612,11 @@ function obPayload(ob){const p=ob.pid?pOf(ob.pid):null,on=obTrades(ob),ticks=[];
   principal:ob.principal||'',designers:ob.designers,coords:ob.coords,
   ents:ob.ents.map(e=>{const t=e.task&&p?p.tasks.find(x=>x.n===e.task):null;return {u:e.u,n:e.n,ty:e.ty,id:e.id||'',taskId:t?t.id:''}}),
   tr:ob.tr,ticks,dr:ob.dr.filter(d=>d.on&&!d.exists).map(d=>({code:d.code,n:d.n,t:d.t||'',ds:d.ds||'',due:+d.due||0,client:!!d.client,appr:!!d.appr})),inv:Object.keys(ob.inv).filter(k=>ob.inv[k])}}
-A.obfinish=function(v,el,dev){const ob=dev.ob;if(!ob||APP.saving)return;if(!ob.name.trim())return toast('Give the project a name first.','wait');
+A.obfinish=function(v,el,dev){const ob=dev.ob;if(!ob||APP.saving)return;if(obCheck(ob))return toast(obCheck(ob),'wait');
  if(UI.offline)return toast('Onboarding needs the network. Your entries stay here until it is back.','wait');
  const was=!!(ob.pid&&pOf(ob.pid)&&pOf(ob.pid).onb);APP.saving=true;document.documentElement.dataset.sync='1';
  api('POST','/staff/op',{name:'onboard',args:obPayload(ob)}).then(async r=>{await load(true);dev.ob=null;dev.stack=[{s:'projects'}];openProj(dev,r.pid,'picture');flash(dev,was?'Saved':'Project started','check',!was);
-   const p=pOf(r.pid);toast(`${p?p.name:'Project'}: ${plural(r.nl,'work line')} and ${plural(r.nd,'drawing')} added${r.inv?' · '+plural(r.inv,'invitation')+' '+sent():''}.`)})
+   const p=pOf(r.pid);toast(`${p?p.name:'Project'}: ${was&&!r.nl&&!r.nd?'changes saved':plural(r.nl,'work line')+' and '+plural(r.nd,'drawing')+' added'}${r.inv?' · '+plural(r.inv,'invitation')+' '+sent():''}.`)})
   .catch(e=>toast(e.message,'bad')).finally(()=>{APP.saving=false;delete document.documentElement.dataset.sync;render()})};
 
 /* ---------- camera, files, drawings ---------- */

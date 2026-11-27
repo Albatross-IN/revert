@@ -79,7 +79,7 @@ const A={
  onb(v,el,dev){obStart(dev,v?+v:null);if(dev.phone)dev.stack.push({s:'onboard'});else dev.sec='onboard'},
  onbstep(v,el,dev){const [pid,st]=v.split('|');const ob=obStart(dev,+pid);obDrawings(ob);ob.step=+st;if(dev.phone)dev.stack.push({s:'onboard'});else dev.sec='onboard'},
  obclose(v,el,dev){dev.ob=null;if(dev.phone)dev.stack.pop();else dev.sec='projects'},
- obgo(v,el,dev){const ob=dev.ob,n=+v;if(n>1&&(!ob.name.trim()||!ob.client.trim())){ob.step=1;return toast('Give the project a name and a client first.','wait')}
+ obgo(v,el,dev){const ob=dev.ob,n=+v;if(n>1&&obCheck(ob)){ob.step=1;return toast(obCheck(ob),'wait')}
   if(n>3&&!ob.ents.length){ob.step=3;return toast('Add at least one room or zone. Pick a preset to start.','wait')}if(n>=5)obDrawings(ob);ob.step=n},
  obset(v,el,dev){const i=v.indexOf('=');dev.ob[v.slice(0,i)]=v.slice(i+1)},obmulti(v,el,dev){const [k,id]=v.split('='),a=dev.ob[k],i=a.indexOf(id);i<0?a.push(id):a.splice(i,1)},
  obpreset(v,el,dev){obPreset(dev.ob,v)},obtask(v,el,dev){dev.ob.ents.unshift({u:++OBU,n:v,ty:guessType(v),task:v})},obdel(v,el,dev){dev.ob.ents.splice(+v,1)},
@@ -89,7 +89,7 @@ const A={
  obflag(v,el,dev){const [i,k]=v.split('|'),d=dev.ob.dr[+i];d[k]=!d[k];if(!d.client)d.appr=false},
  obadddraw(v,el,dev){const ob=dev.ob;if(!ob.nd.trim())return toast('Type the drawing’s name first.','wait');ob.dr.push({code:'AD',n:ob.nd.trim(),t:'',on:true,ds:ob.designers[0]||(DB.staff.find(u=>has(u,'designer'))||{id:''}).id,due:14,client:false,appr:false,custom:true});ob.nd=''},
  obinv(v,el,dev){dev.ob.inv[v]=!dev.ob.inv[v]},
- obfinish(v,el,dev){const ob=dev.ob;if(!ob.name.trim())return toast('Give the project a name first.','wait');const r=obApply(ob);dev.ob=null;if(dev.phone)dev.stack=[{s:'projects'}];openProj(dev,r.p.id,'picture');
+ obfinish(v,el,dev){const ob=dev.ob;if(obCheck(ob))return toast(obCheck(ob),'wait');const r=obApply(ob);dev.ob=null;if(dev.phone)dev.stack=[{s:'projects'}];openProj(dev,r.p.id,'picture');
   flash(dev,r.was?'Saved':'Project started','check',!r.was);toast(`${r.p.name}: ${plural(r.nl,'work line')} and ${plural(r.nd,'drawing')} added${r.inv?' · '+plural(r.inv,'invitation')+' '+sent():''}.`)},
  taskent(v,el,dev){const [pid,n]=v.split('|'),p=pOf(pid);p.ents.push({id:'e'+p.id+'_t'+p.ents.length,n,ty:guessType(n)});p.tasks=p.tasks.filter(t=>t.n!==n);toast(`“${n}” is now a room of ${p.name}. Tick its trades in Project configuration.`)},
  /* work grid */
@@ -114,9 +114,9 @@ const A={
  dorelease(v,el,dev){const d=dOf(v),to=Object.keys(dev.f).filter(k=>k.startsWith('rc_')&&dev.f[k]).map(k=>k.slice(3));const fr=OP.release(d,to);dev.sheet=null;flash(dev,'RELEASED','stamp');toast(`${sheetNo(d)} rev ${cur(d).n} released to ${to.length} · ${sent()}${fr?' · '+plural(fr,'line')+' no longer waiting':''}.`)},
  newrev(v){const d=dOf(v);d.revs.push({n:cur(d).n+1,st:'draft',note:'',rc:[]});d.st='in_progress';d.due=5;toast(`Revision ${cur(d).n} started. Receivers keep seeing the released one until the new one goes out.`)},
  answer(v,el,dev){const [id,q]=v.split('|'),t=(dev.f['ans_'+q]||'').trim();if(!t)return toast('Type the answer first.','wait');OP.answer(dOf(id),q,t);dev.f['ans_'+q]='';toast('Answered. The asker sees it in the app.')},
- dologq(v,el,dev){const d=dOf(v),f=dev.f,p=pOf(d.pid);if(!f.lq_by||!(f.lq_text||'').trim())return toast('Choose who asked and type the question.','wait');OP.ask(d,f.lq_by,f.lq_by==='client'?p.client.contacts[0].n:agOf(f.lq_by).people[0].n,f.lq_text.trim(),false,'office');f.lq_text='';dev.sheet=null;toast('Question logged on the drawing.')},
+ dologq(v,el,dev){const d=dOf(v),f=dev.f,p=pOf(d.pid);if(!f.lq_by||!(f.lq_text||'').trim())return toast('Choose who asked and type the question.','wait');OP.ask(d,f.lq_by,f.lq_by==='client'?(p.client.contacts[0]||{n:p.client.n}).n:agOf(f.lq_by).people[0].n,f.lq_text.trim(),false,'office');f.lq_text='';dev.sheet=null;toast('Question logged on the drawing.')},
  /* points and MOM */
- remind(v,el,dev){const [to,pid,...rest]=v.split('|'),p=pOf(pid);OP.remind(to,+pid,rest.join('|'));toast(`Reminder to ${to==='client'?p.client.n:agN(to)} · ${sent()}.`)},
+ remind(v,el,dev){const [to,pid,...rest]=v.split('|'),p=pOf(pid);OP.remind(to,+pid,rest.join('|'));toast(`Reminder to ${to==='client'?p.client.n||'the client':agN(to)} · ${sent()}.`)},
  confirmpt(v){const x=ptOf(v);OP.confirmPoint(x);toast(`Point ${x.n} confirmed. The client sees it now · ${sent()}.`)},
  closept(v,el,dev){dev.f.cp_note='';dev.f.cp_photo=false;openSheet(dev,'closept',{id:v})},
  doclose(v,el,dev){const x=ptOf(v),p=pOf(x.pid);OP.closePoint(x,dev.f.cp_note,dev.f.cp_photo);dev.sheet=null;flash(dev,'Closed');toast(`Point ${x.n} closed.`);

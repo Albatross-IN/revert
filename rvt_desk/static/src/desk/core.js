@@ -93,7 +93,7 @@ const billOf=id=>DB.bills.find(b=>b.id===id);
 const visOf=id=>DB.visits.find(v=>v.id===id);
 const paid=b=>b.pay.reduce((s,x)=>s+x.amount,0);
 const roleLabel=u=>u.roles.map(r=>({owner:'Owner',principal:'Principal',designer:'Designer',coordinator:'Coordinator'}[r])).join(' · ');
-const partyName=(p,x)=>x.kind==='agency'?agN(x.party):x.kind==='client'?p.client.n:x.kind==='staff'?stf(x.party).n:x.party;
+const partyName=(p,x)=>x.kind==='agency'?agN(x.party):x.kind==='client'?p.client.n||'Client':x.kind==='staff'?stf(x.party).n:x.party;
 const partyKey=x=>x.kind==='agency'?x.party:x.kind==='client'?'client':x.kind==='staff'?x.party:'v:'+x.party;
 /* who may see a project: owners and the principal see all; others by team; a project not yet onboarded stays visible as today */
 let canSee=(u,p)=>has(u,'owner')||has(u,'principal')||!p.onb||p.designers.includes(u.id)||p.coords.includes(u.id);
@@ -125,8 +125,8 @@ function picture(p){
    actor:appr?stf(p.principal).n+' (approve)':stf(d.ds).n,who:[appr?p.principal:d.ds],age,act:appr?['approve',d.id,'Approve']:d.st==='approved'?['release',d.id,'Release']:['dwg',d.id,'Open']})});
  /* B4 a client item is open past its date */
  rel.forEach(d=>{const r=cur(d);if(r.client&&r.client.dec==='pending'&&-r.relOn>=2){const w=L.filter(l=>l.st==='wait'&&l.cause==='client'&&l.ref===d.id);
-  push({k:'B4',text:'Client: approve '+d.title+' rev '+r.n,holds:w.length?w.map(lineLabel).join(', '):'the drawings that follow it',actor:p.client.n,who:p.coords,age:-r.relOn,act:['remind','client|'+p.id+'|Please have a look at '+d.title+' and give your go-ahead.','Remind']})}});
- pts.filter(x=>x.kind==='client'&&x.st==='open'&&x.confirmed&&x.due<0).forEach(x=>push({k:'B4',text:'Client: '+x.text,holds:entN(p,x.e)||'the site',actor:p.client.n,who:p.coords,age:-x.due,act:['remind','client|'+p.id+'|'+x.text,'Remind']}));
+  push({k:'B4',text:'Client: approve '+d.title+' rev '+r.n,holds:w.length?w.map(lineLabel).join(', '):'the drawings that follow it',actor:p.client.n||'Client',who:p.coords,age:-r.relOn,act:['remind','client|'+p.id+'|Please have a look at '+d.title+' and give your go-ahead.','Remind']})}});
+ pts.filter(x=>x.kind==='client'&&x.st==='open'&&x.confirmed&&x.due<0).forEach(x=>push({k:'B4',text:'Client: '+x.text,holds:entN(p,x.e)||'the site',actor:p.client.n||'Client',who:p.coords,age:-x.due,act:['remind','client|'+p.id+'|'+x.text,'Remind']}));
  /* B5 waits for another trade · B6 waits for material or another cause */
  L.filter(l=>l.st==='wait'&&['trade','material','other'].includes(l.cause)).forEach(l=>{const tr=l.cause==='trade',ag=tr&&planOf(p,l.ref)&&planOf(p,l.ref).ag;
   push({k:tr?'B5':'B6',text:lineLabel(l)+' waits for '+waitText(p,l),holds:'this line',actor:tr?(ag?agN(ag):TX[l.ref].n):p.coords.map(s=>stf(s).n)[0]||'Coordinator',who:p.coords,age:l.since||0,act:tr&&ag?['remind',ag+'|'+p.id+'|'+entN(p,l.e)+': '+TX[l.t].n+' is waiting for your work.','Remind']:['cell',p.id+'|'+l.id,'Open']})});
@@ -172,7 +172,7 @@ function picture(p){
 /* Today: the same items, filtered to the signed-in person, across projects */
 function todayFor(u){const out=[];DB.projects.filter(p=>p.onb&&canSee(u,p)).forEach(p=>{const pic=picture(p);
   pic.next.revert.forEach(n=>{if(n.who.includes(u.id)||(n.whoN==='Office'&&has(u,'owner')))out.push(Object.assign({p},n))});
-  if(p.coords.includes(u.id))pic.next.client.filter(n=>n.late).forEach(n=>out.push({p,pid:p.id,sec:'client',text:'Chase '+p.client.n+': '+n.text,sub:n.sub,late:true,act:['remind','client|'+p.id+'|'+n.rem,'Remind']}))});
+  if(p.coords.includes(u.id))pic.next.client.filter(n=>n.late).forEach(n=>out.push({p,pid:p.id,sec:'client',text:'Chase '+(p.client.n||'the client')+': '+n.text,sub:n.sub,late:true,act:['remind','client|'+p.id+'|'+n.rem,'Remind']}))});
  return out}
 const SECC={approve:'brz',draw:'work',change:'wait',release:'ok',question:'work',decide:'bad',confirm:'wait',check:'brz',bill:'brz',chase:'ok',client:'work',point:'brz'};
 const SECS=[['approve','To approve','check'],['draw','To draw','dwg'],['change','Change asked','edit'],['release','To release','send'],['question','Questions','info'],['decide','Agencies to decide','users'],['confirm','Client points to confirm','eye'],['check','Points to check','cam'],['bill','Bills to review','bill'],['chase','To chase','wa'],['client','Waiting on a client','user'],['point','My open points','mom']];

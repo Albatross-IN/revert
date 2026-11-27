@@ -580,3 +580,5 @@ html[data-nacc~="mom"] [data-a="startmom"],html[data-nacc~="mom"] [data-a="raise
 html[data-nacc~="grid"] [data-a="savecell"],html[data-nacc~="grid"] [data-a="markdone"]{display:none!important}
 .chips.acc{margin-top:6px;gap:4px}.chips.acc .chip{font-size:11px;padding:3px 8px}.rw.staffacc{align-items:flex-start}
 html[data-nacc~="setup"] [data-a="setting"],html[data-nacc~="setup"] [data-a="limit"],html[data-nacc~="setup"] [data-a="roletog"],html[data-nacc~="setup"] [data-a="acctog"],html[data-nacc~="setup"] [data-a="ettoggle"],html[data-nacc~="setup"] [data-a="dtflag"],html[data-nacc~="setup"] [data-a="sheet"][data-v="addtrade"]{display:none!important}
+/* the wizard's buttons on the right: Save changes beside Next on steps 1-2 when a configured project is edited */
+.obf .obr{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
