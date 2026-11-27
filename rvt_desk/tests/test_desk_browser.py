@@ -106,6 +106,45 @@ TOUR = """
 """
 
 
+CONFIGURE_TOUR = """
+(async () => {
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const q = s => document.querySelector(s);
+    const click = el => { if (!el) throw new Error('nothing to click'); el.dispatchEvent(new MouseEvent('click', {bubbles: true})); };
+    const type = (id, value) => {
+        const el = document.getElementById(id);
+        if (!el) throw new Error('no input ' + id);
+        el.value = value;
+        el.dispatchEvent(new Event('input', {bubbles: true}));
+    };
+    const until = async (test, what) => {
+        for (let i = 0; i < 150; i++) { if (test()) return; await sleep(100); }
+        throw new Error('timed out: ' + what);
+    };
+    try {
+        // a project of the earlier way, with no client on it: its own button opens the wizard on it
+        click(q('[data-a="proj"][data-v="__PID__"]')); await sleep(300);
+        click(q('.prjh [data-a="onb"][data-v="__PID__"]')); await sleep(300);
+        const name = document.getElementById('ob_desk_name');
+        if (!name || name.value !== 'Earlier Site Without Client') throw new Error('the wizard did not open on the project');
+        if (document.getElementById('ob_desk_cphone').value !== '') throw new Error('a number appeared for a client nobody gave');
+        type('ob_desk_client', 'Mr. Kiran Shah'); type('ob_desk_cphone', '98250 11111');
+        click(q('[data-a="obgo"][data-v="2"]')); await sleep(100);
+        click(q('[data-a="obgo"][data-v="3"]')); await sleep(100);
+        click(q('[data-a="obpreset"][data-v="2 BHK"]')); await sleep(100);
+        click(q('[data-a="obgo"][data-v="4"]')); await sleep(100);
+        click(q('[data-a="obgo"][data-v="5"]')); await sleep(150);
+        click(q('[data-a="obgo"][data-v="6"]')); await sleep(100);
+        click(q('[data-a="obfinish"]'));
+        await until(() => q('.prjh h1') && q('.prjh h1').textContent === 'Earlier Site Without Client' && q('.prjh').textContent.includes('Project configuration'), 'the configured project');
+        console.log('test successful');
+    } catch (e) {
+        console.error('configure tour: ' + e.message);
+    }
+})();
+"""
+
+
 @tagged("post_install", "-at_install")
 class TestDeskBrowser(HttpCase):
 
@@ -145,6 +184,20 @@ class TestDeskBrowser(HttpCase):
         new_test_user(self.env, "t_tour_portal", groups="base.group_portal")
         self.authenticate("t_tour_portal", "t_tour_portal")
         self.assertNotIn("/rvt/desk/app.js", self.url_open("/rvt/desk").text)
+
+    def test_configure_an_earlier_project_without_client(self):
+        """Production, 27 Nov 2026: every earlier project had no client and no contact, and "Configure this
+        project" did nothing. The wizard opens on such a project and the client typed in it is kept."""
+        project = self.env["project.project"].create({"name": "Earlier Site Without Client"})
+        self.env["project.task"].create({"name": "Hand-made task", "project_id": project.id})
+        self.assertFalse(project.partner_id or project.rvt_client_id or project.rvt_client_contact_ids)
+        self.browser_js("/rvt/desk", CONFIGURE_TOUR.replace("__PID__", str(project.id)),
+                        ready="!!document.querySelector('.gnav')", login="t_tour_owner", timeout=120)
+        self.assertTrue(project.rvt_onboarded)
+        self.assertEqual(project.rvt_client_id.name, "Mr. Kiran Shah")
+        self.assertEqual(project.rvt_client_contact_ids.mapped("name"), ["Kiran Shah"])
+        self.assertIn("11111", project.rvt_client_contact_ids.phone)
+        self.assertEqual(project.task_ids.filtered(lambda t: t.name == "Hand-made task").project_id, project, "nothing is removed")
 
     def test_onboarding_tour(self):
         """A coordinator opens the desk, onboards a 2 BHK from the preset and changes a cell."""

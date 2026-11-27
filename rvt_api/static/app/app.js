@@ -726,7 +726,7 @@ SHEETS.addagency=(dev,s)=>({title:'Add an agency',sub:s.back?'It is kept in Setu
 /* ---------- onboarding: one guided screen, six steps (phase1_adoption §5.2). It calls the same two methods the API will: proposal and onboard. ---------- */
 let OBU=0;
 function obStart(dev,pid){const p=pid?pOf(pid):null;
- const ob={pid:p?p.id:null,step:1,name:p?p.name:'',client:p?p.client.n:'',cphone:p?p.client.contacts[0].ph:'',address:p?p.address:'',area:p?p.area:'',kind:p?p.kind:'home',label:p?p.label:'',billedTo:p?p.billedTo:'client',
+ const ob={pid:p?p.id:null,step:1,name:p?p.name:'',client:p?p.client.n:'',cphone:p&&p.client.contacts[0]?p.client.contacts[0].ph:'',address:p?p.address:'',area:p?p.area:'',kind:p?p.kind:'home',label:p?p.label:'',billedTo:p?p.billedTo:'client',
   principal:p?p.principal:'s1',designers:p?[...p.designers]:[],coords:p?[...p.coords]:[],preset:null,ents:[],tr:{},ticks:{},dr:[],inv:{},nd:''};
  TRADES.forEach(t=>{const pl=p&&planOf(p,t.id);ob.tr[t.id]={on:p&&p.onb?!!pl:DEFAULT_TRADES.includes(t.id),ag:pl?pl.ag||'':'',by:pl&&pl.by!=null?pl.by:7,had:!!pl}});
  if(p){p.ents.forEach(e=>{const u=++OBU;ob.ents.push({u,n:e.n,ty:e.ty,id:e.id});TRADES.forEach(t=>{ob.ticks[u+'|'+t.id]=p.lines.some(l=>l.e===e.id&&l.t===t.id)})});
