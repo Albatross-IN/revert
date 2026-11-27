@@ -106,6 +106,65 @@ TOUR = """
 """
 
 
+CONFIGURE_TOUR = """
+(async () => {
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const q = s => document.querySelector(s);
+    const click = el => { if (!el) throw new Error('nothing to click'); el.dispatchEvent(new MouseEvent('click', {bubbles: true})); };
+    const type = (id, value) => {
+        const el = document.getElementById(id);
+        if (!el) throw new Error('no input ' + id);
+        el.value = value;
+        el.dispatchEvent(new Event('input', {bubbles: true}));
+    };
+    const until = async (test, what) => {
+        for (let i = 0; i < 150; i++) { if (test()) return; await sleep(100); }
+        throw new Error('timed out: ' + what);
+    };
+    const step = () => (q('.obb') || {}).dataset ? +q('.obb').dataset.sc.slice(2) : 0;
+    try {
+        // a project of the earlier way, with no client on it: its own button opens the wizard on it
+        click(q('[data-a="proj"][data-v="__PID__"]')); await sleep(300);
+        click(q('.prjh [data-a="onb"][data-v="__PID__"]')); await sleep(300);
+        const name = document.getElementById('ob_desk_name');
+        if (!name || name.value !== 'Earlier Site Without Client') throw new Error('the wizard did not open on the project');
+        if (document.getElementById('ob_desk_cphone').value !== '') throw new Error('a number appeared for a client nobody gave');
+        // a number alone is not taken: it needs the client's name
+        type('ob_desk_cphone', '98250 11111');
+        click(q('[data-a="obgo"][data-v="2"]')); await sleep(150);
+        if (step() !== 1) throw new Error('a number without a client name went through');
+        // no client at all is fine: the project is configured without one
+        type('ob_desk_cphone', '');
+        click(q('[data-a="obgo"][data-v="2"]')); await sleep(150);
+        if (step() !== 2) throw new Error('the wizard asks for a client before step 2');
+        click(q('[data-a="obgo"][data-v="3"]')); await sleep(100);
+        click(q('[data-a="obpreset"][data-v="2 BHK"]')); await sleep(100);
+        click(q('[data-a="obgo"][data-v="4"]')); await sleep(100);
+        click(q('[data-a="obgo"][data-v="5"]')); await sleep(150);
+        click(q('[data-a="obgo"][data-v="6"]')); await sleep(100);
+        if ([...document.querySelectorAll('[data-a="obinv"]')].some(e => e.dataset.v === 'client')) throw new Error('a client nobody gave is offered an invitation');
+        click(q('[data-a="obfinish"]'));
+        await until(() => q('.prjh') && q('.prjh').textContent.includes('Project configuration'), 'the configured project');
+        if (!q('.prjh').textContent.includes('no client yet')) throw new Error('the project does not say it has no client yet');
+        // later: the client's tab offers to add the client, on step 1, saved from there
+        click(q('[data-a="ui"][data-v="ptab=client"]')); await sleep(300);
+        click(q('.card [data-a="onb"][data-v="__PID__"]')); await sleep(300);
+        if (step() !== 1) throw new Error('Add client did not open step 1');
+        type('ob_desk_client', 'Mr. Kiran Shah'); type('ob_desk_cphone', '98250 11111');
+        const save = [...document.querySelectorAll('.obf [data-a="obfinish"]')].find(e => /Save changes/.test(e.textContent));
+        if (!save) throw new Error('no Save changes on step 1 of a configured project');
+        click(save);
+        await until(() => q('.prjh') && q('.prjh').textContent.includes('Kiran Shah'), 'the client on the project');
+        click(q('[data-a="ui"][data-v="ptab=client"]')); await sleep(300);
+        if (!q('.card [data-a="invite"]')) throw new Error('the client added later cannot be invited');
+        console.log('test successful');
+    } catch (e) {
+        console.error('configure tour: ' + e.message);
+    }
+})();
+"""
+
+
 @tagged("post_install", "-at_install")
 class TestDeskBrowser(HttpCase):
 
@@ -145,6 +204,22 @@ class TestDeskBrowser(HttpCase):
         new_test_user(self.env, "t_tour_portal", groups="base.group_portal")
         self.authenticate("t_tour_portal", "t_tour_portal")
         self.assertNotIn("/rvt/desk/app.js", self.url_open("/rvt/desk").text)
+
+    def test_configure_an_earlier_project_without_client(self):
+        """Production, 27 Nov 2026: every earlier project had no client and no contact, and "Configure this
+        project" did nothing. Such a project is configured without a client, and the client is added later."""
+        project = self.env["project.project"].create({"name": "Earlier Site Without Client"})
+        self.env["project.task"].create({"name": "Hand-made task", "project_id": project.id})
+        self.assertFalse(project.partner_id or project.rvt_client_id or project.rvt_client_contact_ids)
+        self.browser_js("/rvt/desk", CONFIGURE_TOUR.replace("__PID__", str(project.id)),
+                        ready="!!document.querySelector('.gnav')", login="t_tour_owner", timeout=120)
+        self.assertTrue(project.rvt_onboarded)
+        self.assertEqual(project.rvt_client_id.name, "Mr. Kiran Shah")
+        self.assertEqual(project.rvt_client_contact_ids.mapped("name"), ["Kiran Shah"])
+        self.assertIn("11111", project.rvt_client_contact_ids.phone)
+        codes = project.rvt_drawing_ids.mapped("code")
+        self.assertEqual(len(codes), len(set(codes)), "saving the client again adds no drawing twice")
+        self.assertEqual(project.task_ids.filtered(lambda t: t.name == "Hand-made task").project_id, project, "nothing is removed")
 
     def test_onboarding_tour(self):
         """A coordinator opens the desk, onboards a 2 BHK from the preset and changes a cell."""

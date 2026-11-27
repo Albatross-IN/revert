@@ -184,10 +184,10 @@ function obPayload(ob){const p=ob.pid?pOf(ob.pid):null,on=obTrades(ob),ticks=[];
   principal:ob.principal||'',designers:ob.designers,coords:ob.coords,
   ents:ob.ents.map(e=>{const t=e.task&&p?p.tasks.find(x=>x.n===e.task):null;return {u:e.u,n:e.n,ty:e.ty,id:e.id||'',taskId:t?t.id:''}}),
   tr:ob.tr,ticks,dr:DB.features.drawings?ob.dr.filter(d=>d.on&&!d.exists).map(d=>({code:d.code,n:d.n,t:d.t||'',ds:d.ds||'',due:+d.due||0,client:!!d.client,appr:!!d.appr})):[],inv:DB.features.wa?Object.keys(ob.inv).filter(k=>ob.inv[k]):[]}}
-A.obfinish=function(v,el,dev){const ob=dev.ob;if(!ob||LIVE.saving)return;if(!ob.name.trim())return toast('Give the project a name first.','wait');
+A.obfinish=function(v,el,dev){const ob=dev.ob;if(!ob||LIVE.saving)return;if(obCheck(ob))return toast(obCheck(ob),'wait');
  const was=!!(ob.pid&&pOf(ob.pid)&&pOf(ob.pid).onb);LIVE.saving=true;document.documentElement.dataset.sync='1';
  rpc('op',['onboard',obPayload(ob)]).then(async r=>{applySnapshot(await rpc('snapshot'));dev.ob=null;openProj(dev,r.pid,'picture');dev.sec='projects';flash(dev,was?'Saved':'Project started','check',!was);
-   const p=pOf(r.pid);toast(`${p?p.name:'Project'}: ${plural(r.nl,'work line')}${DB.features.drawings?' and '+plural(r.nd,'drawing'):''} added${r.inv?' · '+plural(r.inv,'invitation')+' '+sent():''}.`)})
+   const p=pOf(r.pid);toast(`${p?p.name:'Project'}: ${was&&!r.nl&&!r.nd?'changes saved':plural(r.nl,'work line')+(DB.features.drawings?' and '+plural(r.nd,'drawing'):'')+' added'}${r.inv?' · '+plural(r.inv,'invitation')+' '+sent():''}.`)})
   .catch(e=>{if(e.message!=='session')toast(e.message,'bad')}).finally(()=>{LIVE.saving=false;if(!LIVE.busy)delete document.documentElement.dataset.sync;render()})};
 /* until drawings have their back end the wizard has five steps: 4 leads to the review */
 const obgo0=A.obgo;A.obgo=function(v,el,dev){if(!DB.features.drawings&&+v===5)v=dev.ob.step>5?4:6;return obgo0.call(A,v,el,dev)};
